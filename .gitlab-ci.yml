@@ -6,11 +6,11 @@ format-check:
   stage: lint
   image: alpine:latest
   before_script:
-    - apk add --no-cache clang-format
+    - apk add --no-cache clang-extra-tools
   script:
     - clang-format --version
     - >
-      if ! find . -name '*.c' -o -name '*.h' | xargs clang-format -style=file --Werror --dry-run; then
+      if ! find . -name '*.c' -o -name '*.h' | xargs -r clang-format -style=file --Werror --dry-run; then
         echo "Code format check failed. Please run clang-format on your code.";
         exit 1;
       fi
