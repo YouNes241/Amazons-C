@@ -1,0 +1,24 @@
+stages:
+  - lint
+  - build
+
+format-check:
+  stage: lint
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache clang-extra-tools
+  script:
+    - clang-format --version
+    - >
+      if ! find . -name '*.c' -o -name '*.h' | xargs -r clang-format -style=file --Werror --dry-run; then
+        echo "Code format check failed. Please run clang-format on your code.";
+        exit 1;
+      fi
+    - echo "Code format check passed."
+
+compile-check:
+  stage: build
+  image: gcc:latest
+  script:
+    # Keep as dummy step for now
+    - echo "Compilation step (currently a dummy step, awaiting for makefile)."
