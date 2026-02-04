@@ -1,9 +1,3 @@
-#include "error.h"
-
-
-int main ()
-{
-    int r;
-r =add(1, 2);
-return  r;
+int main(int argc, char **argv) {
+    return 0;
 }

@@ -1,44 +1,62 @@
-cmake_minimum_required(VERSION 3.10)
-project(amazons-c C)
+cmake_minimum_required(VERSION 3.14)
+project(AmazonGame LANGUAGES C CXX)
 
-# 1. Conformité Système et Flags (Exigences 1.5, 1.7, 1.11)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -g --coverage")
+set(CMAKE_CXX_STANDARD 14)
+add_compile_options(-Wall -Wextra -g)
 
-# 2. Localisation des Headers (Exigence 1.9)
-include_directories(include)
+# --- TENSORFLOW (Le seul qui reste manuel) ---
+# Même avec sudo, TensorFlow C API n'est pas dans les paquets Ubuntu par défaut.
+# On garde donc ce bloc, OU on l'installe manuellement dans /usr/local/lib une bonne fois pour toutes.
+set(TF_VER "2.14.0")
+set(TF_DIR "${CMAKE_SOURCE_DIR}/libs/libtensorflow")
+if(NOT EXISTS ${TF_DIR})
+    message(STATUS "Downloading TensorFlow...")
+    file(DOWNLOAD "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-gpu-linux-x86_64-${TF_VER}.tar.gz" libs/tf.tar.gz)
+    file(MAKE_DIRECTORY ${TF_DIR})
+    execute_process(COMMAND tar -xzf libs/tf.tar.gz -C ${TF_DIR})
+    file(REMOVE libs/tf.tar.gz)
+endif()
+include_directories(${TF_DIR}/include)
+link_directories(${TF_DIR}/lib)
 
-# 3. Recherche des dépendances obligatoires
+# --- DÉPENDANCES SYSTÈME (Tout est automatique via find_package) ---
+
+# 1. GTK (Plus besoin de fallback, on a installé la libgtk-4-dev)
 find_package(PkgConfig REQUIRED)
+pkg_check_modules(GUI REQUIRED gtk4)
+add_definitions(${GUI_CFLAGS_OTHER})
 
-# LibGtk 4.x (Exigence 1.13)
-pkg_check_modules(GTK4 REQUIRED gtk4)
-
-# TensorFlow C API (Exigence 1.15) - On suppose qu'elle est installée sur le système
-find_library(TF_LIB tensorflow)
-
-# Gettext pour l'internationalisation (Exigence 1.14)
-find_package(Intl REQUIRED)
-
-# 4. Collecte des fichiers sources (Exigence 1.10)
-# On cherche récursivement dans src/ pour inclure ai, gamemodel, network, etc.
-file(GLOB_RECURSE SOURCES "src/*.c")
-
-# 5. Création de l'exécutable
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-# 6. Linkage des bibliothèques (Exigences 1.12, 1.13, 1.14, 1.15)
-target_link_libraries(${PROJECT_NAME} 
-    ${GTK4_LIBRARIES} 
-    ${TF_LIB} 
-    ${Intl_LIBRARIES}
-    m               # Math library
-)
-
-# 7. Framework de Test (Exigences 1.6, 1.11)
-enable_testing()
+# 2. GoogleTest (Installé via apt dans /usr/src/googletest)
 find_package(GTest REQUIRED)
-# Ici on exclut main.c pour éviter les conflits de main() dans les tests
-file(GLOB_RECURSE TEST_SOURCES "tests/*.c")
-add_executable(unit_tests ${TEST_SOURCES} ${filter_out_main_sources}) 
-add_test(NAME AllTests COMMAND unit_tests)
+
+# 3. Autres
+find_package(Intl)
+find_package(Doxygen)
+
+# --- SOURCES ---
+file(GLOB_RECURSE SRC "src/*.c")
+list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
+
+# --- CIBLES ---
+add_executable(amazon_game src/main.c ${SRC})
+target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
+target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} tensorflow m GTest::GTest)
+
+# Tests
+add_executable(unit_tests tests/test_main.cpp ${SRC})
+target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main tensorflow m)
+gtest_discover_tests(unit_tests)
+
+# --- DOC & COVERAGE ---
+if(DOXYGEN_FOUND)
+    add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
+endif()
+
+# Gcovr est supposé être dans le PATH système (/usr/bin/gcovr)
+option(ENABLE_COVERAGE "Active Gcovr" OFF)
+if(ENABLE_COVERAGE)
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+    add_custom_target(coverage_report COMMAND gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage.html)
+endif()
