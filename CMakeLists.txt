@@ -5,9 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-Wall -Wextra -g)
 
-# --- TENSORFLOW (Le seul qui reste manuel) ---
-# Même avec sudo, TensorFlow C API n'est pas dans les paquets Ubuntu par défaut.
-# On garde donc ce bloc, OU on l'installe manuellement dans /usr/local/lib une bonne fois pour toutes.
+# --- TENSORFLOW (Manual download) ---
 set(TF_VER "2.14.0")
 set(TF_DIR "${CMAKE_SOURCE_DIR}/libs/libtensorflow")
 if(NOT EXISTS ${TF_DIR})
@@ -20,17 +18,17 @@ endif()
 include_directories(${TF_DIR}/include)
 link_directories(${TF_DIR}/lib)
 
-# --- DÉPENDANCES SYSTÈME (Tout est automatique via find_package) ---
+# --- System dependencies - should be downloaded prior using sudo apt-get ---
 
-# 1. GTK (Plus besoin de fallback, on a installé la libgtk-4-dev)
+# 1. GTK
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUI REQUIRED gtk4)
 add_definitions(${GUI_CFLAGS_OTHER})
 
-# 2. GoogleTest (Installé via apt dans /usr/src/googletest)
+# 2. GoogleTest
 find_package(GTest REQUIRED)
 
-# 3. Autres
+# 3. Others
 find_package(Intl)
 find_package(Doxygen)
 
@@ -38,7 +36,7 @@ find_package(Doxygen)
 file(GLOB_RECURSE SRC "src/*.c")
 list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
-# --- CIBLES ---
+# --- TARGETS ---
 add_executable(amazon_game src/main.c ${SRC})
 target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
 target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} tensorflow m GTest::GTest)
@@ -53,7 +51,7 @@ if(DOXYGEN_FOUND)
     add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
 endif()
 
-# Gcovr est supposé être dans le PATH système (/usr/bin/gcovr)
+# Gcovr for code coverage
 option(ENABLE_COVERAGE "Active Gcovr" OFF)
 if(ENABLE_COVERAGE)
     add_compile_options(--coverage)
