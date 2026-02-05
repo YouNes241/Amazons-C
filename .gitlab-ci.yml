@@ -18,8 +18,7 @@ format-check:
 
 compile-check:
   stage: build
-  #We need arm64 to compile tensorflow
-  image: arm64v8/ubuntu:latest
+  image: gcc:latest
 
   cache:
     key: "compile-cache"
