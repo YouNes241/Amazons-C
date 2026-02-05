@@ -11,6 +11,21 @@ add_compile_options(-Wall -Wextra -g)
 
 include_directories(${TF_DIR}/include)
 link_directories(${TF_DIR}/lib)
+
+find_library(TF_LIB_FILE 
+    NAMES tensorflow tensorflow_framework 
+    PATHS ${TF_DIR}/lib 
+    NO_DEFAULT_PATH
+)
+
+if(NOT TF_LIB_FILE)
+    message(FATAL_ERROR "Cannot find tensorflow in ${TF_DIR}/lib !")
+else()
+    message(STATUS "TensorFlow detected : ${TF_LIB_FILE}")
+endif()
+
+include_directories(${TF_DIR}/include)
+link_directories(${TF_DIR}/lib)
 # --- System dependencies - should be downloaded prior using sudo apt-get ---
 
 # 1. GTK
@@ -30,9 +45,15 @@ file(GLOB_RECURSE SRC "src/*.c")
 list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
 # --- TARGETS ---
+<<<<<<< HEAD
 add_executable(amazons-c src/main.c ${SRC})
 target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS})
 target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
+=======
+add_executable(amazon_game src/main.c ${SRC})
+target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
+target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} ${TF_LIB_FILE} m GTest::GTest)
+>>>>>>> 4ca33d3 (fix: Attempting fix so the project can build on CI/CD)
 
 # Tests
 add_executable(unit_tests tests/test_main.cpp ${SRC})
