@@ -24,7 +24,7 @@ compile-check:
     key: "compile-cache"
     paths:
       - libs/ # This is done especially for tensorflow which holds about 1GB of data.
-  policy: pull-push
+    policy: pull-push
 
   script:
     - mkdir -p libs
