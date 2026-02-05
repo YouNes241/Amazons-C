@@ -14,6 +14,11 @@ int add(int i, int j){
 int
 add (int i, int j)
 {
+<<<<<<< HEAD
   i = i + i; return i;
 >>>>>>> cc7c5f0 (fix: quick fix of a test file)
+=======
+  i = i + i;
+  return i;
+>>>>>>> 951c6d6 (fix: quick fix of a test file)
 }
