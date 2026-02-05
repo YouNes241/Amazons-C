@@ -19,6 +19,12 @@ format-check:
 compile-check:
   stage: build
   image: gcc:latest
+
+  cache:
+    key: "compile-cache"
+    paths:
+      - libs/ # This is done especially for tensorflow which holds about 1GB of data.
+
   script:
     # Keep as dummy step for now
     - echo "Compilation step (currently a dummy step, awaiting for makefile)."
