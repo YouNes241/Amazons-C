@@ -9,19 +9,35 @@ add_compile_options(-Wall -Wextra -g)
 # --- TENSORFLOW (Téléchargement dynamique) ---
 # TODO : When necessary (about 8th or 9th week)
 
-include_directories(${TF_DIR}/include)
-link_directories(${TF_DIR}/lib)
+if(EXISTS "${TF_DIR}/include/tensorflow")
+    include_directories(${TF_DIR}/include)
+elseif(EXISTS "${TF_DIR}/usr/local/include/tensorflow")
+    include_directories(${TF_DIR}/usr/local/include)
+elseif(EXISTS "${TF_DIR}/usr/include/tensorflow")
+    include_directories(${TF_DIR}/usr/include)
+endif()
+
+set(TF_SEARCH_PATHS 
+    ${TF_DIR}/lib 
+    ${TF_DIR}/usr/lib 
+    ${TF_DIR}/usr/local/lib
+    ${TF_DIR}/usr/lib/aarch64-linux-gnu
+)
+
+link_directories(${TF_SEARCH_PATHS})
 
 find_library(TF_LIB_FILE 
     NAMES tensorflow tensorflow_framework 
-    PATHS ${TF_DIR}/lib 
+    PATHS ${TF_SEARCH_PATHS}
     NO_DEFAULT_PATH
 )
 
 if(NOT TF_LIB_FILE)
-    message(FATAL_ERROR "Cannot find tensorflow in ${TF_DIR}/lib !")
+    execute_process(COMMAND find ${TF_DIR} -maxdepth 4 -name "libtensorflow*" OUTPUT_VARIABLE FOUND_FILES)
+    message(WARNING "Fichiers trouvés dans TF_DIR : \n${FOUND_FILES}")
+    message(FATAL_ERROR "Impossible de trouver tensorflow dans ${TF_DIR} (voir les chemins testés ci-dessus)")
 else()
-    message(STATUS "TensorFlow detected : ${TF_LIB_FILE}")
+    message(STATUS "TensorFlow trouvé ici : ${TF_LIB_FILE}")
 endif()
 
 include_directories(${TF_DIR}/include)
