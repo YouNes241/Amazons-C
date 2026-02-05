@@ -9,42 +9,41 @@ add_compile_options(-Wall -Wextra -g)
 # --- TENSORFLOW (Téléchargement dynamique) ---
 # TODO : When necessary (about 8th or 9th week)
 
-# --- DÉTECTION DES CHEMINS (C'est là que ça plantait) ---
-
-# 1. Gestion des Headers (.h)
-# On ajoute tous les dossiers 'include' potentiels trouvés dans l'archive
-set(TF_INC_PATHS
-    "${TF_DIR}/include"
-    "${TF_DIR}/usr/include"
-    "${TF_DIR}/usr/local/include"
-)
+# --- CONFIGURATION DES CHEMINS ---
+# 1. Headers
+set(TF_INC_PATHS "${TF_DIR}/include" "${TF_DIR}/usr/include" "${TF_DIR}/usr/local/include")
 include_directories(${TF_INC_PATHS})
 
-# 2. Gestion de la Librairie (.so)
-# On pointe spécifiquement là où tes logs ont montré le fichier
-set(TF_LIB_SEARCH_PATH "${TF_DIR}/usr/local/lib")
+# 2. Librairie (L'étape qui plantait)
+message(STATUS "Recherche de la librairie TensorFlow...")
 
-# On cherche 'tensorflow_framework' car 'tensorflow' n'existe pas dans ce paquet ARM
-find_library(TF_LIB_FILE 
-    NAMES tensorflow_framework tensorflow
-    PATHS ${TF_LIB_SEARCH_PATH} "${TF_DIR}/lib"
-    NO_DEFAULT_PATH
-)
+# On définit le dossier exact vu dans tes logs
+set(TARGET_LIB_DIR "${TF_DIR}/usr/local/lib")
 
-# SECOURS : Si find_library échoue encore, on force le chemin manuellement
-if(NOT TF_LIB_FILE)
-    if(EXISTS "${TF_LIB_SEARCH_PATH}/libtensorflow_framework.so")
-        set(TF_LIB_FILE "${TF_LIB_SEARCH_PATH}/libtensorflow_framework.so")
-        message(STATUS "TensorFlow forcé manuellement : ${TF_LIB_FILE}")
+# ASTUCE : On utilise GLOB pour trouver le fichier RÉEL (avec les numéros de version)
+# Cela contourne le problème des liens symboliques cassés
+file(GLOB FOUND_LIBS "${TARGET_LIB_DIR}/libtensorflow_framework.so*")
+
+# On prend le premier fichier trouvé qui n'est pas un dossier
+foreach(CANDIDATE ${FOUND_LIBS})
+    if(NOT IS_DIRECTORY ${CANDIDATE})
+        set(TF_LIB_FILE ${CANDIDATE})
+        break() # On a trouvé, on arrête
     endif()
+endforeach()
+
+# Fallback pour x86 (structure différente)
+if(NOT TF_LIB_FILE)
+    file(GLOB FOUND_LIBS_X86 "${TF_DIR}/lib/libtensorflow.so*")
+    list(GET FOUND_LIBS_X86 0 TF_LIB_FILE)
 endif()
 
-# VERDICT FINAL
+# Vérification finale
 if(NOT TF_LIB_FILE)
     execute_process(COMMAND find ${TF_DIR} -name "libtensorflow*.so*" OUTPUT_VARIABLE DUMP)
-    message(FATAL_ERROR "Echec critique. Fichiers présents :\n${DUMP}")
+    message(FATAL_ERROR "ECHEC TOTAL. Contenu :\n${DUMP}")
 else()
-    message(STATUS "TensorFlow Library OK : ${TF_LIB_FILE}")
+    message(STATUS ">>> SUCCÈS ! Librairie trouvée : ${TF_LIB_FILE}")
 endif()
 
 # --- DÉPENDANCES SYSTÈME ---
@@ -71,7 +70,6 @@ target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
 >>>>>>> 6094a29 (fix: Attempting fix so the project can build on CI/CD)
 add_executable(amazon_game src/main.c ${SRC})
 target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
-# On linke le fichier exact trouvé (.so), pas juste le nom
 target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} ${TF_LIB_FILE} m GTest::GTest)
 >>>>>>> 4ca33d3 (fix: Attempting fix so the project can build on CI/CD)
 
@@ -84,7 +82,7 @@ target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main ${TF_LIB_FILE}
 >>>>>>> 6094a29 (fix: Attempting fix so the project can build on CI/CD)
 gtest_discover_tests(unit_tests)
 
-# --- DOC & COVERAGE ---
+# --- AUTRES ---
 if(DOXYGEN_FOUND)
     add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
 endif()
