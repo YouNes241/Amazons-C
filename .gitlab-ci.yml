@@ -6,7 +6,7 @@ format-check:
   stage: lint
   image: amazons-builder:latest # Private image located in VM.
   before_script:
-    - apk add --no-cache clang-extra-tools
+    - apt-get update && apt-get install -y --no-install-recommends clang-format
   script:
     - clang-format --version
     - >
