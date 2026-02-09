@@ -4,7 +4,7 @@ stages:
 
 format-check:
   stage: lint
-  image: alpine:latest
+  image: amazons-builder:latest # Private image located in VM.
   before_script:
     - apk add --no-cache clang-extra-tools
   script:
@@ -18,7 +18,7 @@ format-check:
 
 compile-check:
   stage: build
-  image: gcc:latest
+  image: amazons-builder:latest
 
   cache:
     key: "compile-cache"
