@@ -4,29 +4,13 @@ stages:
 
 format-check:
   stage: lint
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache clang-extra-tools
   script:
     - clang-format --version
-    - >
-      if ! find . -name '*.c' -o -name '*.h' | xargs -r clang-format -style=file --Werror --dry-run; then
-        echo "Code format check failed. Please run clang-format on your code.";
-        exit 1;
-      fi
-    - echo "Code format check passed."
+    - find . -name '*.c' -o -name '*.h' | xargs -r clang-format -style=file --Werror --dry-run
 
 compile-check:
   stage: build
-  image: gcc:latest
-
-  cache:
-    key: "compile-cache"
-    paths:
-      - libs/ # This is done especially for tensorflow which holds about 1GB of data // downloads 300 mb.
-    policy: pull-push
-
   script:
-    - mkdir -p libs
-    - make -j$(nproc) all
-    # -j$(nproc) allows make to use all available CPU cores for faster compilation.
+    - cmake -B build -S . -DENABLE_COVERAGE=OFF
+    - cmake --build build --parallel $(nproc)
+    - cp build/amazon_game .
