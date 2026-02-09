@@ -4,9 +4,7 @@ stages:
 
 format-check:
   stage: lint
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache clang-extra-tools
+  image: amazons-builder:latest # Private image located in VM. Contains all libraries.
   script:
     - clang-format --version
     - >
@@ -18,15 +16,13 @@ format-check:
 
 compile-check:
   stage: build
-  image: gcc:latest
-
+  image: amazons-builder:latest
   cache:
     key: "compile-cache"
     paths:
-      - libs/ # This is done especially for tensorflow which holds about 1GB of data.
+      - libs/ # This is done especially for tensorflow which holds about 1GB of data // downloads 300 mb.
     policy: pull-push
-
   script:
     - mkdir -p libs
-    # Keep as dummy step for now
-    - echo "Compilation step (currently a dummy step, awaiting for makefile)."
+    - make -j$(nproc) all
+    # -j$(nproc) allows make to use all available CPU cores for faster compilation.
