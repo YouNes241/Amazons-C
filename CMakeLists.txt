@@ -6,32 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-Wall -Wextra -g)
 
 # --- TENSORFLOW (Manual download) ---
-option(ENABLE_GPU "TensorFlow GPU" OFF)
-
-if(ENABLE_GPU)
-    set(TF_TYPE "gpu")
-    message(STATUS "Mode TensorFlow : GPU")
-else()
-    set(TF_TYPE "cpu")
-    message(STATUS "Mode TensorFlow : CPU")
-endif()
-
 # --- TENSORFLOW (Téléchargement dynamique) ---
-set(TF_VER "2.14.0")
-set(TF_DIR "${CMAKE_SOURCE_DIR}/libs/libtensorflow")
-set(TF_MARKER "${TF_DIR}/installed_${TF_TYPE}.marker")
-
-if(NOT EXISTS ${TF_MARKER})
-    message(STATUS "Téléchargement de TensorFlow (${TF_TYPE})...")
-    file(REMOVE_RECURSE ${TF_DIR})
-    file(MAKE_DIRECTORY ${TF_DIR})
-    
-    file(DOWNLOAD "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-${TF_TYPE}-linux-x86_64-${TF_VER}.tar.gz" libs/tf.tar.gz SHOW_PROGRESS)
-    execute_process(COMMAND tar -xzf libs/tf.tar.gz -C ${TF_DIR})
-    file(REMOVE libs/tf.tar.gz)
-    
-    file(WRITE ${TF_MARKER} "Installed")
-endif()
+# TODO : When necessary (about 8th or 9th week)
 
 include_directories(${TF_DIR}/include)
 link_directories(${TF_DIR}/lib)
@@ -54,13 +30,13 @@ file(GLOB_RECURSE SRC "src/*.c")
 list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
 # --- TARGETS ---
-add_executable(amazon_game src/main.c ${SRC})
-target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
-target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} tensorflow m GTest::GTest)
+add_executable(amazons-c src/main.c ${SRC})
+target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS})
+target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
 
 # Tests
 add_executable(unit_tests tests/test_main.cpp ${SRC})
-target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main tensorflow m)
+target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
 gtest_discover_tests(unit_tests)
 
 # --- DOC & COVERAGE ---
