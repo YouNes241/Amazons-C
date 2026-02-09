@@ -16,7 +16,8 @@ sudo apt update && sudo apt install -y \
     doxygen \
     graphviz \
     gcovr \
-    gettext
+    gettext \
+    clang-format
 ```
 
 After successfully installing them, you can simply build the project via :
@@ -28,8 +29,7 @@ cmake -B build -S . -DENABLE_COVERAGE=OFF && cmake --build build --parallel $(np
 And run the executable :
 
 ```bash
-./amazons-
+./amazons-c
 ```
-
 
 You may also run ``make`` and ``make clean``, for your convenience. ``make run`` is also available to run the project once built.
