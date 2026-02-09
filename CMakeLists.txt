@@ -9,86 +9,48 @@ add_compile_options(-Wall -Wextra -g)
 # --- TENSORFLOW (Téléchargement dynamique) ---
 # TODO : When necessary (about 8th or 9th week)
 
-# --- CONFIGURATION DES CHEMINS ---
-# 1. Headers
-set(TF_INC_PATHS "${TF_DIR}/include" "${TF_DIR}/usr/include" "${TF_DIR}/usr/local/include")
-include_directories(${TF_INC_PATHS})
+include_directories(${TF_DIR}/include)
+link_directories(${TF_DIR}/lib)
+# --- System dependencies - should be downloaded prior using sudo apt-get ---
 
-# 2. Librairie (L'étape qui plantait)
-message(STATUS "Recherche de la librairie TensorFlow...")
-
-# On définit le dossier exact vu dans tes logs
-set(TARGET_LIB_DIR "${TF_DIR}/usr/local/lib")
-
-# ASTUCE : On utilise GLOB pour trouver le fichier RÉEL (avec les numéros de version)
-# Cela contourne le problème des liens symboliques cassés
-file(GLOB FOUND_LIBS "${TARGET_LIB_DIR}/libtensorflow_framework.so*")
-
-# On prend le premier fichier trouvé qui n'est pas un dossier
-foreach(CANDIDATE ${FOUND_LIBS})
-    if(NOT IS_DIRECTORY ${CANDIDATE})
-        set(TF_LIB_FILE ${CANDIDATE})
-        break() # On a trouvé, on arrête
-    endif()
-endforeach()
-
-# Fallback pour x86 (structure différente)
-if(NOT TF_LIB_FILE)
-    file(GLOB FOUND_LIBS_X86 "${TF_DIR}/lib/libtensorflow.so*")
-    list(GET FOUND_LIBS_X86 0 TF_LIB_FILE)
-endif()
-
-# Vérification finale
-if(NOT TF_LIB_FILE)
-    execute_process(COMMAND find ${TF_DIR} -name "libtensorflow*.so*" OUTPUT_VARIABLE DUMP)
-    message(FATAL_ERROR "ECHEC TOTAL. Contenu :\n${DUMP}")
-else()
-    message(STATUS ">>> SUCCÈS ! Librairie trouvée : ${TF_LIB_FILE}")
-endif()
-
-# --- DÉPENDANCES SYSTÈME ---
+# 1. GTK
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUI REQUIRED gtk4)
 add_definitions(${GUI_CFLAGS_OTHER})
+
+# 2. GoogleTest
 find_package(GTest REQUIRED)
+
+# 3. Others
 find_package(Intl)
 find_package(Doxygen)
 
-# --- CIBLES ---
+# --- SOURCES ---
 file(GLOB_RECURSE SRC "src/*.c")
 list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
-<<<<<<< HEAD
 # --- TARGETS ---
-<<<<<<< HEAD
 add_executable(amazons-c src/main.c ${SRC})
 target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS})
 target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
-=======
-=======
-# Jeu
->>>>>>> 6094a29 (fix: Attempting fix so the project can build on CI/CD)
-add_executable(amazon_game src/main.c ${SRC})
-target_include_directories(amazon_game PRIVATE ${GUI_INCLUDE_DIRS})
-target_link_libraries(amazon_game PRIVATE ${GUI_LIBRARIES} ${TF_LIB_FILE} m GTest::GTest)
->>>>>>> 4ca33d3 (fix: Attempting fix so the project can build on CI/CD)
 
 # Tests
 add_executable(unit_tests tests/test_main.cpp ${SRC})
-<<<<<<< HEAD
 target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
-=======
-target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main ${TF_LIB_FILE} m)
->>>>>>> 6094a29 (fix: Attempting fix so the project can build on CI/CD)
 gtest_discover_tests(unit_tests)
 
-# --- AUTRES ---
+# --- DOC & COVERAGE ---
 if(DOXYGEN_FOUND)
     add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
 endif()
+
+# Gcovr for code coverage
 option(ENABLE_COVERAGE "Active Gcovr" OFF)
 if(ENABLE_COVERAGE)
     add_compile_options(--coverage)
     add_link_options(--coverage)
-    add_custom_target(coverage_report COMMAND gcovr -r ${CMAKE_SOURCE_DIR} --html -o coverage.html)
+    add_custom_target(coverage_report 
+        COMMAND gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage.html
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
 endif()
