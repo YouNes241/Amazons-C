@@ -17,7 +17,6 @@ format-check:
 compile-check:
   stage: build
   image: amazons-builder:latest
-
   cache:
     key: "compile-cache"
     paths:
