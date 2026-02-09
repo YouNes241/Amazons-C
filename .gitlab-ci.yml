@@ -4,9 +4,9 @@ stages:
 
 format-check:
   stage: lint
-  image: amazons-builder:latest # Private image located in VM.
+  image: amazons-builder:latest # Private image located in VM. Contains all libraries.
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends clang-format
+    - sudo apt-get update && apt-get install -y --no-install-recommends clang-format
   script:
     - clang-format --version
     - >
@@ -26,7 +26,7 @@ compile-check:
       - libs/ # This is done especially for tensorflow which holds about 1GB of data // downloads 300 mb.
     policy: pull-push
   before_script:
-      - apt-get update && apt-get install -y build-essential cmake libgtk-4-dev libgtest-dev libgmock-dev googletest doxygen graphviz gcovr gettext
+    - sudo apt-get update && apt-get install -y build-essential cmake libgtk-4-dev libgtest-dev libgmock-dev googletest doxygen graphviz gcovr gettext
   
   script:
     - mkdir -p libs
