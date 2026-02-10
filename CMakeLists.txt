@@ -31,11 +31,12 @@ list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
 # --- TARGETS ---
 add_executable(amazons-c src/main.c ${SRC})
-target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS})
+target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
 
 # Tests
 add_executable(unit_tests tests/test_main.cpp ${SRC})
+target_include_directories(unit_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
 gtest_discover_tests(unit_tests)
 
