@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(AmazonGame LANGUAGES C CXX)
+enable_testing()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 14)
@@ -27,6 +28,7 @@ find_package(Doxygen)
 
 # --- SOURCES ---
 file(GLOB_RECURSE SRC "src/*.c")
+file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
 list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
 
 # --- TARGETS ---
@@ -35,7 +37,7 @@ target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE
 target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
 
 # Tests
-add_executable(unit_tests tests/test_main.cpp ${SRC})
+add_executable(unit_tests ${TEST_SOURCES})
 target_include_directories(unit_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
 gtest_discover_tests(unit_tests)
