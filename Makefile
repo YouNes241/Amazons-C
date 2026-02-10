@@ -1,7 +1,7 @@
 BUILD_DIR = build
 
 all:
-	@cmake -B $(BUILD_DIR) -S . -DENABLE_COVERAGE=OFF
+	@cmake -B $(BUILD_DIR) -S . -DENABLE_COVERAGE=ON
 	@cmake --build $(BUILD_DIR) --parallel $(shell nproc)
 	@cp ./build/amazons-c ./amazons-c
 
