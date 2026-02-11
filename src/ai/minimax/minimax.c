@@ -47,7 +47,7 @@ static void minimax_clean(AI_Interface *self) {
 static Move minimax_get_best_move(AI_Interface *self, GameState state) {
     Minimax_Data *data = (Minimax_Data*)self->context;
 
-    printf("[Minimax] Recherche du coup (Depth=%d)...\n", data->max_depth);
+    printf("[Minimax] Searching a move (Depth=%d)...\n", data->max_depth);
 
     Move best_move = {0, 0, 0, 0, 0, 0}; 
     

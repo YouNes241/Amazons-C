@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
 
 extern "C" {
+    #include "../src/ai/ai_factory.c"
     #include "../src/ai/minimax/minimax.c" 
+    #include "../src/ai/random/random.c" 
 }
+
 
 class MinimaxParamTest : public ::testing::Test {
 protected:
@@ -55,4 +58,45 @@ TEST_F(MinimaxParamTest, UpdatesDepthFromParamsWithUnused) {
 
     EXPECT_EQ(data->max_depth, 10);
     EXPECT_EQ(data->time_limit, 30);
+    EXPECT_EQ(data->a_random_parameter, nullptr);
+}
+
+// Testing creating a random AI using the factory
+TEST(AIFactoryTest, CreateRandomReturnsCorrectImplementation) {
+    ConfigMap empty_params = { .list = NULL, .count = 0 };
+    AI_Interface ai = create_ai("random", empty_params);
+
+    ASSERT_NE(ai.vtable, nullptr);
+    ASSERT_EQ(ai.context, nullptr);
+
+    EXPECT_EQ(ai.vtable, &random_vtable) 
+        << "La Factory n'a pas renvoyé la bonne implémentation pour 'random'";
+
+    ai.vtable->clean(&ai);
+}
+
+// Testing creating a minimax AI using the factory
+TEST(AIFactoryTest, CreateMinimaxReturnsCorrectImplementation) {
+    ConfigMap empty_params = { .list = NULL, .count = 0 };
+    AI_Interface ai = create_ai("minimax", empty_params);
+
+    ASSERT_NE(ai.vtable, nullptr);
+    ASSERT_NE(ai.context, nullptr);
+
+    EXPECT_EQ(ai.vtable, &minimax_vtable) 
+        << "La Factory n'a pas renvoyé la bonne implémentation pour 'minimax'";
+
+    ai.vtable->clean(&ai);
+}
+
+// Testing creating an unknown AI using the factory
+TEST(AIFactoryTest, CreateUnknownReturnsNull) {
+    ConfigMap empty_params = { NULL, 0 };
+    
+    // On demande un truc qui n'existe pas
+    AI_Interface ai = create_ai("skynet", empty_params);
+
+    // On s'attend à ce que la vtable soit NULL (selon ton implémentation de factory)
+    EXPECT_EQ(ai.vtable, nullptr);
+    EXPECT_EQ(ai.context, nullptr);
 }
