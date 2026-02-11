@@ -1,6 +1,6 @@
 int
 add (int i, int j)
 {
-  i = i + i;
+  i = i + j;
   return i;
 }
