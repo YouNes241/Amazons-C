@@ -93,4 +93,13 @@ void NetworkManager_Cleanup (NetworkManager *manager);
 // Runs the network machine (to be called in the game's main loop)
 void NetworkManager_Tick (NetworkManager *manager);
 
+// Starts the server on the given port. Returns 0 if successful, -1 if
+// unsuccessful
+int NetworkManager_ServerStart (NetworkManager *manager, int port);
+
+// Connects the client to an IP address and port. Returns 0 if successful, -1
+// if unsuccessful
+int NetworkManager_ClientJoin (NetworkManager *manager, const char *ip,
+                               int port);
+
 #endif // NETWORK_COMMON_H
