@@ -37,7 +37,7 @@ target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE
 target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
 
 # Tests
-add_executable(unit_tests ${TEST_SOURCES})
+add_executable(unit_tests ${TEST_SOURCES} ${SRC})
 target_include_directories(unit_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
 gtest_discover_tests(unit_tests)
@@ -59,8 +59,3 @@ if(ENABLE_COVERAGE)
 endif()
 
 
-#TEMP test network TODO
-# --- TESTS RÉSEAU (C PUR) ---
-add_executable(test_network_buffer tests/network/test_buffer_tcp.c src/network/tcp_buffer.c)
-target_include_directories(test_network_buffer PRIVATE "${CMAKE_SOURCE_DIR}/include")
-add_test(NAME TestBufferTCP COMMAND test_network_buffer)

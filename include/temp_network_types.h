@@ -3,7 +3,7 @@
 
 /* ==========================================================================
  * TEMPORARY FILE (MOCK)
- * To be replaced by the actual "common.h" file from team 7 later.
+ * TODO To be replaced by the actual "common.h" file
  * ==========================================================================
  */
 
