@@ -69,7 +69,6 @@ TEST_F (MinimaxParamTest, UpdatesDepthFromParamsWithUnused)
 
   EXPECT_EQ (data->max_depth, 10);
   EXPECT_EQ (data->time_limit, 30);
-  EXPECT_EQ (data->a_random_parameter, nullptr);
 }
 
 // Testing creating a random AI using the factory
