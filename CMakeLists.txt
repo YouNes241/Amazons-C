@@ -57,3 +57,10 @@ if(ENABLE_COVERAGE)
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
+
+
+#TEMP test network TODO
+# --- TESTS RÉSEAU (C PUR) ---
+add_executable(test_network_buffer tests/test_buffer_tcp.c src/network/tcp_buffer.c)
+target_include_directories(test_network_buffer PRIVATE "${CMAKE_SOURCE_DIR}/include")
+add_test(NAME TestBufferTCP COMMAND test_network_buffer)
