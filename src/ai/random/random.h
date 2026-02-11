@@ -3,6 +3,6 @@
 
 #include "ai_interface.h"
 
-void create_random_ai(AI_Interface *ai);
+void create_random_ai (AI_Interface *ai);
 
 #endif
