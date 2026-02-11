@@ -1,6 +1,7 @@
 #ifndef NETWORK_COMMON_H
 #define NETWORK_COMMON_H
 
+#include "temp_network_types.h"
 #include <stdbool.h>
 
 /* ==========================================================================
@@ -37,7 +38,7 @@ typedef struct ClientContext ClientContext;
 typedef struct
 {
   // Called when one receives a move from the opponent (ex: "e2-e4")
-  void (*OnMoveReceived) (const char *move_str);
+  void (*OnMoveReceived) (move_t move);
 
   // Called when a new player connects to the server
   void (*OnPlayerJoined) (const char *player_name);
