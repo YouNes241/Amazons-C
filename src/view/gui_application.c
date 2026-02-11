@@ -9,8 +9,7 @@ createApplication (void)
 {
   GtkApplication *app;
 
-  app = gtk_application_new ("fr.bordeaux.amazons",
-                             G_APPLICATION_DEFAULT_FLAGS);
+  app = gtk_application_new ("fr.bordeaux.amazons", G_APPLICATION_NON_UNIQUE);
   g_signal_connect (app, "activate", G_CALLBACK (initWindow), NULL);
 
   return app;
