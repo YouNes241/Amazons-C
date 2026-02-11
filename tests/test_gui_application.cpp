@@ -49,12 +49,21 @@ TEST_F (GuiApplicationTest, InitWindowDoesNotCrash)
   g_signal_emit_by_name (app, "startup");
   initWindow (app, nullptr);
 
+  GtkWindow *window = gtk_application_get_active_window (app);
+
+  if (window != nullptr)
+    {
+      gtk_window_destroy (window);
+    }
+
   SUCCEED ();
 }
 
 TEST_F (GuiApplicationTest, ChangePageTogglesBetweenPage1AndPage2)
 {
   GtkWidget *stack = gtk_stack_new ();
+  g_object_ref_sink (stack);
+
   GtkWidget *dummyPage1 = gtk_label_new ("1");
   GtkWidget *dummyPage2 = gtk_label_new ("2");
 
@@ -76,4 +85,6 @@ TEST_F (GuiApplicationTest, ChangePageTogglesBetweenPage1AndPage2)
 
   EXPECT_STREQ (gtk_stack_get_visible_child_name (GTK_STACK (stack)),
                 "page_1"); // test if it came back to page 1
+
+  g_object_unref (stack);
 }
