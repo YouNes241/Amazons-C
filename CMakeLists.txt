@@ -34,3 +34,11 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
+
+
+
+# --- TESTS GUI (TEMP) ---
+add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c)
+target_include_directories(test_gui_application PRIVATE "${CMAKE_SOURCE_DIR}/include" ${GUI_INCLUDE_DIRS})
+target_link_libraries(test_gui_application PRIVATE ${GUI_LIBRARIES})
+add_test(NAME TestGuiApplication COMMAND test_gui_application)
