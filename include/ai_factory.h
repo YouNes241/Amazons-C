@@ -3,6 +3,6 @@
 
 #include "ai_interface.h"
 
-AI_Interface create_ai(const char *name, ConfigMap params);
+AI_Interface create_ai (const char *name, ConfigMap params);
 
 #endif
