@@ -5,6 +5,5 @@
 
 GtkApplication *createApplication (void);
 int runApplication (GtkApplication *app, int argc, char **argv);
-static void initWindow (GtkApplication *app, gpointer userData);
 
 #endif // GUI_APPLICATION_H
