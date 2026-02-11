@@ -1,3 +1,4 @@
+#include "minimax.h"
 #include "ai_interface.h"
 #include <stdio.h>
 #include <stdlib.h>
