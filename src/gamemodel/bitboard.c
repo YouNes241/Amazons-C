@@ -186,3 +186,36 @@ bitboard_shift_right (Bitboard bb, uint8_t shift)
     }
   return res;
 }
+
+void
+bitboard_print (Bitboard bb, uint8_t width)
+{
+  if (width < 4 || width > 11)
+    width = 10;
+
+  printf ("\n   ");
+  for (int col = 0; col < width; col++)
+    printf ("%d ", col);
+  printf ("\n");
+
+  for (int row = 0; row < width; row++)
+    {
+      printf ("%d: ", row);
+      for (int col = 0; col < width; col++)
+        {
+          // Calculate the bit index for the current cell (row, col)
+          uint8_t index = row * width + col;
+
+          if (bitboard_get_bit (bb, index))
+            {
+              printf ("X "); // Occupied
+            }
+          else
+            {
+              printf (". "); // Empty
+            }
+        }
+      printf ("\n");
+    }
+  printf ("\n");
+}
