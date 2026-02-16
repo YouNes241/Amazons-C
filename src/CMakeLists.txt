@@ -1,9 +1,7 @@
 # --- 1. FIND SOURCES CORRECTLY ---
-# Use CMAKE_CURRENT_SOURCE_DIR to ensure we find files in THIS folder
 file(GLOB_RECURSE ALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
 # --- 2. PREPARE EXPORTS FOR TESTS ---
-# We need to separate main.c because tests define their own main()
 set(MAIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/main.c")
 set(GAME_LOGIC ${ALL_SRC})
 list(REMOVE_ITEM GAME_LOGIC ${MAIN_SRC})
