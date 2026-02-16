@@ -27,7 +27,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_compile_options(--coverage)
     add_link_options(--coverage)
-    add_custom_target(coverage_report
+    add_custom_target(coverage
         COMMAND ${CMAKE_COMMAND} -E make_directory coverage
         COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage/index.html
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
