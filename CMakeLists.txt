@@ -23,32 +23,14 @@ find_package(Doxygen)
 add_subdirectory(src)
 add_subdirectory(tests)
 
-# --- TARGETS ---
-add_executable(amazons-c src/main.c ${SRC})
-target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
-
-# Tests
-add_executable(unit_tests ${TEST_SOURCES} ${SRC})
-target_include_directories(unit_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
-gtest_discover_tests(unit_tests)
-
-# --- DOC & COVERAGE ---
-if(DOXYGEN_FOUND)
-    add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
-endif()
-
-# Gcovr for code coverage
-option(ENABLE_COVERAGE "Active Gcovr" OFF)
-if(ENABLE_COVERAGE)
+# --- COVERAGE ---
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_compile_options(--coverage)
     add_link_options(--coverage)
-    add_custom_target(coverage
+    add_custom_target(coverage_report
         COMMAND ${CMAKE_COMMAND} -E make_directory coverage
         COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage/index.html
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
-
-
