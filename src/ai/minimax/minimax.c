@@ -7,15 +7,6 @@
 static const int DEFAULT_MAX_DEPTH = 3;
 static const int DEFAULT_TIME_LIMIT = 5;
 
-<<<<<<< Updated upstream
-typedef struct
-{
-  int max_depth;
-  int time_limit;
-} Minimax_Data;
-
-=======
->>>>>>> Stashed changes
 static void
 check_param (Param p, const char *key, int *target)
 {
