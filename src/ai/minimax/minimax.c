@@ -7,12 +7,15 @@
 static const int DEFAULT_MAX_DEPTH = 3;
 static const int DEFAULT_TIME_LIMIT = 5;
 
+<<<<<<< Updated upstream
 typedef struct
 {
   int max_depth;
   int time_limit;
 } Minimax_Data;
 
+=======
+>>>>>>> Stashed changes
 static void
 check_param (Param p, const char *key, int *target)
 {
@@ -68,10 +71,9 @@ minimax_get_best_move (AI_Interface *self, GameState state)
   return best_move;
 }
 
-static const AI_VTable minimax_vtable
-    = { .init = minimax_init,
-        .clean = minimax_clean,
-        .get_best_move = minimax_get_best_move };
+const AI_VTable minimax_vtable = { .init = minimax_init,
+                                   .clean = minimax_clean,
+                                   .get_best_move = minimax_get_best_move };
 
 void
 create_minimax_ai (AI_Interface *ai)

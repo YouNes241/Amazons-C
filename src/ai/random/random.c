@@ -23,10 +23,9 @@ random_get_best_move (AI_Interface *self, GameState state)
   return best_move;
 }
 
-static const AI_VTable random_vtable
-    = { .init = random_init,
-        .clean = random_clean,
-        .get_best_move = random_get_best_move };
+const AI_VTable random_vtable = { .init = random_init,
+                                  .clean = random_clean,
+                                  .get_best_move = random_get_best_move };
 
 void
 create_random_ai (AI_Interface *ai)

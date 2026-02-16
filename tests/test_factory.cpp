@@ -2,9 +2,10 @@
 
 extern "C"
 {
-#include "../src/ai/ai_factory.c"
-#include "../src/ai/minimax/minimax.c"
-#include "../src/ai/random/random.c"
+#include "../src/ai/minimax/minimax.h"
+#include "../src/ai/random/random.h"
+#include "ai_factory.h"
+#include "ai_interface.h"
 }
 
 class MinimaxParamTest : public ::testing::Test
@@ -21,10 +22,8 @@ protected:
   void
   TearDown () override
   {
-    if (ai.context)
-      {
-        ai.vtable->clean (&ai);
-      }
+    if (ai.context && ai.vtable)
+      ai.vtable->clean (&ai);
   }
 };
 
