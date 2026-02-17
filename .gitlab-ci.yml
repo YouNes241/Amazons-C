@@ -24,5 +24,10 @@ compile-check:
     policy: pull-push
   script:
     - mkdir -p libs
-    - make -j$(nproc) all
-    # -j$(nproc) allows make to use all available CPU cores for faster compilation.
+    #may have to add a line for tf later.
+    - mkdir -p coverage
+    - cd coverage
+    - cmake -DCMAKE_BUILD_TYPE=Coverage ..
+    - make
+    - make test
+    - make coverage
