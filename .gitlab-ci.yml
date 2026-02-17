@@ -23,9 +23,9 @@ compile-check:
       - libs/ # This is done especially for tensorflow which holds about 1GB of data // downloads 300 mb.
     policy: pull-push
   script:
-    - mkdir libs
+    - mkdir -p libs
     #may have to add a line for tf later.
-    - mkdir coverage
+    - mkdir -p coverage
     - cd coverage
     - cmake -DCMake_BUILDTYPE=Coverage ..
     - make
