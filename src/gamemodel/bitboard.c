@@ -1,6 +1,9 @@
 #include "bitboard.h"
 #include <stdio.h>
 
+/**
+ * @brief Initialize an empty bitboard with all bits set to 0.
+ */
 Bitboard
 bitboard_create_empty (void)
 {
@@ -10,6 +13,9 @@ bitboard_create_empty (void)
   return bb;
 }
 
+/**
+ * @brief Initialize a full bitboard with all bits set to 1.
+ */
 Bitboard
 bitboard_create_full (void)
 {
@@ -20,6 +26,12 @@ bitboard_create_full (void)
   return bb;
 }
 
+/**
+ * @brief Set a specific bit to 1 at the given index.
+ *
+ * For indices 0-63, operates on the low part.
+ * For indices 64-127, operates on the high part (with index - 64 offset).
+ */
 void
 bitboard_set_bit (Bitboard *bb, uint8_t index)
 {
@@ -37,6 +49,11 @@ bitboard_set_bit (Bitboard *bb, uint8_t index)
     }
 }
 
+/**
+ * @brief Clear a specific bit to 0 at the given index.
+ *
+ * Creates an inverted mask and ANDs it to clear only that bit.
+ */
 void
 bitboard_clear_bit (Bitboard *bb, uint8_t index)
 {
@@ -53,6 +70,11 @@ bitboard_clear_bit (Bitboard *bb, uint8_t index)
     }
 }
 
+/**
+ * @brief Check if a specific bit is set to 1.
+ *
+ * Returns non-zero (true) if the bit is set, zero (false) otherwise.
+ */
 bool
 bitboard_get_bit (Bitboard bb, uint8_t index)
 {
@@ -68,6 +90,9 @@ bitboard_get_bit (Bitboard bb, uint8_t index)
     }
 }
 
+/**
+ * @brief Toggle a specific bit (flip 0 to 1 or 1 to 0).
+ */
 void
 bitboard_toggle_bit (Bitboard *bb, uint8_t index)
 {
@@ -83,6 +108,11 @@ bitboard_toggle_bit (Bitboard *bb, uint8_t index)
     }
 }
 
+/**
+ * @brief Bitwise OR: combines two bitboards.
+ *
+ * Resulting bitboard has 1 where either input has a 1.
+ */
 Bitboard
 bitboard_or (Bitboard a, Bitboard b)
 {
@@ -92,6 +122,11 @@ bitboard_or (Bitboard a, Bitboard b)
   return res;
 }
 
+/**
+ * @brief Bitwise AND: keeps only common bits.
+ *
+ * Resulting bitboard has 1 only where both inputs have a 1.
+ */
 Bitboard
 bitboard_and (Bitboard a, Bitboard b)
 {
@@ -101,6 +136,11 @@ bitboard_and (Bitboard a, Bitboard b)
   return res;
 }
 
+/**
+ * @brief Bitwise XOR: keeps differing bits.
+ *
+ * Resulting bitboard has 1 where inputs differ.
+ */
 Bitboard
 bitboard_xor (Bitboard a, Bitboard b)
 {
@@ -110,6 +150,9 @@ bitboard_xor (Bitboard a, Bitboard b)
   return res;
 }
 
+/**
+ * @brief Bitwise NOT: inverts all bits.
+ */
 Bitboard
 bitboard_not (Bitboard a)
 {
@@ -119,18 +162,31 @@ bitboard_not (Bitboard a)
   return res;
 }
 
+/**
+ * @brief Check if two bitboards are equal.
+ */
 bool
 bitboard_equals (Bitboard a, Bitboard b)
 {
   return (a.low == b.low) && (a.high == b.high);
 }
 
+/**
+ * @brief Check if bitboard is empty (all bits are 0).
+ */
 bool
 bitboard_is_zero (Bitboard bb)
 {
   return (bb.low == 0) && (bb.high == 0);
 }
 
+/**
+ * @brief Shift all bits left by the specified amount (towards higher indices).
+ *
+ * Used to compute moves toward South/East.
+ * Bits overflow from low to high when shift < 64.
+ * For shift >= 64, all of low moves into high.
+ */
 Bitboard
 bitboard_shift_left (Bitboard bb, uint8_t shift)
 {
@@ -161,6 +217,13 @@ bitboard_shift_left (Bitboard bb, uint8_t shift)
   return res;
 }
 
+/**
+ * @brief Shift all bits right by the specified amount (towards lower indices).
+ *
+ * Used to compute moves toward North/West.
+ * Bits overflow from high to low when shift < 64.
+ * For shift >= 64, all of high moves into low.
+ */
 Bitboard
 bitboard_shift_right (Bitboard bb, uint8_t shift)
 {
