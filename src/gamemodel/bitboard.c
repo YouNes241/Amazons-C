@@ -192,6 +192,11 @@ bitboard_shift_left (Bitboard bb, uint8_t shift)
 {
   Bitboard res = { 0, 0 };
 
+  if (shift >= 128)
+    {
+      return res;
+    }
+
   // If shift is 0, no operation needed
   if (shift == 0)
     return bb;
@@ -228,6 +233,11 @@ Bitboard
 bitboard_shift_right (Bitboard bb, uint8_t shift)
 {
   Bitboard res = { 0, 0 };
+
+  if (shift >= 128)
+    {
+      return res;
+    }
 
   // If shift is 0, no operation needed
   if (shift == 0)
