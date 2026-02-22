@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="main_menu_box">
+    <property name="orientation">vertical</property>
+    <property name="spacing">20</property>
+    <property name="halign">center</property>
+    <property name="valign">center</property>
+    
+    <child>
+      <object class="GtkLabel" id="title_label">
+        <property name="label">TITLE_PLACEHOLDER</property>
+        <property name="css-classes">title-1</property> </object>
+    </child>
+    
+    <child>
+      <object class="GtkButton" id="singleplayer_btn">
+        <property name="label">Singleplayer</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="multiplayer_btn">
+        <property name="label">Multiplayer</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="config_btn">
+        <property name="label">Configurations</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="info_btn">
+        <property name="label">Informations</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="quit_btn">
+        <property name="label">Quit</property>
+      </object>
+    </child>
+    
+  </object>
+</interface>
