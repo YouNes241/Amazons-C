@@ -11,6 +11,7 @@ find_package(OpenMP REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUI REQUIRED gtk4)
 add_definitions(${GUI_CFLAGS_OTHER})
+file(COPY "${CMAKE_SOURCE_DIR}/src/view/ui" DESTINATION "${CMAKE_BINARY_DIR}")
 
 # System GTest
 find_package(GTest REQUIRED)
