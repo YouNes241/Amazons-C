@@ -64,3 +64,8 @@ endif()
 add_executable(test_network_buffer tests/test_buffer_tcp.c src/network/tcp_buffer.c)
 target_include_directories(test_network_buffer PRIVATE "${CMAKE_SOURCE_DIR}/include")
 add_test(NAME TestBufferTCP COMMAND test_network_buffer)
+
+# --- TEST BITBOARD (C PUR) ---
+add_executable(test_bitboard tests/test_bitboard.c src/gamemodel/bitboard.c)
+target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
+add_test(NAME TestBitboard COMMAND test_bitboard)
