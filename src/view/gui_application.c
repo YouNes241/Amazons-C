@@ -63,8 +63,11 @@ initWindow (GtkApplication *app, gpointer userData)
   gtk_overlay_add_overlay (GTK_OVERLAY (globalOverlay), notifBox);
 
   GtkWidget *mainMenuPage = createMainMenuPage ();
+  GtkWidget *singleplayerMenuPage = createSingleplayerMenuPage ();
 
   gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "page_main_menu");
+  gtk_stack_add_named (GTK_STACK (stack), singleplayerMenuPage,
+                       "page_singleplayer");
 
   gtk_window_set_child (GTK_WINDOW (window), globalOverlay);
   gtk_window_present (GTK_WINDOW (window));

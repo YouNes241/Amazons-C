@@ -4,7 +4,7 @@
 #include <gtk/gtk.h>
 
 GtkWidget *createMainMenuPage ();
-// GtkWidget *createSingleplayerMenuPage ();
+GtkWidget *createSingleplayerMenuPage ();
 // GtkWidget *createInfoPage ();
 
 #endif // GUI_PAGES_H
