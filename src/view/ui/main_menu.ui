@@ -2,39 +2,57 @@
 <interface>
   <object class="GtkBox" id="main_menu_box">
     <property name="orientation">vertical</property>
-    <property name="spacing">20</property>
+    <property name="spacing">15</property>
     <property name="halign">center</property>
     <property name="valign">center</property>
+    <property name="vexpand">true</property> 
     
     <child>
       <object class="GtkLabel" id="title_label">
-        <property name="label">TITLE_PLACEHOLDER</property>
-        <property name="css-classes">title-1</property> </object>
+        <property name="label">AMAZONS</property>
+        <property name="css-classes">title-1</property>
+        <property name="margin-bottom">40</property>
+      </object>
     </child>
     
     <child>
       <object class="GtkButton" id="singleplayer_btn">
         <property name="label">Singleplayer</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill</property>
       </object>
     </child>
     <child>
       <object class="GtkButton" id="multiplayer_btn">
         <property name="label">Multiplayer</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill</property>
       </object>
     </child>
     <child>
       <object class="GtkButton" id="config_btn">
         <property name="label">Configurations</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill</property>
       </object>
     </child>
     <child>
       <object class="GtkButton" id="info_btn">
         <property name="label">Informations</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill</property>
       </object>
     </child>
     <child>
       <object class="GtkButton" id="quit_btn">
         <property name="label">Quit</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill</property>
       </object>
     </child>
     
