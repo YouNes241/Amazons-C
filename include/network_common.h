@@ -1,7 +1,16 @@
+/**
+ * @file network_common.h
+ * @brief Common definitions, structures, and prototypes for the Network
+ * Manager.
+ *
+ * @details This header defines the public interface of the networking module,
+ * including operation modes, event callbacks, and the main manager structure.
+ */
+
 #ifndef NETWORK_COMMON_H
 #define NETWORK_COMMON_H
 
-#include "temp_network_types.h"
+#include "game_types.h"
 #include <stdbool.h>
 
 /* ==========================================================================
@@ -9,12 +18,15 @@
  * ==========================================================================
  */
 
-// Defines the state of our network machine
+/**
+ * @enum NetworkMode
+ * @brief Defines the current operational state of the network manager.
+ */
 typedef enum
 {
-  NET_MODE_NONE,   // Not yet initialized
-  NET_MODE_SERVER, // Acts like the telephone exchange
-  NET_MODE_CLIENT  // Acts like a logged-in player
+  NET_MODE_NONE,
+  NET_MODE_SERVER,
+  NET_MODE_CLIENT
 } NetworkMode;
 
 /* ==========================================================================
@@ -22,75 +34,160 @@ typedef enum
  * ==========================================================================
  */
 
-// The compiler is notified that these structures exist.
-// Their actual content will be defined later in `server.h` and `client.h`.
-// This allows you to put pointers to them without including everything here.
+/**
+ * @typedef ServerContext
+ * @brief Opaque forward declaration for server-specific internal state.
+ * @details Defined in the implementation to hide server socket details from
+ * the public API.
+ */
 typedef struct ServerContext ServerContext;
+
+/**
+ * @typedef ClientContext
+ * @brief Opaque forward declaration for client-specific internal state.
+ * @details Defined in the implementation to hide client socket details from
+ * the public API.
+ */
 typedef struct ClientContext ClientContext;
 
 /* ==========================================================================
- * 3. Callback Interface (The "Nervous System")
+ * 3. Callback Interface
  * ==========================================================================
  */
 
-// This is where we do Dependency Injection (MVC).
-// The controller will fill this structure with its own functions.
+/**
+ * @struct NetworkEvents
+ * @brief Interface for handling network events via callbacks.
+ *
+ * @details This structure implements the Dependency Injection pattern,
+ * allowing the NetworkManager to notify the Controller (Game Logic) of events
+ * without knowing the internal implementation of the game.
+ */
 typedef struct
 {
-  // Called when one receives a move from the opponent (ex: "e2-e4")
-  void (*OnMoveReceived) (move_t move);
+  /**
+   * @brief Called when a move is received from the opponent.
+   * @param move The move data containing source and destination.
+   */
+  void (*OnMoveReceived) (Move move);
 
-  // Called when a new player connects to the server
+  /**
+   * @brief Called when a new player successfully connects to the server.
+   * @param player_name The identifier or name of the joining player.
+   */
   void (*OnPlayerJoined) (const char *player_name);
 
-  // Called when a player leaves the game or crashes
+  /**
+   * @brief Called when a player leaves the game or the connection is lost.
+   * @param reason A string description of why the disconnection occurred.
+   */
   void (*OnPlayerDisconnected) (const char *reason);
 
-  // Called when you receive an invitation to play
+  /**
+   * @brief Called when an invitation to play is received from another player.
+   * @param from_player_id The unique ID of the sender.
+   */
   void (*OnInvitationReceived) (int from_player_id);
 
-  // Called in when the opponent responds to our invitation
+  /**
+   * @brief Called when the opponent responds to an invitation sent by us.
+   * @param accepted true if the invitation was accepted, false otherwise.
+   */
   void (*OnInvitationResult) (bool accepted);
 
-  // Called when the game really starts (with our color)
-  void (*OnGameStarted) (int color);
+  /**
+   * @brief Called when the game session officially starts.
+   * @param color The assigned color for the local player (e.g., 0 for White, 1
+   * for Black).
+   */
+  void (*OnGameStarted) (PlayerColor color);
 
 } NetworkEvents;
 
 /* ==========================================================================
- * 4. The Manager (The "Brain")
+ * 4. The Manager
  * ==========================================================================
  */
 
-// The front end of our network module. This is the only structure that
-// the rest of the program (the Controller) needs to manipulate.
+/**
+ * @struct NetworkManager
+ * @brief The main context structure for the Network Module.
+ *
+ * @details This is the primary object manipulated by the Controller. It holds
+ * the current state (Server/Client), pointers to internal contexts, and
+ * the event callback table.
+ */
 typedef struct
 {
-  NetworkMode current_mode;
+  NetworkMode current_mode; // The current mode of operation.
 
-  // Pointers to the internal state (only one of the two will be allocated
-  // depending on the mode)
+  /**
+   * @brief Pointer to the internal server context.
+   * @note Only allocated if current_mode is NET_MODE_SERVER.
+   */
   ServerContext *server_ctx;
+
+  /**
+   * @brief Pointer to the internal client context.
+   * @note Only allocated if current_mode is NET_MODE_CLIENT.
+   */
   ClientContext *client_ctx;
 
-  // The functions to call when something happens
-  NetworkEvents callbacks;
+  NetworkEvents callbacks; // The set of registered event callback functions.
 
 } NetworkManager;
 
 /* ==========================================================================
- * 5. Prototypes of basic public functions
+ * 5. Public Function Prototypes
  * ==========================================================================
  */
 
-// Initializes the manager with the callbacks provided by the Controller
+/**
+ * @brief Initializes the NetworkManager instance.
+ *
+ * @param manager Pointer to the NetworkManager structure to initialize.
+ * @param callbacks The structure containing the game logic event handlers.
+ */
 void NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks);
 
-// Cleans the memory and closes the sockets at the end of the program (Issue
-// F43.1)
+/**
+ * @brief Cleans up network resources and memory.
+ *
+ * @details Should be called at the end of the program or when resetting the
+ * network. It closes open sockets and frees allocated contexts.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ */
 void NetworkManager_Cleanup (NetworkManager *manager);
 
-// Runs the network machine (to be called in the game's main loop)
+/**
+ * @brief Processing function to be called every frame (Game Loop).
+ *
+ * @details Handles incoming data, processes buffers, and triggers callbacks.
+ * This drives the "heartbeat" of the network machine.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ */
 void NetworkManager_Tick (NetworkManager *manager);
+
+/**
+ * @brief Starts the network module in Server mode.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param port The port number to listen on.
+ * @return int 0 on success, -1 on failure.
+ */
+int NetworkManager_ServerStart (NetworkManager *manager, int port);
+
+/**
+ * @brief Starts the network module in Client mode and connects to a server.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ip The IP address of the server as a string (e.g., "127.0.0.1").
+ * @param port The port number of the server.
+ * @return int 0 on success, -1 on failure.
+ */
+int NetworkManager_ClientJoin (NetworkManager *manager, const char *ip,
+                               int port);
 
 #endif // NETWORK_COMMON_H
