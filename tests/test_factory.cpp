@@ -2,10 +2,10 @@
 
 extern "C"
 {
-#include "../src/ai/minimax/minimax.h"
 #include "../src/ai/random/random.h"
 #include "ai_factory.h"
 #include "ai_interface.h"
+#include "minimax.h"
 }
 
 class MinimaxParamTest : public ::testing::Test

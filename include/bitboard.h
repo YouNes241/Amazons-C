@@ -53,7 +53,11 @@ Bitboard bitboard_shift_left (Bitboard bb, uint8_t shift);
 // Useful to compute moves toward North/West
 Bitboard bitboard_shift_right (Bitboard bb, uint8_t shift);
 
-// Count the number of set bits
+/**
+ * @brief Counts the number of set bits (1s) in the bitboard.
+ * @param bb The bitboard to count bits in.
+ * @return The total count of bits set to 1 in the bitboard.
+ */
 int bitboard_count_bits (Bitboard bb);
 
 // Check if two bitboards are identical
@@ -66,4 +70,27 @@ bool bitboard_is_zero (Bitboard bb);
 // Parameter 'width': grid width for display (e.g., 10)
 void bitboard_print (Bitboard bb, uint8_t width);
 
+/**
+ * @brief Pops the least significant bit (rightmost 1) from the bitboard given
+ * and returns the removed index.
+ * @param bb Pointer to the Bitboard (modified in-place).
+ * @return Index (0-127) of the popped bit, or -1 if the bitboard is empty.
+ */
+static inline int
+pop_lsb (Bitboard *bb)
+{
+  if (bb->low != 0)
+    {
+      int idx = __builtin_ctzll (bb->low);
+      bb->low &= (bb->low - 1);
+      return idx;
+    }
+  else if (bb->high != 0)
+    {
+      int idx = __builtin_ctzll (bb->high);
+      bb->high &= (bb->high - 1);
+      return idx + 64;
+    }
+  return -1;
+}
 #endif
