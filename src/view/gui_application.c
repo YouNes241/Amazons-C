@@ -31,6 +31,15 @@ initWindow (GtkApplication *app, gpointer userData)
 {
   (void)userData; // disable warning
 
+  GtkCssProvider *cssProvider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (cssProvider, "ui/style.css");
+
+  gtk_style_context_add_provider_for_display (
+      gdk_display_get_default (), GTK_STYLE_PROVIDER (cssProvider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+
+  g_object_unref (cssProvider);
+
   GtkWidget *window;
   GtkWidget *globalOverlay;
   GtkWidget *stack;
@@ -64,10 +73,17 @@ initWindow (GtkApplication *app, gpointer userData)
 
   GtkWidget *mainMenuPage = createMainMenuPage ();
   GtkWidget *singleplayerMenuPage = createSingleplayerMenuPage ();
+  GtkWidget *multiplayerMenuPage = createMultiplayerMenuPage ();
+  GtkWidget *configPage = createConfigPage ();
+  GtkWidget *infoPage = createInfoPage ();
 
   gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "page_main_menu");
   gtk_stack_add_named (GTK_STACK (stack), singleplayerMenuPage,
                        "page_singleplayer");
+  gtk_stack_add_named (GTK_STACK (stack), multiplayerMenuPage,
+                       "page_multiplayer");
+  gtk_stack_add_named (GTK_STACK (stack), configPage, "page_config");
+  gtk_stack_add_named (GTK_STACK (stack), infoPage, "page_info");
 
   gtk_window_set_child (GTK_WINDOW (window), globalOverlay);
   gtk_window_present (GTK_WINDOW (window));
