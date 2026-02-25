@@ -10,7 +10,7 @@
 #ifndef NETWORK_COMMON_H
 #define NETWORK_COMMON_H
 
-#include "temp_network_types.h"
+#include "game_types.h"
 #include <stdbool.h>
 
 /* ==========================================================================
@@ -69,7 +69,7 @@ typedef struct
    * @brief Called when a move is received from the opponent.
    * @param move The move data containing source and destination.
    */
-  void (*OnMoveReceived) (move_t move);
+  void (*OnMoveReceived) (Move move);
 
   /**
    * @brief Called when a new player successfully connects to the server.
@@ -100,7 +100,7 @@ typedef struct
    * @param color The assigned color for the local player (e.g., 0 for White, 1
    * for Black).
    */
-  void (*OnGameStarted) (int color);
+  void (*OnGameStarted) (PlayerColor color);
 
 } NetworkEvents;
 
