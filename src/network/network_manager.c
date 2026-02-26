@@ -6,14 +6,17 @@
 
 #include "network_common.h"
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define MAX_CLIENTS 64
 // Internal Structures
 
 /**
@@ -24,7 +27,11 @@ struct ServerContext
 {
   int listen_socket; // listen for incoming connections.
 
-  // TODO: Add the table of connected clients (e.g., ClientList) here.
+  // The monitoring table.
+  // Index 0 will ALWAYS be the listen_socket (the entry point).
+  // Indexes 1 through MAX_CLIENTS will be the connected players.
+  struct pollfd fds[MAX_CLIENTS + 1];
+  int num_clients;
 };
 
 /**
@@ -34,7 +41,8 @@ struct ServerContext
  */
 struct ClientContext
 {
-  int server_socket; // connected to the remote server.
+  int server_socket;     // connected to the remote server.
+  struct pollfd fd_info; // The client only monitors one thing: the server
 };
 
 // Private Utility Functions
@@ -131,6 +139,17 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
       return -1;
     }
   manager->server_ctx->listen_socket = sock;
+  manager->server_ctx->num_clients = 0;
+
+  // We configure the monitoring of the main door
+  manager->server_ctx->fds[0].fd = sock;
+  manager->server_ctx->fds[0].events = POLLIN;
+
+  // We put the customer "seats" empty (-1 means "poll, ignore this box")
+  for (int i = 1; i <= MAX_CLIENTS; i++)
+    {
+      manager->server_ctx->fds[i].fd = -1;
+    }
 
   printf ("[NETWORK] Server started on port %d\n", port);
   return 0;
@@ -192,6 +211,8 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     }
   manager->client_ctx->server_socket = sock;
 
+  manager->client_ctx->fd_info.fd = sock;
+  manager->client_ctx->fd_info.events = POLLIN;
   printf ("[NETWORK] Connected to the server %s:%d\n", ip, port);
   return 0;
 }
@@ -210,6 +231,13 @@ NetworkManager_Cleanup (NetworkManager *manager)
 {
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
+      for (int i = 1; i <= MAX_CLIENTS; i++)
+        {
+          if (manager->server_ctx->fds[i].fd != -1)
+            {
+              close (manager->server_ctx->fds[i].fd);
+            }
+        }
       close (manager->server_ctx->listen_socket);
       free (manager->server_ctx);
       manager->server_ctx = NULL;
@@ -223,4 +251,149 @@ NetworkManager_Cleanup (NetworkManager *manager)
       printf ("[NETWORK] Disconnected from the server.\n");
     }
   manager->current_mode = NET_MODE_NONE;
+}
+
+/**
+ * @brief Processes all pending network events without blocking the main
+ * thread.
+ * * @details This function acts as the core multiplexer for the network module
+ * and must be called periodically within the main game loop (e.g., once per
+ * frame). It uses a non-blocking poll() approach (timeout of 0) to ensure the
+ * game engine never freezes.
+ * * Behavior depends on the current network mode:
+ * - **SERVER Mode**:
+ * - Checks the listening socket for new incoming connections. If a client
+ * attempts to connect and there is an available slot, it accepts the
+ * connection, sets the socket to non-blocking, and triggers the
+ * `OnPlayerJoined` callback. If full, it rejects.
+ * - Iterates through all currently connected clients to check for incoming
+ * data. It reads the data or detects disconnections, triggering
+ * `OnPlayerDisconnected` and freeing the internal slot if a client drops.
+ * * - **CLIENT Mode**:
+ * - Monitors the active connection to the server. If data is available, it
+ * reads it.
+ * - Detects if the server has closed the connection and triggers the
+ * `OnPlayerDisconnected` callback accordingly.
+ * * @note In the current iteration (F40.4), incoming data is read and printed
+ * to standard output but not yet pushed to the TCP Buffer. This will be
+ * implemented in F40.5.
+ * * @param manager Pointer to the initialized NetworkManager instance.
+ */
+void
+NetworkManager_Tick (NetworkManager *manager)
+{
+  if (manager->current_mode == NET_MODE_NONE)
+    return;
+
+  if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
+    {
+      ServerContext *ctx = manager->server_ctx;
+
+      int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
+      if (poll_count <= 0)
+        return;
+
+      if (ctx->fds[0].revents & POLLIN)
+        {
+          struct sockaddr_in client_addr;
+          socklen_t addr_len = sizeof (client_addr);
+          int client_fd = accept (ctx->listen_socket,
+                                  (struct sockaddr *)&client_addr, &addr_len);
+
+          if (client_fd >= 0)
+            {
+              set_nonblocking (client_fd);
+
+              bool accepted = false;
+              for (int i = 1; i <= MAX_CLIENTS; i++)
+                {
+                  if (ctx->fds[i].fd == -1)
+                    {
+                      ctx->fds[i].fd = client_fd;
+                      ctx->fds[i].events = POLLIN;
+                      ctx->num_clients++;
+                      accepted = true;
+
+                      printf ("[SERVEUR] Nouveau client connecté (Slot %d)\n",
+                              i);
+
+                      if (manager->callbacks.OnPlayerJoined)
+                        {
+                          manager->callbacks.OnPlayerJoined (
+                              "Unknown"); // TODO change later for login name
+                        }
+                      break;
+                    }
+                }
+
+              if (!accepted)
+                {
+                  printf ("[SERVEUR] Plein ! Connexion refusée.\n");
+                  close (client_fd);
+                }
+            }
+        }
+
+      for (int i = 1; i <= MAX_CLIENTS; i++)
+        {
+          if (ctx->fds[i].fd != -1 && (ctx->fds[i].revents & POLLIN))
+            {
+              // TODO F40.5  here: do the true recv()
+              char temp[256];
+              int bytes_received
+                  = recv (ctx->fds[i].fd, temp, sizeof (temp) - 1, 0);
+              if (bytes_received < 0
+                  && (errno == EAGAIN || errno == EWOULDBLOCK))
+                {
+                  continue; // False alarm, let's move on to the next client
+                }
+              else if (bytes_received <= 0)
+                {
+                  printf ("[SERVEUR] Le client %d s'est déconnecté.\n", i);
+                  close (ctx->fds[i].fd);
+                  ctx->fds[i].fd = -1;
+                  ctx->num_clients--;
+                  if (manager->callbacks.OnPlayerDisconnected)
+                    {
+                      manager->callbacks.OnPlayerDisconnected (
+                          "Déconnexion réseau");
+                    }
+                }
+              else
+                {
+                  temp[bytes_received] = '\0';
+                  printf ("[SERVEUR] Message brut reçu : %s\n", temp);
+                }
+            }
+        }
+    }
+  else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
+    {
+      ClientContext *ctx = manager->client_ctx;
+
+      int poll_count = poll (&ctx->fd_info, 1, 0);
+      if (poll_count <= 0)
+        return;
+
+      if (ctx->fd_info.revents & POLLIN)
+        {
+          char temp[256];
+          int bytes_received
+              = recv (ctx->server_socket, temp, sizeof (temp) - 1, 0);
+
+          if (bytes_received <= 0)
+            {
+              printf ("[CLIENT] Le serveur a coupé la connexion.\n");
+              if (manager->callbacks.OnPlayerDisconnected)
+                {
+                  manager->callbacks.OnPlayerDisconnected ("Serveur fermé");
+                }
+            }
+          else
+            {
+              temp[bytes_received] = '\0';
+              printf ("[CLIENT] Message brut du serveur : %s\n", temp);
+            }
+        }
+    }
 }
