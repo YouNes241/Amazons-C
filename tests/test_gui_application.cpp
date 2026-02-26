@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 #include <gtk/gtk.h>
+#include <unistd.h>
 
 extern "C"
 {
-#include "../src/view/gui_application.c"
-#include "../src/view/gui_pages.c"
+#include "gui_application.h"
+#include "gui_pages.h"
 }
 
 class GuiApplicationTest : public ::testing::Test
@@ -17,7 +18,11 @@ protected:
   {
     g_setenv ("DBUS_SESSION_BUS_ADDRESS", "unix:path=/dev/null", TRUE);
     g_setenv ("GTK_A11Y", "none", TRUE);
-    gtk_init (); // needed to avoid a SegFault
+    g_setenv ("RUNNING_IN_TESTS", "1", TRUE);
+
+    chdir ("..");
+
+    gtk_init ();
   }
 
   void
@@ -47,14 +52,20 @@ TEST_F (GuiApplicationTest, ApplicationCreationIsSuccessful)
 
 TEST_F (GuiApplicationTest, InitWindowDoesNotCrash)
 {
-  g_signal_emit_by_name (app, "startup");
-  initWindow (app, nullptr);
+  g_application_activate (G_APPLICATION (app));
 
   GtkWindow *window = gtk_application_get_active_window (app);
+
+  ASSERT_NE (window, nullptr) << "Window should be initialized";
 
   if (window != nullptr)
     {
       gtk_window_destroy (window);
+    }
+
+  while (g_main_context_pending (nullptr))
+    {
+      g_main_context_iteration (nullptr, FALSE);
     }
 
   SUCCEED ();
