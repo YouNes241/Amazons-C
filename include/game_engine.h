@@ -1,7 +1,7 @@
 #ifndef GAME_ENGINE_H
 #define GAME_ENGINE_H
 
-#include "bitboard.h"
+#include "../src/gamemodel/bitboard.h"
 #include "game_types.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -75,10 +75,12 @@ void apply_move (GameState *state, Move move);
  * arrows).
  * @param start_index The starting index of the queen moving or
  * shooting.
+ * @param board_size The current size of the board.
+
  * @return A Bitboard where each '1' bit represents a valid destination square.
  */
-Bitboard engine_get_reachable_squares (Bitboard obstacles,
-                                       uint8_t start_index);
+Bitboard engine_get_reachable_squares (Bitboard obstacles, uint8_t start_index,
+                                       uint8_t board_size);
 
 /**
  * @brief Generates the complete list of all possible legal moves for a player.
