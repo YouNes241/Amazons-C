@@ -79,8 +79,8 @@ bool bitboard_is_zero (Bitboard bb);
 void bitboard_print (Bitboard bb, uint8_t width);
 
 /**
- * @brief Pops the least significant bit (rightmost 1) from the bitboard given
- * and returns the removed index.
+ * @brief Pops the least significant bit (rightmost 1) from the bitboard
+ * given and returns the removed index.
  * @param bb Pointer to the Bitboard (modified in-place).
  * @return Index (0-127) of the popped bit, or -1 if the bitboard is empty.
  */

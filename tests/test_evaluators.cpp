@@ -137,6 +137,46 @@ TEST (EvaluatorTest, Symmetry11x11)
   EXPECT_NEAR (me_score, 0.0f, 0.001f);
 }
 
+TEST (EvaluatorTest, RandomMove)
+{
+  // bitboardstate to gamestate
+  CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 10);
+  for (int i = 0; i < 10; i++)
+    {
+      cc[i] = (CellContent *)malloc (sizeof (CellContent) * 10);
+      for (int j = 0; j < 10; j++)
+        {
+          cc[i][j] = CONTENT_EMPTY;
+        }
+    }
+
+  cc[0][3] = CONTENT_BLACK_QUEEN;
+  cc[9][6] = CONTENT_WHITE_QUEEN;
+
+  GameState state = { .size = 10,
+                      .board = cc,
+                      .current_player = PLAYER_WHITE,
+                      .status = GAME_IN_PROGRESS,
+                      .turn_count = 0 };
+
+  BitboardState bs = sync_from_logic (&state);
+  bitboard_state_print (&bs);
+
+  AI_Interface randomAI = create_ai ("random", { NULL, 0 });
+  Move move = randomAI.vtable->get_best_move (&randomAI, state);
+
+  printf ("Random move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
+          "(%d,%d)\n",
+          move.queen_src.row, move.queen_src.col, move.queen_dst.row,
+          move.queen_dst.col, move.arrow_dst.row, move.arrow_dst.col);
+  EXPECT_TRUE (move.queen_src.row >= 0 && move.queen_src.row < 10);
+  EXPECT_TRUE (move.queen_src.col >= 0 && move.queen_src.col < 10);
+  EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
+  EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
+  EXPECT_TRUE (move.arrow_dst.row >= 0 && move.arrow_dst.row < 10);
+  EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < 10);
+}
+
 TEST (EvaluatorTest, MiniMaxMove)
 {
   // bitboardstate to gamestate
@@ -168,21 +208,91 @@ TEST (EvaluatorTest, MiniMaxMove)
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  Param depth = { .key = "depth", .value = "4" };
-  Param evaluator = { .key = "evaluator", .value = "rth" };
+  Param depth = { .key = "depth", .value = "3" };
+  Param evaluator = { .key = "evaluator", .value = "me" };
   Param params[] = { depth, evaluator };
   ConfigMap cm = { .list = params, .count = 2 };
   AI_Interface randomAI = create_ai ("minimax", cm);
   Move move = randomAI.vtable->get_best_move (&randomAI, state);
 
-  printf ("Random move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
-          "(%d,%d)\n",
-          move.queen_src.row, move.queen_src.col, move.queen_dst.row,
-          move.queen_dst.col, move.arrow_dst.row, move.arrow_dst.col);
+  printf (
+      "Minimax move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
+      "(%d,%d)\n",
+      move.queen_src.row, move.queen_src.col, move.queen_dst.row,
+      move.queen_dst.col, move.arrow_dst.row, move.arrow_dst.col);
   EXPECT_TRUE (move.queen_src.row >= 0 && move.queen_src.row < 10);
   EXPECT_TRUE (move.queen_src.col >= 0 && move.queen_src.col < 10);
   EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
   EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
   EXPECT_TRUE (move.arrow_dst.row >= 0 && move.arrow_dst.row < 10);
   EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < 10);
+}
+
+TEST (EvaluatorTest, MiniMaxWin)
+{
+  // bitboardstate to gamestate
+  CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 10);
+  for (int i = 0; i < 10; i++)
+    {
+      cc[i] = (CellContent *)malloc (sizeof (CellContent) * 10);
+      for (int j = 0; j < 10; j++)
+        {
+          cc[i][j] = CONTENT_ARROW;
+        }
+    }
+
+  cc[9][0] = CONTENT_WHITE_QUEEN;
+  for (int i = 1; i < 9; i++)
+    {
+      cc[9][i] = CONTENT_EMPTY;
+    }
+  cc[8][9] = CONTENT_EMPTY;
+  cc[7][9] = CONTENT_BLACK_QUEEN;
+
+  GameState state = { .size = 10,  // Move this to the top!
+                      .board = cc, // Then board...
+                      .current_player = PLAYER_WHITE,
+                      .status = GAME_IN_PROGRESS,
+                      .turn_count = 0 };
+
+  BitboardState bs = sync_from_logic (&state);
+  bitboard_state_print (&bs);
+
+  Param depth = { .key = "depth", .value = "1" };
+
+  Param evaluator_qdkd = { .key = "evaluator", .value = "qdkd" };
+  Param evaluator_rth = { .key = "evaluator", .value = "rth" };
+  Param evaluator_me = { .key = "evaluator", .value = "me" };
+
+  Param params_qdkd[] = { depth, evaluator_qdkd };
+  Param params_rth[] = { depth, evaluator_rth };
+  Param params_me[] = { depth, evaluator_me };
+
+  ConfigMap cm_qdkd = { .list = params_qdkd, .count = 2 };
+  ConfigMap cm_rth = { .list = params_rth, .count = 2 };
+  ConfigMap cm_me = { .list = params_me, .count = 2 };
+
+  AI_Interface qdkdAI = create_ai ("minimax", cm_qdkd);
+  AI_Interface rthAI = create_ai ("minimax", cm_rth);
+  AI_Interface meAI = create_ai ("minimax", cm_me);
+
+  Move move_qdkd = qdkdAI.vtable->get_best_move (&qdkdAI, state);
+  Move move_rth = rthAI.vtable->get_best_move (&rthAI, state);
+  Move move_me = meAI.vtable->get_best_move (&meAI, state);
+
+  Move all_moves[] = { move_qdkd, move_rth, move_me };
+
+  for (Move m : all_moves)
+    {
+      printf ("Move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
+              "(%d,%d)\n",
+              m.queen_src.row, m.queen_src.col, m.queen_dst.row,
+              m.queen_dst.col, m.arrow_dst.row, m.arrow_dst.col);
+      EXPECT_EQ (m.queen_src.row, 9);
+      EXPECT_EQ (m.queen_src.col, 0);
+      EXPECT_EQ (m.queen_dst.row, 9);
+      EXPECT_EQ (m.queen_dst.col, 8);
+      EXPECT_EQ (m.arrow_dst.row, 8);
+      EXPECT_EQ (m.arrow_dst.col, 9);
+    }
 }

@@ -180,7 +180,16 @@ minimax_clean (AI_Interface *self)
 static bool
 is_game_over (BitboardState state)
 {
-  return get_legal_moves (state, NULL) == 0;
+  Bitboard my_queens = (state.white_to_move == true) ? state.white_queens
+                                                     : state.black_queens;
+
+  Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
+  occupied = bitboard_or (occupied, state.arrows);
+  Bitboard empty = bitboard_not (occupied);
+
+  Bitboard adjacent_moves = expand_king_step (my_queens, empty, state.size);
+
+  return bitboard_is_zero (adjacent_moves);
 }
 
 /**
@@ -286,21 +295,17 @@ pick_top_moves (BitboardState *state, Move *raw_moves, int count,
  * tree.
  */
 static float
-alpha_beta_forward (Minimax_Data *data, BitboardState state, int depth,
-                    float alpha, float beta, bool maximizing)
+alpha_beta_forward_regular (Minimax_Data *data, BitboardState state, int depth,
+                            float alpha, float beta, bool maximizing)
 {
   if (depth <= 0 || is_game_over (state))
-    {
-      return data->evaluate (&state);
-    }
+    return data->evaluate (&state);
 
   Move raw_moves[get_move_limit (state)];
   int total_count = get_legal_moves (state, raw_moves);
 
   if (total_count == 0)
-    {
-      return maximizing ? BOTTOM_SCORE : TOP_SCORE;
-    }
+    return maximizing ? BOTTOM_SCORE : TOP_SCORE;
 
   int limit = get_beam_width (maximizing, depth, data->max_depth);
   int moves_to_scan = (total_count < limit) ? total_count : limit;
@@ -315,6 +320,92 @@ alpha_beta_forward (Minimax_Data *data, BitboardState state, int depth,
     {
       BitboardState next_state
           = apply_move_bitboard (state, best_moves[i].move);
+      float score = alpha_beta_forward_regular (data, next_state, depth - 1,
+                                                alpha, beta, !maximizing);
+
+      if (maximizing)
+        {
+          if (score > best_score)
+            best_score = score;
+          if (best_score > alpha)
+            alpha = best_score;
+        }
+      else
+        {
+          if (score < best_score)
+            best_score = score;
+          if (best_score < beta)
+            beta = best_score;
+        }
+
+      if (beta <= alpha)
+        break;
+    }
+
+  return best_score;
+}
+
+static float
+alpha_beta_forward (Minimax_Data *data, BitboardState state, int depth,
+                    float alpha, float beta, bool maximizing)
+{
+  if (depth <= 0 || is_game_over (state))
+    return data->evaluate (&state);
+
+  static int max_moves_for_queen = -1;
+  if (max_moves_for_queen == -1)
+    // 4 directions * (size-1) max moves per queen * number of queens
+    max_moves_for_queen
+        = 4 * (state.size - 1) * bitboard_count_bits (state.white_queens);
+
+  // Getting and pruning queen moves for all queens
+  Move queen_moves[max_moves_for_queen];
+  int queen_count = 0;
+
+  Bitboard my_queens
+      = state.white_to_move ? state.white_queens : state.black_queens;
+  Bitboard occupied = bitboard_or (
+      bitboard_or (state.white_queens, state.black_queens), state.arrows);
+  Bitboard test = my_queens;
+  while (!bitboard_is_zero (test))
+    {
+      uint8_t q_idx = pop_lsb (&test);
+      queen_count += get_queen_moves (q_idx, occupied, state.size,
+                                      &queen_moves[queen_count]);
+    }
+
+  if (queen_count == 0)
+    return maximizing ? BOTTOM_SCORE : TOP_SCORE;
+
+  // Pick top queen moves
+  int beam_limit = get_beam_width (maximizing, depth, data->max_depth);
+  ScoredMove top_queens[beam_limit];
+  int actual_q_count = pick_top_moves (&state, queen_moves, queen_count,
+                                       top_queens, beam_limit, maximizing);
+
+  Move filtered_full_moves[actual_q_count * (state.size * 4)];
+  int total_full_moves = 0;
+
+  for (int i = 0; i < actual_q_count; i++)
+    {
+      total_full_moves += get_arrow_moves (
+          &top_queens[i].move, &filtered_full_moves[total_full_moves], 1,
+          occupied, state.size);
+    }
+
+  int final_limit = get_beam_width (maximizing, depth, data->max_depth);
+  ScoredMove final_best_moves[final_limit];
+
+  int actual_final_count
+      = pick_top_moves (&state, filtered_full_moves, total_full_moves,
+                        final_best_moves, final_limit, maximizing);
+
+  float best_score = maximizing ? BOTTOM_SCORE : TOP_SCORE;
+
+  for (int j = 0; j < actual_final_count; j++)
+    {
+      BitboardState next_state
+          = apply_move_bitboard (state, final_best_moves[j].move);
       float score = alpha_beta_forward (data, next_state, depth - 1, alpha,
                                         beta, !maximizing);
 

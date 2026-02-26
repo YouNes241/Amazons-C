@@ -138,6 +138,54 @@ idx_to_pos (uint8_t index, uint8_t size)
   return (Position){ .row = index / size, .col = index % size };
 }
 
+int
+get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
+                 Move *moves_array)
+{
+  Bitboard reachable = get_reachable (queen_index, occupied, size);
+  int count = 0;
+
+  while (!bitboard_is_zero (reachable))
+    {
+      int idx = pop_lsb (&reachable);
+      moves_array[count++]
+          = (Move){ .queen_src = idx_to_pos (queen_index, size),
+                    .queen_dst = idx_to_pos (idx, size),
+                    .arrow_dst = NULL };
+    }
+  return count;
+}
+
+int
+get_arrow_moves (Move *queen_moves, Move *final_moves, int queen_move_count,
+                 Bitboard occupied, uint8_t size)
+{
+  int count = 0;
+
+  for (int i = 0; i < queen_move_count; i++)
+    {
+      Move qm = queen_moves[i];
+      uint8_t idx = qm.queen_dst.row * size + qm.queen_dst.col;
+
+      Bitboard new_occupied = occupied;
+      bitboard_clear_bit (&new_occupied,
+                          qm.queen_src.row * size + qm.queen_src.col);
+      bitboard_set_bit (&new_occupied, idx);
+
+      Bitboard reachable = get_reachable (idx, new_occupied, size);
+
+      while (!bitboard_is_zero (reachable))
+        {
+          int arrow_idx = pop_lsb (&reachable);
+          final_moves[count++]
+              = (Move){ .queen_src = qm.queen_src,
+                        .queen_dst = qm.queen_dst,
+                        .arrow_dst = idx_to_pos (arrow_idx, size) };
+        }
+    }
+  return count;
+}
+
 int // To optimize | CHECK
 get_legal_moves (BitboardState state, Move *moves_array)
 {

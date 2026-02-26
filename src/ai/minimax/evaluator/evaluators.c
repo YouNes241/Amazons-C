@@ -86,7 +86,7 @@ get_obstacles (const BitboardState *state)
  * @param width The width of the board.
  * @return A Bitboard representing all valid reachable squares.
  */
-static Bitboard
+Bitboard
 expand_king_step (Bitboard sources, Bitboard empty, uint8_t width)
 {
   Bitboard result = bitboard_create_empty ();

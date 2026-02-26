@@ -15,4 +15,6 @@ typedef float (*Evaluator) (BitboardState *state);
 Evaluator get_evaluator_by_name (const char *name);
 
 BitboardState sync_from_logic (GameState *gs);
+
+Bitboard expand_king_step (Bitboard sources, Bitboard empty, uint8_t width);
 #endif
