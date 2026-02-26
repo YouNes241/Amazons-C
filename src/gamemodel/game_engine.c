@@ -286,3 +286,24 @@ is_game_over (const GameState *state, PlayerColor current_player)
 
   return true;
 }
+
+void
+extract_bitboards_from_state (const GameState *state, Bitboard *bb_white,
+                              Bitboard *bb_black, Bitboard *bb_arrows)
+{
+  (void)state;
+  (void)bb_white;
+  (void)bb_black;
+  (void)bb_arrows;
+}
+
+Bitboard
+engine_get_reachable_squares (Bitboard obstacles, uint8_t start_index,
+                              uint8_t board_size)
+{
+  (void)obstacles;
+  (void)start_index;
+  (void)board_size;
+  Bitboard res = { 0, 0 };
+  return res;
+}
