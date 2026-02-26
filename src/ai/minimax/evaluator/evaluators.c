@@ -1,7 +1,6 @@
 #include "bitboard.h"
 #include "evaluator.h"
 #include "game_types.h"
-#include "temp_types.h"
 #include "utils.h"
 #include <omp.h>
 #include <stdio.h>

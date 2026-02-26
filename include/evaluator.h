@@ -1,7 +1,7 @@
 #ifndef EVALUATOR_H
 #define EVALUATOR_H
 
-#include "temp_types.h"
+#include "game_types.h"
 
 typedef float (*Evaluator) (BitboardState *state);
 
@@ -13,4 +13,6 @@ typedef float (*Evaluator) (BitboardState *state);
  * mobility evaluation if the name is unrecognized.
  */
 Evaluator get_evaluator_by_name (const char *name);
+
+BitboardState sync_from_logic (GameState *gs);
 #endif

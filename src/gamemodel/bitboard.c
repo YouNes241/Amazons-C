@@ -53,21 +53,6 @@ bitboard_clear_bit (Bitboard *bb, uint8_t index)
     }
 }
 
-bool
-bitboard_get_bit (Bitboard bb, uint8_t index)
-{
-  if (index < 64)
-    {
-      // AND with a single-1 mask; non-zero result means bit is set
-      return (bb.low & (1ULL << index)) != 0;
-    }
-  else
-    {
-      // Same logic for high part
-      return (bb.high & (1ULL << (index - 64))) != 0;
-    }
-}
-
 void
 bitboard_toggle_bit (Bitboard *bb, uint8_t index)
 {
@@ -223,7 +208,5 @@ bitboard_print (Bitboard bb, uint8_t width)
 int
 bitboard_count_bits (Bitboard bb)
 {
-  printf ("Counting bits in Bitboard:  low val = %d, high val = %d\n",
-          __builtin_popcountll (bb.low), __builtin_popcountll (bb.high));
   return __builtin_popcountll (bb.low) + __builtin_popcountll (bb.high);
 }

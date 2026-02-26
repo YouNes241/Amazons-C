@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 extern "C"
 {
+#include "ai_factory.h"
 #include "bitboard.h"
 #include "evaluator.h"
 #include "minimax.h"
+#include "random.h"
 #include "utils.h"
 }
 
@@ -133,4 +135,54 @@ TEST (EvaluatorTest, Symmetry11x11)
 
   float me_score = eval_me (&state);
   EXPECT_NEAR (me_score, 0.0f, 0.001f);
+}
+
+TEST (EvaluatorTest, MiniMaxMove)
+{
+  // bitboardstate to gamestate
+  CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 10);
+  for (int i = 0; i < 10; i++)
+    {
+      cc[i] = (CellContent *)malloc (sizeof (CellContent) * 10);
+      for (int j = 0; j < 10; j++)
+        {
+          cc[i][j] = CONTENT_EMPTY;
+        }
+    }
+
+  cc[0][3] = CONTENT_BLACK_QUEEN;
+  cc[0][6] = CONTENT_BLACK_QUEEN;
+  cc[3][0] = CONTENT_BLACK_QUEEN;
+  cc[3][9] = CONTENT_BLACK_QUEEN;
+  cc[6][0] = CONTENT_WHITE_QUEEN;
+  cc[6][9] = CONTENT_WHITE_QUEEN;
+  cc[9][3] = CONTENT_WHITE_QUEEN;
+  cc[9][6] = CONTENT_WHITE_QUEEN;
+
+  GameState state = { .size = 10,  // Move this to the top!
+                      .board = cc, // Then board...
+                      .current_player = PLAYER_WHITE,
+                      .status = GAME_IN_PROGRESS,
+                      .turn_count = 0 };
+
+  BitboardState bs = sync_from_logic (&state);
+  bitboard_state_print (&bs);
+
+  Param depth = { .key = "depth", .value = "4" };
+  Param evaluator = { .key = "evaluator", .value = "rth" };
+  Param params[] = { depth, evaluator };
+  ConfigMap cm = { .list = params, .count = 2 };
+  AI_Interface randomAI = create_ai ("minimax", cm);
+  Move move = randomAI.vtable->get_best_move (&randomAI, state);
+
+  printf ("Random move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
+          "(%d,%d)\n",
+          move.queen_src.row, move.queen_src.col, move.queen_dst.row,
+          move.queen_dst.col, move.arrow_dst.row, move.arrow_dst.col);
+  EXPECT_TRUE (move.queen_src.row >= 0 && move.queen_src.row < 10);
+  EXPECT_TRUE (move.queen_src.col >= 0 && move.queen_src.col < 10);
+  EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
+  EXPECT_TRUE (move.queen_dst.row >= 0 && move.queen_dst.col < 10);
+  EXPECT_TRUE (move.arrow_dst.row >= 0 && move.arrow_dst.row < 10);
+  EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < 10);
 }

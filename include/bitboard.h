@@ -28,7 +28,15 @@ void bitboard_set_bit (Bitboard *bb, uint8_t index);
 void bitboard_clear_bit (Bitboard *bb, uint8_t index);
 
 // Returns true if the bit is set (1)
-bool bitboard_get_bit (Bitboard bb, uint8_t index);
+static inline bool
+bitboard_get_bit (Bitboard bb, uint8_t index)
+{
+  if (index < 64)
+    {
+      return (bb.low >> index) & 1;
+    }
+  return (bb.high >> (index - 64)) & 1;
+}
 
 // Toggle the bit (0 becomes 1, 1 becomes 0)
 void bitboard_toggle_bit (Bitboard *bb, uint8_t index);

@@ -1,7 +1,6 @@
 #ifndef AI_INTERFACE_H
 #define AI_INTERFACE_H
 #include "game_types.h"
-#include "temp_types.h"
 
 typedef struct AI_Interface AI_Interface;
 

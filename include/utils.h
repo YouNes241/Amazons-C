@@ -2,7 +2,7 @@
 #define UTILS_H
 
 #include "bitboard.h"
-#include "temp_types.h"
+#include "game_types.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -20,4 +20,5 @@ void bitboard_state_print (const BitboardState *state);
  */
 BitboardState create_empty_state (uint8_t size);
 
+Bitboard get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size);
 #endif

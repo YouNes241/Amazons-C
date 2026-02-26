@@ -1,6 +1,8 @@
+#include "utils.h"
 #include "bitboard.h"
 #include "evaluator.h"
 #include "minimax.h"
+#include <stddef.h>
 
 BitboardState
 create_empty_state (uint8_t size)
@@ -43,22 +45,18 @@ bitboard_state_print (const BitboardState *state)
         {
           uint8_t index = row * width + col;
 
-          // Priority 1: White Queens
           if (bitboard_get_bit (state->white_queens, index))
             {
               printf ("W ");
             }
-          // Priority 2: Black Queens
           else if (bitboard_get_bit (state->black_queens, index))
             {
               printf ("B ");
             }
-          // Priority 3: Arrows (Barricades)
           else if (bitboard_get_bit (state->arrows, index))
             {
               printf ("X ");
             }
-          // Priority 4: Empty Square
           else
             {
               printf (". ");
@@ -67,4 +65,123 @@ bitboard_state_print (const BitboardState *state)
       printf ("\n");
     }
   printf ("--------------------------\n\n");
+}
+
+BitboardState
+sync_from_logic (GameState *gs)
+{
+  BitboardState bs = { 0 };
+  bs.size = gs->size;
+  bs.white_to_move = (gs->current_player == PLAYER_WHITE);
+  for (uint8_t r = 0; r < gs->size; r++)
+    {
+      for (uint8_t c = 0; c < gs->size; c++)
+        {
+          uint8_t idx = r * gs->size + c;
+          switch (gs->board[r][c])
+            {
+            case CONTENT_WHITE_QUEEN:
+              bitboard_set_bit (&bs.white_queens, idx);
+              break;
+            case CONTENT_BLACK_QUEEN:
+              bitboard_set_bit (&bs.black_queens, idx);
+              break;
+            case CONTENT_ARROW:
+              bitboard_set_bit (&bs.arrows, idx);
+              break;
+            default:
+              break;
+            }
+        }
+    }
+  return bs;
+}
+
+Bitboard // CHECK
+get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size)
+{
+  Bitboard reachable = bitboard_create_empty ();
+  uint8_t start_r = start_index / size;
+  uint8_t start_c = start_index % size;
+
+  for (int8_t dr = -1; dr <= 1; dr++)
+    for (int8_t dc = -1; dc <= 1; dc++)
+      {
+        // origin
+        if (dr == 0 && dc == 0)
+          continue;
+
+        // any movement
+        for (int dist = 1; dist < size; dist++)
+          {
+            int8_t r = start_r + (dr * dist);
+            int8_t c = start_c + (dc * dist);
+
+            if (r < 0 || r >= size || c < 0 || c >= size)
+              break;
+
+            uint8_t current_idx = r * size + c;
+
+            // If we hit an obstacle, stop.
+            if (bitboard_get_bit (occupied, current_idx))
+              break;
+
+            bitboard_set_bit (&reachable, current_idx);
+          }
+      }
+  return reachable;
+}
+
+Position
+idx_to_pos (uint8_t index, uint8_t size)
+{
+  return (Position){ .row = index / size, .col = index % size };
+}
+
+int // To optimize | CHECK
+get_legal_moves (BitboardState state, Move *moves_array)
+{
+  int count = 0;
+  int size = state.size;
+  Bitboard occupied = bitboard_or (
+      bitboard_or (state.white_queens, state.black_queens), state.arrows);
+  Bitboard my_queens
+      = state.white_to_move ? state.white_queens : state.black_queens;
+
+  for (uint8_t q_from = 0; q_from < (size * size); q_from++)
+    {
+      if (!bitboard_get_bit (my_queens, q_from))
+        continue; // TODO : optimize
+
+      Bitboard queen_destinations = get_reachable (q_from, occupied, size);
+
+      for (uint8_t q_to = 0; q_to < (size * size); q_to++)
+        {
+          if (!bitboard_get_bit (queen_destinations, q_to))
+            continue;
+
+          Bitboard arrow_occupied = occupied;
+          bitboard_clear_bit (&arrow_occupied, q_from);
+          bitboard_set_bit (&arrow_occupied, q_to);
+
+          Bitboard arrow_destinations
+              = get_reachable (q_to, arrow_occupied, size);
+
+          for (uint8_t arrow_to = 0; arrow_to < (size * size); arrow_to++)
+            {
+              if (!bitboard_get_bit (arrow_destinations, arrow_to))
+                continue;
+
+              if (moves_array != NULL)
+                {
+                  moves_array[count]
+                      = (Move){ .queen_src = idx_to_pos (q_from, size),
+                                .queen_dst = idx_to_pos (q_to, size),
+                                .arrow_dst = idx_to_pos (arrow_to, size) };
+                }
+              count++;
+            }
+        }
+    }
+  return count;
 }
