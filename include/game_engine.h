@@ -5,6 +5,7 @@
 #include "game_types.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /**
  * @brief Initializes the board with the official starting configuration.

@@ -165,7 +165,7 @@ is_path_clear (Bitboard obstacles, Position src, Position dst,
     {
       uint8_t current_idx = coords_to_index (current_x, current_y, board_size);
 
-      if (bitboard_is_set (obstacles, current_idx))
+      if (bitboard_get_bit (obstacles, current_idx))
         {
           return false;
         }
@@ -176,7 +176,7 @@ is_path_clear (Bitboard obstacles, Position src, Position dst,
 
   // Check if the destination cell is empty
   uint8_t dst_idx = coords_to_index (dst.col, dst.row, board_size);
-  if (bitboard_is_set (obstacles, dst_idx))
+  if (bitboard_get_bit (obstacles, dst_idx))
     {
       return false;
     }
@@ -211,12 +211,12 @@ is_move_legal (const GameState *state, Move move)
       = coords_to_index (move.queen_src.col, move.queen_src.row, size);
   if (state->current_player == PLAYER_WHITE)
     {
-      if (!bitboard_is_set (bb_white, src_idx))
+      if (!bitboard_get_bit (bb_white, src_idx))
         return false;
     }
   else
     {
-      if (!bitboard_is_set (bb_black, src_idx))
+      if (!bitboard_get_bit (bb_black, src_idx))
         return false;
     }
 
@@ -268,7 +268,7 @@ is_game_over (const GameState *state, PlayerColor current_player)
     {
 
       // If we find one of our queens on this square
-      if (bitboard_is_set (current_queens, idx))
+      if (bitboard_get_bit (current_queens, idx))
         {
 
           // We calculate all squares it can move to
@@ -277,7 +277,7 @@ is_game_over (const GameState *state, PlayerColor current_player)
 
           // If the bitboard reachable is not empty, the queen can move
           // and the game is not over yet
-          if (!bitboard_is_empty (reachable))
+          if (!bitboard_is_zero (reachable))
             {
               return false;
             }
