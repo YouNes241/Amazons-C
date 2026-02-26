@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="info_box">
+    <property name="orientation">vertical</property>
+    
+    <child>
+      <object class="GtkButton" id="return_btn">
+        <property name="icon-name">go-previous-symbolic</property>
+        <property name="halign">start</property> 
+        <property name="valign">start</property>
+        <property name="margin-top">30</property>
+        <property name="margin-start">30</property> 
+        <property name="css-classes">circular flat</property>
+        <property name="tooltip-text">Return</property>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">40</property> <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property> 
+        
+        <child>
+          <object class="GtkLabel" id="title_label">
+            <property name="label">INFORMATIONS</property>
+            <property name="css-classes">title-1</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property> <child>
+              <object class="GtkLabel" id="authors_title">
+                <property name="label">Authors</property>
+                <property name="css-classes">title-3</property> 
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkLabel" id="authors_text">
+                <property name="label">Nicolas CAMINADE&#10;Tanguy DECABRAT&#10;Anya BAZIZI&#10;Younes OUAAMMOU&#10;Thomas-Alexandre MOREAU</property>
+                <property name="justify">center</property> <property name="css-classes">dim-label</property> 
+              </object>
+            </child>
+            
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">10</property>
+            
+            <child>
+              <object class="GtkLabel" id="version_title">
+                <property name="label">Version</property>
+                <property name="css-classes">title-4</property> 
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkLabel" id="version_text">
+                <property name="label">PLACEHOLDER</property>
+                <property name="css-classes">dim-label</property> 
+              </object>
+            </child>
+          </object>
+        </child>
+
+      </object>
+    </child>
+
+  </object>
+</interface>
