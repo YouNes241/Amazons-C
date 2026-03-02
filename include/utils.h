@@ -27,4 +27,6 @@ int get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
 
 int get_arrow_moves (Move *queen_moves, Move *final_moves,
                      int queen_move_count, Bitboard occupied, uint8_t size);
+
+int get_legal_moves (BitboardState state, Move *moves_array);
 #endif
