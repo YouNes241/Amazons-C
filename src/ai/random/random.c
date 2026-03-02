@@ -44,7 +44,7 @@ get_move_limit (BitboardState state)
 static Move
 random_get_best_move (AI_Interface *self, GameState state)
 {
-  Move best_move = { 0, 0, 0, 0, 0, 0 };
+  Move best_move = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
   BitboardState bs = sync_from_logic (&state);
   Move moves_array[get_move_limit (bs)];
   int count = get_legal_moves (bs, moves_array);

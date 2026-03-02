@@ -3,6 +3,7 @@
 #include "evaluator.h"
 #include "minimax.h"
 #include <stddef.h>
+#include <stdio.h>
 
 BitboardState
 create_empty_state (uint8_t size)
@@ -151,7 +152,7 @@ get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
       moves_array[count++]
           = (Move){ .queen_src = idx_to_pos (queen_index, size),
                     .queen_dst = idx_to_pos (idx, size),
-                    .arrow_dst = NULL };
+                    .arrow_dst = 0 };
     }
   return count;
 }
