@@ -18,8 +18,7 @@ endif()
 
 # GTest
 target_link_libraries(unit_tests PRIVATE 
-    GTest::GTest 
-    GTest::Main 
+    GTest::gtest_main 
     ${GUI_LIBRARIES} 
     m
 )
