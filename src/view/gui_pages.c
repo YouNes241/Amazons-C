@@ -9,32 +9,32 @@ createMainMenuPage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
-  GtkWidget *btnSingleplayer;
-  GtkWidget *btnMultiplayer;
-  GtkWidget *btnConfig;
-  GtkWidget *btnInfo;
-  GtkWidget *btnQuit;
+  GtkWidget *singleplayerBtn;
+  GtkWidget *multiplayerBtn;
+  GtkWidget *configBtn;
+  GtkWidget *infoBtn;
+  GtkWidget *quitBtn;
 
   builder = gtk_builder_new_from_file ("ui/main_menu.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "main_menu_box"));
 
-  btnSingleplayer
+  singleplayerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_btn"));
-  btnMultiplayer
+  multiplayerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_btn"));
-  btnConfig = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
-  btnInfo = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
-  btnQuit = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  configBtn = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
+  infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
+  quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
 
-  g_signal_connect (btnSingleplayer, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_singleplayer");
-  g_signal_connect (btnMultiplayer, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_multiplayer");
-  g_signal_connect (btnConfig, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_config");
-  g_signal_connect (btnInfo, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_info");
-  g_signal_connect (btnQuit, "clicked", G_CALLBACK (quitButtonClick), NULL);
+  g_signal_connect (singleplayerBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "singleplayer_page");
+  g_signal_connect (multiplayerBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "multiplayer_page");
+  g_signal_connect (configBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "config_page");
+  g_signal_connect (infoBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "info_page");
+  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -47,19 +47,19 @@ createSingleplayerMenuPage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
-  GtkWidget *btnNewGame;
-  GtkWidget *btnLoadGame;
-  GtkWidget *btnReturn;
+  GtkWidget *newGameBtn;
+  GtkWidget *returnBtn;
 
   builder = gtk_builder_new_from_file ("ui/singleplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_box"));
 
-  btnNewGame = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
-  btnLoadGame = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
-  btnReturn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  newGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_signal_connect (btnReturn, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_main_menu");
+  g_signal_connect (newGameBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "game_page");
+  g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "main_menu_page");
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -72,21 +72,15 @@ createMultiplayerMenuPage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
-  GtkWidget *btnHostServer;
-  GtkWidget *btnJoinServer;
-  GtkWidget *btnReturn;
+  GtkWidget *returnBtn;
 
   builder = gtk_builder_new_from_file ("ui/multiplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
 
-  btnHostServer
-      = GTK_WIDGET (gtk_builder_get_object (builder, "host_server_btn"));
-  btnJoinServer
-      = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_btn"));
-  btnReturn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_signal_connect (btnReturn, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_main_menu");
+  g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "main_menu_page");
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -99,15 +93,15 @@ createConfigPage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
-  GtkWidget *btnReturn;
+  GtkWidget *returnBtn;
 
   builder = gtk_builder_new_from_file ("ui/config.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "config_box"));
 
-  btnReturn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_signal_connect (btnReturn, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_main_menu");
+  g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "main_menu_page");
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -120,15 +114,35 @@ createInfoPage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
-  GtkWidget *btnReturn;
+  GtkWidget *returnBtn;
 
   builder = gtk_builder_new_from_file ("ui/info.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "info_box"));
 
-  btnReturn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_signal_connect (btnReturn, "clicked", G_CALLBACK (navigationClick),
-                    (gpointer) "page_main_menu");
+  g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick),
+                    (gpointer) "main_menu_page");
+
+  g_object_ref (box);
+  g_object_unref (builder);
+
+  return box;
+}
+
+GtkWidget *
+createGamePage ()
+{
+  GtkBuilder *builder;
+  GtkWidget *box;
+  GtkWidget *quitBtn;
+
+  builder = gtk_builder_new_from_file ("ui/game.ui");
+  box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
+
+  quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+
+  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
 
   g_object_ref (box);
   g_object_unref (builder);

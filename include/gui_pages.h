@@ -8,5 +8,6 @@ GtkWidget *createSingleplayerMenuPage ();
 GtkWidget *createMultiplayerMenuPage ();
 GtkWidget *createConfigPage ();
 GtkWidget *createInfoPage ();
+GtkWidget *createGamePage ();
 
 #endif // GUI_PAGES_H
