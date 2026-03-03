@@ -77,14 +77,20 @@
                         <property name="label">Undo</property>
                         <property name="css-classes">flat</property>
                       </object>
+                    </child>
+                    <child>
                       <object class="GtkButton" id="redo_btn">
                         <property name="label">Redo</property>
                         <property name="css-classes">flat</property>
                       </object>
+                    </child>
+                    <child>
                       <object class="GtkButton" id="pause_btn">
                         <property name="label">Pause</property>
                         <property name="css-classes">flat</property>
                       </object>
+                    </child>
+                    <child>
                       <object class="GtkButton" id="hint_btn">
                         <property name="label">Hint</property>
                         <property name="css-classes">flat</property>
@@ -104,7 +110,8 @@
         </child>
 
       </object>
-    </child> <child>
+    </child> 
+    <child>
       <object class="GtkBox" id="board_container">
         <property name="orientation">vertical</property>
         <property name="spacing">15</property>
@@ -118,7 +125,7 @@
             <property name="css-classes">dim-label title-2</property>
           </object>
         </child>
-
       </object>
-    </child> </object>
+    </child>
+  </object>
 </interface>

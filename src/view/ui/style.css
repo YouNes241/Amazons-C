@@ -41,3 +41,21 @@ button:active {
 #return_btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
+
+popover button {
+    background-color: transparent;
+    box-shadow: none;
+    font-weight: normal; 
+    border-radius: 8px; 
+    margin: 2px 5px; 
+}
+
+popover button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+popover button:active {
+    box-shadow: none;
+    margin-top: 0px; 
+    background-color: rgba(255, 255, 255, 0.2);
+}
