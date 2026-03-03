@@ -27,6 +27,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUI REQUIRED gtk4)
 pkg_check_modules(READLINE REQUIRED readline)
 add_definitions(${GUI_CFLAGS_OTHER})
+add_definitions(${READLINE_CFLAGS_OTHER})
 file(COPY "${CMAKE_SOURCE_DIR}/src/view/ui" DESTINATION "${CMAKE_BINARY_DIR}")
 
 find_package(Intl)
