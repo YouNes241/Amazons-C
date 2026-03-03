@@ -2,18 +2,17 @@
 #define INPUT_H
 
 /**
- * Structure simple pour stocker une position pour l'instant 
+ * Structure simple pour stocker une position pour l'instant
  */
-typedef struct 
+typedef struct
 {
-    int x; 
-    int y; 
+  int x;
+  int y;
 } pos_t;
 
+// Traduit une chaîne type "e2" en structure coord_t.
+// Retourne 0 si succès, -1 si le format est invalide.
 
- //Traduit une chaîne type "e2" en structure coord_t.
- //Retourne 0 si succès, -1 si le format est invalide.
- 
-int parse_coordinates(const char *input, pos_t *out_pos);
+int parse_coordinates (const char *input, pos_t *out_pos);
 
-#endif 
+#endif

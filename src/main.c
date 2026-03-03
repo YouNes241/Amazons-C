@@ -1,12 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <getopt.h>
-#include <string.h>
-#include <stdbool.h>
 #include "config.h"
 #include "input.h"
-#include <readline/readline.h>
+#include <getopt.h>
 #include <readline/history.h>
+#include <readline/readline.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 void
 init_default_config (game_config_t *config)
@@ -46,8 +46,7 @@ display_config (game_config_t *config)
   printf ("Mode Blitz        : %s\n",
           config->blitz_mode ? "Activé" : "Désactivé");
   printf ("Temps par joueur  : %d s\n", config->time_per_player);
-  printf ("IA activée        : %s\n",
-          config->ai_enabled ? "Oui" : "Non");
+  printf ("IA activée        : %s\n", config->ai_enabled ? "Oui" : "Non");
   printf ("Mode Verbose      : %s\n",
           config->verbose ? "Activé" : "Désactivé");
   printf ("Langue : %s\n",
@@ -88,19 +87,25 @@ load_config_file (game_config_t *config)
           fprintf (file, "[defaults]\n");
 
           fprintf (file, "board_size = %d\n", config->board_size);
-          
-          char *mode_str = (config->mode == MODE_CONTEST) ? "contest" : (config->mode == MODE_GUI) ? "gui" : "interactive";
+
+          char *mode_str = (config->mode == MODE_CONTEST) ? "contest"
+                           : (config->mode == MODE_GUI)   ? "gui"
+                                                          : "interactive";
           fprintf (file, "mode = %s\n", mode_str);
 
-          fprintf (file, "blitz = %s\n", config->blitz_mode ? "true" : "false");
+          fprintf (file, "blitz = %s\n",
+                   config->blitz_mode ? "true" : "false");
           fprintf (file, "timeout = %d\n", config->time_per_player);
-          fprintf (file, "ai_enabled = %s\n", config->ai_enabled ? "true" : "false");
+          fprintf (file, "ai_enabled = %s\n",
+                   config->ai_enabled ? "true" : "false");
           fprintf (file, "verbose = %s\n", config->verbose ? "true" : "false");
 
-          fprintf (file, "language = %s\n", (config->language == LANG_FR) ? "french" : "english");
+          fprintf (file, "language = %s\n",
+                   (config->language == LANG_FR) ? "french" : "english");
 
           fclose (file);
-          printf ("Note : Fichier .amazonsrc généré à partir de la configuration initiale.\n");
+          printf ("Note : Fichier .amazonsrc généré à partir de la "
+                  "configuration initiale.\n");
         }
       return;
     }
@@ -157,17 +162,16 @@ load_config_file (game_config_t *config)
         }
       else
         {
-          fprintf (stderr, "Avertissement : ligne invalide ignorée : %s", line);
+          fprintf (stderr, "Avertissement : ligne invalide ignorée : %s",
+                   line);
         }
     }
   fclose (file);
 }
 
-
-static char *commands_list[] = {
-  "new", "help", "quit", "load", "save", "pause", 
-  "hint", "undo", "redo", "show", "set", "details", NULL
-};
+static char *commands_list[]
+    = { "new",  "help", "quit", "load", "save",    "pause", "hint",
+        "undo", "redo", "show", "set",  "details", NULL };
 
 char *
 command_generator (const char *text, int state)
@@ -200,7 +204,8 @@ command_generator (const char *text, int state)
 char **
 amazons_completion (const char *text, int start, int end)
 {
-  /* Empêche Readline de chercher des fichiers si on ne trouve pas de commande */
+  /* Empêche Readline de chercher des fichiers si on ne trouve pas de commande
+   */
   rl_attempted_completion_over = 1;
 
   /* On ne veut compléter que le premier mot de la ligne */
@@ -209,10 +214,9 @@ amazons_completion (const char *text, int start, int end)
     {
       return rl_completion_matches (text, command_generator);
     }
-  
+
   return NULL;
 }
-
 
 int
 main (int argc, char *argv[])
@@ -221,39 +225,44 @@ main (int argc, char *argv[])
   int opt;
   int option_index = 0;
 
-  
-  static struct option long_options[] =
-    {
-      {"size",    required_argument, 0, 'n'},
-      {"blitz",   no_argument,       0, 'b'},
-      {"time",    required_argument, 0, 't'},
-      {"contest", no_argument,       0, 'c'},
-      {"gui",     no_argument,       0, 'g'},
-      {"ai",      optional_argument, 0, 'a'},
-      {"debug",   no_argument,       0, 'd'},
-      {"verbose", no_argument,       0, 'v'},
-      {"help",    no_argument,       0, 'h'},
-      {"version",    no_argument,       0, 'V'},
-      {0, 0, 0, 0}
-    };
+  static struct option long_options[]
+      = { { "size", required_argument, 0, 'n' },
+          { "blitz", no_argument, 0, 'b' },
+          { "time", required_argument, 0, 't' },
+          { "contest", no_argument, 0, 'c' },
+          { "gui", no_argument, 0, 'g' },
+          { "ai", optional_argument, 0, 'a' },
+          { "debug", no_argument, 0, 'd' },
+          { "verbose", no_argument, 0, 'v' },
+          { "help", no_argument, 0, 'h' },
+          { "version", no_argument, 0, 'V' },
+          { 0, 0, 0, 0 } };
 
   init_default_config (&config);
 
   load_config_file (&config);
 
-  // getopt_long parcourt les arguments de la ligne de commande et les compare aux options définies dans long_options. 
-  //il prend en arguments argc et argv, qui sont les paramètres standard de la fonction main représentant le nombre d'arguments et les arguments eux-mêmes.
-  //ainsi que une chaîne de caractères "n:bt:cga::dvVh" qui indique les options courtes acceptées par le programme.
-  while ((opt = getopt_long (argc, argv, "n:bt:cga::dvVh", long_options, &option_index)) != -1)
+  // getopt_long parcourt les arguments de la ligne de commande et les compare
+  // aux options définies dans long_options.
+  // il prend en arguments argc et argv, qui sont les paramètres standard de la
+  // fonction main représentant le nombre d'arguments et les arguments
+  // eux-mêmes. ainsi que une chaîne de caractères "n:bt:cga::dvVh" qui indique
+  // les options courtes acceptées par le programme.
+  while ((opt = getopt_long (argc, argv, "n:bt:cga::dvVh", long_options,
+                             &option_index))
+         != -1)
     {
       switch (opt)
         {
         case 'n':
           config.board_size = atoi (optarg);
-          if (config.board_size < MIN_BOARD_SIZE || config.board_size > MAX_BOARD_SIZE)
+          if (config.board_size < MIN_BOARD_SIZE
+              || config.board_size > MAX_BOARD_SIZE)
             {
-              fprintf (stderr, "Erreur : La taille du plateau doit etre entre %d et %d.\n", 
-                       MIN_BOARD_SIZE, MAX_BOARD_SIZE);
+              fprintf (
+                  stderr,
+                  "Erreur : La taille du plateau doit etre entre %d et %d.\n",
+                  MIN_BOARD_SIZE, MAX_BOARD_SIZE);
               return EXIT_FAILURE;
             }
           break;
@@ -264,10 +273,11 @@ main (int argc, char *argv[])
 
         case 't':
           config.time_per_player = atoi (optarg);
-          if (config.time_per_player <= 0 || config.time_per_player > 1800) 
-            { 
-              fprintf (stderr, "Erreur : Le temps par joueur doit etre un entier positif entre 1 et 1800 secondes.\n"); 
-              return EXIT_FAILURE; 
+          if (config.time_per_player <= 0 || config.time_per_player > 1800)
+            {
+              fprintf (stderr, "Erreur : Le temps par joueur doit etre un "
+                               "entier positif entre 1 et 1800 secondes.\n");
+              return EXIT_FAILURE;
             }
           break;
 
@@ -285,17 +295,17 @@ main (int argc, char *argv[])
 
         case 'd':
         case 'v':
-          
+
           config.verbose = true;
           break;
 
         case 'V':
-          printf("amazons-c version %s\n", VERSION);
+          printf ("amazons-c version %s\n", VERSION);
           return EXIT_SUCCESS;
 
         case 'h':
           printf ("Usage: ./amazons [OPTIONS]\n");
-          printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n", 
+          printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n",
                   MIN_BOARD_SIZE, MAX_BOARD_SIZE, DEFAULT_BOARD_SIZE);
           printf ("  -b, --blitz     Activer le mode blitz\n");
           printf ("  -t, --time T    Temps par joueur en secondes\n");
@@ -308,11 +318,10 @@ main (int argc, char *argv[])
           printf ("  -V, --version   Affiche la version du jeu\n");
           return EXIT_SUCCESS;
 
-          default:
+        default:
           return EXIT_FAILURE;
         }
     }
-
 
   if (optind < argc)
     {
@@ -321,11 +330,12 @@ main (int argc, char *argv[])
     }
 
   rl_attempted_completion_function = amazons_completion;
-    char* input_buffer; //buffer pour contenir les commandes de l'utilisateur
-    bool game_running = true;
-    pos_t move_pos; //structure pour stocker les coordonnées d'un coup  (temporaire)
+  char *input_buffer; // buffer pour contenir les commandes de l'utilisateur
+  bool game_running = true;
+  pos_t move_pos; // structure pour stocker les coordonnées d'un coup
+                  // (temporaire)
 
-while (game_running)
+  while (game_running)
     {
       input_buffer = readline (">> ");
 
@@ -360,7 +370,8 @@ while (game_running)
         }
       else if (strncmp (input_buffer, "help", 4) == 0)
         {
-          printf ("Aide : new, help, quit, load, save, pause, hint, undo, redo, show, set\n");
+          printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
+                  "redo, show, set\n");
         }
       else if (strncmp (input_buffer, "new", 3) == 0)
         {
@@ -403,7 +414,8 @@ while (game_running)
             }
           else
             {
-              fprintf (stderr, "Erreur : commande inconnue '%s'\n", input_buffer);
+              fprintf (stderr, "Erreur : commande inconnue '%s'\n",
+                       input_buffer);
             }
         }
 
