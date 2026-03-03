@@ -12,6 +12,7 @@ sudo apt update && sudo apt install -y \
     libgtk-4-dev \
     libgtest-dev \
     libgmock-dev \
+    libreadline-dev \
     googletest \
     doxygen \
     graphviz \
