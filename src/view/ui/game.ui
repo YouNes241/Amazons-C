@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="game_box">
+    <property name="orientation">vertical</property>
+    
+    <child>
+      <object class="GtkBox" id="toolbar_box">
+        <property name="orientation">horizontal</property>
+        <property name="spacing">10</property>
+        <property name="margin-start">10</property>
+        <property name="margin-end">15</property>
+        <property name="margin-top">10</property>
+        <property name="valign">start</property>
+        
+        <child>
+          <object class="GtkMenuButton" id="file_btn_menu">
+            <property name="label">File</property>
+            <property name="popover">
+              <object class="GtkPopover">
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">5</property>
+                    <child>
+                      <object class="GtkButton" id="new_game_btn">
+                        <property name="label">New Game</property>
+                        <property name="css-classes">flat</property> </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="load_game_btn">
+                        <property name="label">Load Game</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="save_game_btn">
+                        <property name="label">Save Game</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="config_btn">
+                        <property name="label">Configurations</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="info_btn">
+                        <property name="label">Informations</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="quit_btn">
+                        <property name="label">Quit</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkMenuButton" id="game_btn_menu">
+            <property name="label">Game</property>
+            <property name="popover">
+              <object class="GtkPopover">
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">5</property>
+                    <child>
+                      <object class="GtkButton" id="undo_btn">
+                        <property name="label">Undo</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                      <object class="GtkButton" id="redo_btn">
+                        <property name="label">Redo</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                      <object class="GtkButton" id="pause_btn">
+                        <property name="label">Pause</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                      <object class="GtkButton" id="hint_btn">
+                        <property name="label">Hint</property>
+                        <property name="css-classes">flat</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="hexpand">true</property>
+          </object>
+        </child>
+
+      </object>
+    </child> <child>
+      <object class="GtkBox" id="board_container">
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property> 
+        
+        <child>
+          <object class="GtkLabel">
+            <property name="label">[ BOARD_PLACEHOLDER ]</property>
+            <property name="css-classes">dim-label title-2</property>
+          </object>
+        </child>
+
+      </object>
+    </child> </object>
+</interface>
