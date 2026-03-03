@@ -8,6 +8,7 @@ add_executable(unit_tests ${TEST_SOURCES} ${GAME_SRC})
 target_include_directories(unit_tests PRIVATE 
     "${CMAKE_SOURCE_DIR}/include"
     ${GUI_INCLUDE_DIRS}
+    ${READLINE_INCLUDE_DIRS}
 )
 
 # --- LINKING ---
@@ -20,6 +21,7 @@ endif()
 target_link_libraries(unit_tests PRIVATE 
     GTest::gtest_main 
     ${GUI_LIBRARIES} 
+    ${READLINE_LIBRARIES}
     m
 )
 include(GoogleTest)
