@@ -22,10 +22,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 
 # Link Dependencies
-target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/include")
+target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} ${READLINE_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/include")
 
 if(OpenMP_C_FOUND)
     target_link_libraries(amazons-c PRIVATE OpenMP::OpenMP_C)
 endif()
 
-target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m)
+target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} ${READLINE_LIBRARIES} m)

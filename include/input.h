@@ -11,7 +11,6 @@ typedef struct
 } pos_t;
 
 
- //SIGNATURE DE LA F20
  //Traduit une chaîne type "e2" en structure coord_t.
  //Retourne 0 si succès, -1 si le format est invalide.
  
