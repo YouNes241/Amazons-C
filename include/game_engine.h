@@ -80,8 +80,20 @@ void apply_move (GameState *state, Move move);
 
  * @return A Bitboard where each '1' bit represents a valid destination square.
  */
-Bitboard engine_get_reachable_squares (Bitboard obstacles, uint8_t start_index,
-                                       uint8_t board_size);
+Bitboard get_reachable_squares (Bitboard obstacles, uint8_t start_index,
+                                uint8_t board_size);
+
+/**
+ * @brief Fast check to see if a specific square has at least one legal move.
+ * It acts like an early-exit radar, stopping at the first empty adjacent
+ * square.
+ * @param obstacles The bitboard of all obstacles.
+ * @param start_index The index of the piece to check.
+ * @param board_size The size of the board.
+ * @return True if at least one square is reachable, false if totally trapped.
+ */
+bool has_legal_move (Bitboard obstacles, uint8_t start_index,
+                     uint8_t board_size);
 
 /**
  * @brief Generates the complete list of all possible legal moves for a player.
@@ -93,9 +105,9 @@ Bitboard engine_get_reachable_squares (Bitboard obstacles, uint8_t start_index,
  * @param out_moves Pre-allocated array to be filled.
  * @return The total number of valid moves found and inserted into the array.
  */
-int engine_generate_all_moves (Bitboard bb_white, Bitboard bb_black,
-                               Bitboard bb_arrows, PlayerColor current_player,
-                               Move *out_moves);
+int generate_all_moves (Bitboard bb_white, Bitboard bb_black,
+                        Bitboard bb_arrows, PlayerColor current_player,
+                        Move *out_moves);
 
 /**
  * @brief Checks if the current player has lost (if they are completely

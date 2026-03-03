@@ -114,8 +114,7 @@ apply_move (GameState *state, Move move)
       = state->board[move.queen_src.row][move.queen_src.col];
 
   // Empty the source cell of the queen
-  state->board[move.queen_src.row][move.queen_src.col]
-      = CONTENT_EMPTY; // Adapt according to your Enum
+  state->board[move.queen_src.row][move.queen_src.col] = CONTENT_EMPTY;
 
   // Place the queen in its new cell
   state->board[move.queen_dst.row][move.queen_dst.col] = moving_queen;
@@ -192,9 +191,10 @@ is_move_legal (const GameState *state, Move move)
   uint8_t size = state->size;
 
   // Check if all coordinates are on the board
-  if (!is_valid_coord (move.queen_src.col, move.queen_src.row, size)
-      || !is_valid_coord (move.queen_dst.col, move.queen_dst.row, size)
-      || !is_valid_coord (move.arrow_dst.col, move.arrow_dst.row, size))
+
+  if (!(is_valid_coord (move.queen_src.col, move.queen_src.row, size)
+        && is_valid_coord (move.queen_dst.col, move.queen_dst.row, size)
+        && is_valid_coord (move.arrow_dst.col, move.arrow_dst.row, size)))
     {
       return false;
     }
@@ -244,6 +244,38 @@ is_move_legal (const GameState *state, Move move)
 }
 
 bool
+has_legal_move (Bitboard obstacles, uint8_t start_index, uint8_t board_size)
+{
+  uint8_t start_x, start_y;
+  index_to_coords (start_index, board_size, &start_x, &start_y);
+
+  // The 8 possible directions for a queen
+  int8_t directions[8][2] = { { 0, -1 },  { 0, 1 },  { -1, 0 }, { 1, 0 },
+                              { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } };
+
+  // Check the immediate neighbor in each of the 8 directions
+  for (int i = 0; i < 8; i++)
+    {
+      int8_t check_x = start_x + directions[i][0];
+      int8_t check_y = start_y + directions[i][1];
+
+      if (is_valid_coord (check_x, check_y, board_size))
+        {
+          uint8_t current_idx = coords_to_index (check_x, check_y, board_size);
+
+          // If it's not an obstacle
+          if (!bitboard_get_bit (obstacles, current_idx))
+            {
+              return true;
+            }
+        }
+    }
+
+  // If we checked all 8 directions and couldn't return true, we are trapped.
+  return false;
+}
+
+bool
 is_game_over (const GameState *state, PlayerColor current_player)
 {
   if (state == NULL)
@@ -266,18 +298,10 @@ is_game_over (const GameState *state, PlayerColor current_player)
   // Traverse all squares on the board (from 0 to size*size - 1)
   for (uint8_t idx = 0; idx < max_index; idx++)
     {
-
       // If we find one of our queens on this square
       if (bitboard_get_bit (current_queens, idx))
         {
-
-          // We calculate all squares it can move to
-          Bitboard reachable
-              = engine_get_reachable_squares (obstacles, idx, size);
-
-          // If the bitboard reachable is not empty, the queen can move
-          // and the game is not over yet
-          if (!bitboard_is_zero (reachable))
+          if (has_legal_move (obstacles, idx, size))
             {
               return false;
             }
@@ -298,8 +322,8 @@ extract_bitboards_from_state (const GameState *state, Bitboard *bb_white,
 }
 
 Bitboard
-engine_get_reachable_squares (Bitboard obstacles, uint8_t start_index,
-                              uint8_t board_size)
+get_reachable_squares (Bitboard obstacles, uint8_t start_index,
+                       uint8_t board_size)
 {
   (void)obstacles;
   (void)start_index;
