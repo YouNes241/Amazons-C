@@ -598,7 +598,7 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
   int target_socket = -1;
   const char *log_prefix = "";
 
-  // 1. Déterminer le socket cible selon le mode
+  // 1. Determine the target socket according to the mode
   if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
       target_socket = manager->client_ctx->server_socket;
@@ -613,14 +613,14 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
       log_prefix = "[SERVER]";
     }
 
-  // 2. Vérifier si on a trouvé un destinataire valide
+  // 2. Check if a valid recipient has been found
   if (target_socket == -1)
     {
       printf ("%s Error: Invalid target.\n", log_prefix);
       return -1;
     }
 
-  // 3. Un seul appel d'envoi pour tout le monde !
+  // 3. One single sending call for everyone!
   if (send (target_socket, message, strlen (message), 0) < 0)
     {
       perror (log_prefix);
