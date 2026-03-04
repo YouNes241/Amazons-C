@@ -315,19 +315,142 @@ void
 extract_bitboards_from_state (const GameState *state, Bitboard *bb_white,
                               Bitboard *bb_black, Bitboard *bb_arrows)
 {
-  (void)state;
-  (void)bb_white;
-  (void)bb_black;
-  (void)bb_arrows;
+  *bb_white = bitboard_create_empty ();
+  *bb_black = bitboard_create_empty ();
+  *bb_arrows = bitboard_create_empty ();
+
+  for (uint8_t r = 0; r < state->size; r++)
+    {
+      for (uint8_t c = 0; c < state->size; c++)
+        {
+          uint8_t idx = coords_to_index (c, r, state->size);
+
+          switch (state->board[r][c])
+            {
+            case CONTENT_WHITE_QUEEN:
+              bitboard_set_bit (bb_white, idx);
+              break;
+            case CONTENT_BLACK_QUEEN:
+              bitboard_set_bit (bb_black, idx);
+              break;
+            case CONTENT_ARROW:
+              bitboard_set_bit (bb_arrows, idx);
+              break;
+            default:
+              break;
+            }
+        }
+    }
 }
 
 Bitboard
 get_reachable_squares (Bitboard obstacles, uint8_t start_index,
                        uint8_t board_size)
 {
-  (void)obstacles;
-  (void)start_index;
-  (void)board_size;
-  Bitboard res = { 0, 0 };
-  return res;
+  Bitboard reachable = bitboard_create_empty ();
+  uint8_t start_r, start_c;
+  index_to_coords (start_index, board_size, &start_c, &start_r);
+
+  // The 8 possible directions for a queen
+  for (int8_t dr = -1; dr <= 1; dr++)
+    {
+      for (int8_t dc = -1; dc <= 1; dc++)
+        {
+          if (dr == 0 && dc == 0)
+            continue;
+
+          for (int dist = 1; dist < board_size; dist++)
+            {
+              int8_t r = start_r + (dr * dist);
+              int8_t c = start_c + (dc * dist);
+
+              if (r < 0 || r >= board_size || c < 0 || c >= board_size)
+                break;
+              uint8_t current_idx = coords_to_index (c, r, board_size);
+
+              // If we hit an obstacle, we can't go further in this direction
+              if (bitboard_get_bit (obstacles, current_idx))
+                break;
+
+              bitboard_set_bit (&reachable, current_idx);
+            }
+        }
+    }
+  return reachable;
+}
+
+int
+generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
+                    PlayerColor current_player, uint8_t board_size,
+                    Move *out_moves)
+{
+  int count = 0;
+  Bitboard obstacles
+      = bitboard_or (bb_white, bitboard_or (bb_black, bb_arrows));
+  Bitboard my_queens = (current_player == PLAYER_WHITE) ? bb_white : bb_black;
+
+  // Copy to a temporary variable because it will be modified with pop_lsb
+  Bitboard temp_queens = my_queens;
+
+  while (!bitboard_is_zero (temp_queens))
+    {
+      uint8_t q_from = pop_lsb (&temp_queens);
+      Bitboard queen_destinations
+          = get_reachable_squares (obstacles, q_from, board_size);
+
+      Bitboard temp_q_dests = queen_destinations;
+      while (!bitboard_is_zero (temp_q_dests))
+        {
+          uint8_t q_to = pop_lsb (&temp_q_dests);
+
+          // Simulate the queen's move
+          Bitboard arrow_obstacles = obstacles;
+          bitboard_clear_bit (&arrow_obstacles, q_from);
+          bitboard_set_bit (&arrow_obstacles, q_to);
+
+          Bitboard arrow_destinations
+              = get_reachable_squares (arrow_obstacles, q_to, board_size);
+
+          Bitboard temp_a_dests = arrow_destinations;
+          while (!bitboard_is_zero (temp_a_dests))
+            {
+              uint8_t arrow_to = pop_lsb (&temp_a_dests);
+
+              if (out_moves != NULL)
+                {
+                  uint8_t q_from_x, q_from_y, q_to_x, q_to_y, a_to_x, a_to_y;
+                  index_to_coords (q_from, board_size, &q_from_x, &q_from_y);
+                  index_to_coords (q_to, board_size, &q_to_x, &q_to_y);
+                  index_to_coords (arrow_to, board_size, &a_to_x, &a_to_y);
+
+                  out_moves[count].queen_src.col = q_from_x;
+                  out_moves[count].queen_src.row = q_from_y;
+                  out_moves[count].queen_dst.col = q_to_x;
+                  out_moves[count].queen_dst.row = q_to_y;
+                  out_moves[count].arrow_dst.col = a_to_x;
+                  out_moves[count].arrow_dst.row = a_to_y;
+                }
+              count++;
+            }
+        }
+    }
+  return count;
+}
+
+PlayerColor
+get_winner (const GameState *state)
+{
+  if (!is_game_over (state, state->current_player))
+    {
+      return NO_PLAYER;
+    }
+
+  if (state->current_player == PLAYER_WHITE)
+    {
+      return PLAYER_BLACK;
+    }
+  else
+    {
+      return PLAYER_WHITE;
+    }
 }

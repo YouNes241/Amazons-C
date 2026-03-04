@@ -106,8 +106,8 @@ bool has_legal_move (Bitboard obstacles, uint8_t start_index,
  * @return The total number of valid moves found and inserted into the array.
  */
 int generate_all_moves (Bitboard bb_white, Bitboard bb_black,
-                        Bitboard bb_arrows, PlayerColor current_player,
-                        Move *out_moves);
+                        Bitboard bb_arrows, uint8_t board_size,
+                        PlayerColor current_player, Move *out_moves);
 
 /**
  * @brief Checks if the current player has lost (if they are completely
