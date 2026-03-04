@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
+#include <string.h>
 #include <unistd.h>
 
 extern "C"
 {
 #include "../../src/network/network_internal.h"
+#include "../../src/network/network_packet.h" // NOUVEAU: On inclut les paquets
 #include "ai_factory.h"
 #include "network_protocol.h"
 }
@@ -27,19 +29,12 @@ mock_on_move_received (Move m)
  * ==========================================================================
  */
 
-/**
- * @brief Tests the full pipeline: AI decision -> Serialization -> TCP ->
- * Deserialization.
- * @details Creates a local server/client pair, generates a move using the AI,
- * sends it over the network, and verifies that the exact same move is received
- * and decoded by the server's callback.
- */
 TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
 {
   // 1. Network Initialization (Server + Client)
   NetworkManager server_mgr, client_mgr;
   NetworkEvents callbacks = {};
-  callbacks.OnMoveReceived = mock_on_move_received; // we listen
+  callbacks.OnMoveReceived = mock_on_move_received;
 
   NetworkManager_Init (&server_mgr, callbacks);
   NetworkManager_Init (&client_mgr, callbacks);
@@ -47,10 +42,19 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   int port = 9500;
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, port), 0);
   ASSERT_EQ (NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", port), 0);
+  NetworkManager_Tick (&server_mgr);
 
-  NetworkManager_Tick (
-      &server_mgr);             // The server accepts the client's connection
-  g_move_received_flag = false; // flag reset
+  // --- : LE HANDSHAKE ---
+  // teh clietn has to identify before playing
+  Packet join_pkt = { C2S_JOIN, "AI_Player" };
+  char join_buf[256];
+  SerializePacket (&join_pkt, join_buf, sizeof (join_buf));
+  NetworkManager_Send (&client_mgr, 0, join_buf);
+
+  NetworkManager_Tick (&server_mgr); // the server get  JOIN and send WELCOME
+  NetworkManager_Tick (&client_mgr); // the client get WELCOME
+
+  g_move_received_flag = false;
 
   // 2. Creating a fake game board for the AI
   CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 10);
@@ -74,19 +78,27 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   AI_Interface randomAI = create_ai ("random", empty_params);
   Move ai_move = randomAI.vtable->get_best_move (&randomAI, state);
 
-  // 4. TRANSLATION: Move ➔ String (Serialization)
-  char network_message[64];
-  Protocol_MoveToString (ai_move, network_message, sizeof (network_message));
-  printf ("[TEST] AI playing, translation sent : %s", network_message);
+  // 4. TRANSLATION & PACKAGING
+  char raw_move[64];
+  Protocol_MoveToString (ai_move, raw_move, sizeof (raw_move));
 
-  // 5. TCP SEND: The client sends the text to the server
-  ASSERT_EQ (NetworkManager_Send (&client_mgr, 0, network_message), 0);
+  raw_move[strcspn (raw_move, "\n")] = 0;
 
-  // 6. TCP RECEPTION: The server ticks, reads the buffer, translates, and
-  // calls OnMoveReceived
+  Packet move_pkt;
+  move_pkt.type = C2S_MOVE;
+  strncpy (move_pkt.payload, raw_move, MAX_PAYLOAD_SIZE);
+
+  char packet_buffer[256];
+  SerializePacket (&move_pkt, packet_buffer, sizeof (packet_buffer));
+  printf ("[TEST] AI playing, packet sent : %s", packet_buffer);
+
+  // 5. TCP SEND: The client sends the PACKET to the server
+  ASSERT_EQ (NetworkManager_Send (&client_mgr, 0, packet_buffer), 0);
+
+  // 6. TCP RECEPTION: The server ticks, deserializes, and calls callback
   NetworkManager_Tick (&server_mgr);
 
-  // 7. VERIFICATION: Did the attack arrive intact across the network?
+  // 7. VERIFICATION
   ASSERT_TRUE (g_move_received_flag) << "OnMoveReceived callback not called";
 
   EXPECT_EQ (g_last_received_move.queen_src.row, ai_move.queen_src.row);
@@ -113,24 +125,12 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
  * ==========================================================================
  */
 
-/**
- * @brief Tests NULL pointer protection for Protocol_MoveToString.
- * @details Ensures the function returns safely without causing a segmentation
- * fault when provided a NULL output buffer.
- * **Coverage Goal:** Exercises the error branch where buffer_out is NULL.
- */
 TEST (NetworkProtocolTest, MoveToString_NullBufferGuard)
 {
   Move m = { { 0, 0 }, { 0, 1 }, { 0, 2 } };
   EXPECT_NO_THROW (Protocol_MoveToString (m, nullptr, 0));
 }
 
-/**
- * @brief Tests NULL pointer protection for Protocol_StringToMove.
- * @details Ensures the parser safely rejects NULL input strings or NULL
- * output structures, preventing memory access violations.
- * **Coverage Goal:** Exercises the error branches for NULL parameters.
- */
 TEST (NetworkProtocolTest, StringToMove_NullPointerGuards)
 {
   Move m;
@@ -138,59 +138,34 @@ TEST (NetworkProtocolTest, StringToMove_NullPointerGuards)
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-b2-c3\n", nullptr));
 }
 
-/**
- * @brief Tests the protocol parser against malformed and invalid strings.
- * @details Feeds incomplete or completely invalid strings to the parser to
- * verify that it safely rejects them without altering game state.
- * **Coverage Goal:** Exercises the false branch of the sscanf validation
- * (parsed != 6).
- */
 TEST (NetworkProtocolTest, StringToMove_InvalidFormats)
 {
   Move m;
-
-  // 1. Complete garbage (No coordinates)
   EXPECT_FALSE (Protocol_StringToMove ("PATA_CREPE", &m));
-
-  // 2. Incomplete move (Missing the arrow destination)
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-b2", &m));
-
-  // 3. Missing row numbers
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a-b-c", &m));
-
-  // 4. Wrong prefix (Not matching "MOVE ")
   EXPECT_FALSE (Protocol_StringToMove ("JUMP a1-b2-c3", &m));
 }
 
-/**
- * @brief Tests the protocol parser against out-of-bounds coordinates.
- * @details Exercises every single lower (< 'a', < 1) and upper (> 'j', > 10)
- * boundary for the source queen, destination queen, and arrow destination.
- * **Coverage Goal:** Achieves 100% branch coverage on coordinate validation
- * logic by targeting the short-circuiting behavior of the '||' operators.
- */
 TEST (NetworkProtocolTest, StringToMove_OutOfBoundsCoordinates)
 {
   Move m;
 
   // --- SOURCE QUEEN ---
-  // Colonnes hors bornes (< 'a' et > 'j')
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE A1-a2-a3\n",
-                                       &m)); // c_src < 'a' (ASCII 'A' < 'a')
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE z1-a2-a3\n", &m)); // c_src > 'j'
-  // Lignes hors bornes (< 1 et > 10)
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a0-a2-a3\n", &m));  // r_src < 1
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a11-a2-a3\n", &m)); // r_src > 10
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE A1-a2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE z1-a2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a0-a2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a11-a2-a3\n", &m));
 
   // --- DESTINATION QUEEN ---
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-A2-a3\n", &m));  // c_dst < 'a'
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-z2-a3\n", &m));  // c_dst > 'j'
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a0-a3\n", &m));  // r_dst < 1
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a11-a3\n", &m)); // r_dst > 10
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-A2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-z2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a0-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a11-a3\n", &m));
 
   // --- ARROW DESTINATION ---
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-A3\n", &m));  // c_arr < 'a'
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-z3\n", &m));  // c_arr > 'j'
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a0\n", &m));  // r_arr < 1
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a11\n", &m)); // r_arr > 10
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-A3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-z3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a0\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a11\n", &m));
 }

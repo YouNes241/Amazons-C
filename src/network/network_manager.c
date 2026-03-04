@@ -6,6 +6,7 @@
 
 #include "network_common.h"
 #include "network_internal.h"
+#include "network_packet.h"
 #include "network_protocol.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -280,7 +281,7 @@ NetworkManager_Cleanup (NetworkManager *manager)
  * and initializes the dedicated TCP buffer for the new client.
  */
 static void
-handle_server_new_connection (NetworkManager *manager, ServerContext *ctx)
+handle_server_new_connection (ServerContext *ctx)
 {
   struct sockaddr_in client_addr;
   socklen_t addr_len = sizeof (client_addr);
@@ -300,15 +301,15 @@ handle_server_new_connection (NetworkManager *manager, ServerContext *ctx)
               ctx->fds[i].events = POLLIN;
               ctx->clients[i].fd = client_fd;
               tcp_buffer_init (&ctx->clients[i].buffer);
+              ctx->clients[i].is_joined = false;
+              memset (ctx->clients[i].username, 0, 32);
               ctx->num_clients++;
               accepted = true;
 
-              printf ("[SERVER] New client connected (Slot %d)\n", i);
-              if (manager->callbacks.OnPlayerJoined)
-                {
-                  manager->callbacks.OnPlayerJoined (
-                      "Unknown"); // TODO change later
-                }
+              printf ("[SERVER] TCP Connection established (Slot %d) - "
+                      "Waiting for JOIN packet...\n",
+                      i);
+
               break;
             }
         }
@@ -352,30 +353,85 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
     }
 
   char extracted_msg[256];
-  int res;
-  while (
-      (res = tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
-                                      extracted_msg, sizeof (extracted_msg)))
-      != 0)
+  while (tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
+                                  extracted_msg, sizeof (extracted_msg)))
     {
-      if (res == -1)
+      Packet pkt;
+      if (!DeserializePacket (extracted_msg, &pkt))
         {
-          printf ("[SERVER] Warning: oversized message from client %d, "
-                  "discarded.\n",
-                  client_index);
+          printf ("[SERVER] Incorrect format of received package : %s\n",
+                  extracted_msg);
           continue;
         }
 
-      printf ("[SERVER] Client command received %d : '%s'\n", client_index,
-              extracted_msg);
-      Move parsed_move;
-      if (strncmp (extracted_msg, "MOVE", 4) == 0)
+      char out_buffer[256];
+      Packet resp;
+
+      switch (pkt.type)
         {
-          if (Protocol_StringToMove (extracted_msg, &parsed_move))
-            {
-              if (manager->callbacks.OnMoveReceived)
-                manager->callbacks.OnMoveReceived (parsed_move);
-            }
+        case C2S_JOIN:
+          {
+            // 1. Check if the username is already taken.
+            bool name_taken = false;
+            for (int j = 1; j <= MAX_CLIENTS; j++)
+              {
+                if (j != client_index && ctx->fds[j].fd != -1
+                    && ctx->clients[j].is_joined)
+                  {
+                    if (strcmp (ctx->clients[j].username, pkt.payload) == 0)
+                      {
+                        name_taken = true;
+                        break;
+                      }
+                  }
+              }
+
+            if (name_taken)
+              {
+                resp.type = S2C_REJECT;
+                strcpy (resp.payload, "Username already taken");
+                SerializePacket (&resp, out_buffer, sizeof (out_buffer));
+                send (ctx->fds[client_index].fd, out_buffer,
+                      strlen (out_buffer), 0);
+              }
+            else
+              {
+                // 2. Accept player
+                strncpy (ctx->clients[client_index].username, pkt.payload, 31);
+                ctx->clients[client_index].username[31] = '\0';
+                ctx->clients[client_index].is_joined = true;
+
+                resp.type = S2C_WELCOME;
+                strcpy (resp.payload, "Welcome !");
+                SerializePacket (&resp, out_buffer, sizeof (out_buffer));
+                send (ctx->fds[client_index].fd, out_buffer,
+                      strlen (out_buffer), 0);
+
+                // 3. Inform the game engine
+                if (manager->callbacks.OnPlayerJoined)
+                  {
+                    manager->callbacks.OnPlayerJoined (
+                        ctx->clients[client_index].username);
+                  }
+              }
+            break;
+          }
+        case C2S_MOVE:
+          {
+            Move parsed_move;
+            // Note : pkt.payload contains "MOVE a1-a2-a3"
+            if (Protocol_StringToMove (pkt.payload, &parsed_move))
+              {
+                if (manager->callbacks.OnMoveReceived)
+                  {
+                    manager->callbacks.OnMoveReceived (parsed_move);
+                  }
+              }
+            break;
+          }
+        default:
+          printf ("[SERVER] Unmanaged package (Type: %d)\n", pkt.type);
+          break;
         }
     }
 }
@@ -389,13 +445,13 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
   if (poll_count <= 0)
     return;
 
-  // 1. Is there a new connection at the door?
+  // 1. Is there a new connection at the door
   if (ctx->fds[0].revents & POLLIN)
     {
-      handle_server_new_connection (manager, ctx);
+      handle_server_new_connection (ctx);
     }
 
-  // 2. Is there data from existing clients?
+  // 2. Is there data from existing clients
   for (int i = 1; i <= MAX_CLIENTS; i++)
     {
       if (ctx->fds[i].fd != -1
@@ -408,6 +464,8 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 
 /**
  * @brief Handles the client's multiplexing logic.
+ * @details Reads raw bytes, buffers them, extracts lines, deserializes
+ * packets, and triggers the appropriate game logic based on the packet type.
  */
 static void
 handle_client_tick (NetworkManager *manager, ClientContext *ctx)
@@ -447,15 +505,52 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
           continue;
         }
 
-      printf ("[CLIENT] Server command received : '%s'\n", extracted_msg);
-      Move parsed_move;
-      if (strncmp (extracted_msg, "MOVE", 4) == 0)
+      Packet pkt;
+      if (!DeserializePacket (extracted_msg, &pkt))
         {
-          if (Protocol_StringToMove (extracted_msg, &parsed_move))
-            {
-              if (manager->callbacks.OnMoveReceived)
-                manager->callbacks.OnMoveReceived (parsed_move);
-            }
+          printf ("[CLIENT] Incorrect format of received package : %s\n",
+                  extracted_msg);
+          continue;
+        }
+
+      // Traitement du paquet en fonction de son type
+      switch (pkt.type)
+        {
+        case S2C_WELCOME:
+          printf ("[CLIENT] Connection accepted by server: %s\n", pkt.payload);
+          // Le serveur nous a acceptés, on est officiellement dans la partie !
+          break;
+
+        case S2C_REJECT:
+          printf ("[CLIENT] Connection rejected: %s\n", pkt.payload);
+          // Le pseudo est pris ou le serveur est plein.
+          NetworkManager_Cleanup (manager);
+          break;
+
+        case S2C_ERROR:
+          printf ("[CLIENT] Server Error: %s\n", pkt.payload);
+          break;
+
+        case S2C_GAME_START:
+          printf ("[CLIENT] Game is starting!\n");
+          // TODO: F41.x - call callback OnGameStarted
+          break;
+
+        case C2S_MOVE:
+          {
+            Move parsed_move;
+            // Note : pkt.payload contains "MOVE a1-a2-a3"
+            if (Protocol_StringToMove (pkt.payload, &parsed_move))
+              {
+                if (manager->callbacks.OnMoveReceived)
+                  manager->callbacks.OnMoveReceived (parsed_move);
+              }
+            break;
+          }
+
+        default:
+          printf ("[CLIENT] Unmanaged package (Type: %d)\n", pkt.type);
+          break;
         }
     }
 }

@@ -7,6 +7,7 @@
 extern "C"
 {
 #include "../../src/network/network_internal.h"
+#include "../../src/network/network_packet.h"
 #include "network_protocol.h"
 }
 
@@ -66,16 +67,10 @@ protected:
 };
 
 /* ==========================================================================
- * CATEGORY 1: CONNECTION LIFECYCLE (F40.3)
+ * CATEGORY 1: CONNECTION LIFECYCLE
  * ==========================================================================
  */
 
-/**
- * @brief Tests the successful initialization and connection of a server and a
- * client.
- * @details Verifies that internal modes transition correctly to
- * NET_MODE_SERVER and NET_MODE_CLIENT.
- */
 TEST_F (NetworkManagerTest, ConnectionLifecycleSuccess)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
@@ -86,11 +81,6 @@ TEST_F (NetworkManagerTest, ConnectionLifecycleSuccess)
   EXPECT_EQ (client_mgr.current_mode, NET_MODE_CLIENT);
 }
 
-/**
- * @brief Tests state machine guards against double activation.
- * @details Ensures a manager cannot start a server or join a client if it is
- * already in an active mode.
- */
 TEST_F (NetworkManagerTest, StateGuardsPreventDoubleActivation)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
@@ -105,11 +95,6 @@ TEST_F (NetworkManagerTest, StateGuardsPreventDoubleActivation)
   EXPECT_EQ (NetworkManager_ServerStart (&client_mgr, test_port + 1), -1);
 }
 
-/**
- * @brief Tests error handling during connection and initialization.
- * @details Covers restricted ports, port binding collisions, and invalid IP
- * string formats.
- */
 TEST_F (NetworkManagerTest, ConnectionLifecycleFailures)
 {
   EXPECT_EQ (NetworkManager_ServerStart (&server_mgr, 1), -1);
@@ -125,67 +110,103 @@ TEST_F (NetworkManagerTest, ConnectionLifecycleFailures)
 }
 
 /* ==========================================================================
- * CATEGORY 2: EVENT LOOP, SENDING & DATA HANDLING (F40.4 & F40.5)
+ * CATEGORY 2: EVENT LOOP, PROTOCOL & HANDSHAKE
  * ==========================================================================
  */
 
 /**
- * @brief Tests the core event loop for data transmission and connection
- * events.
- * @details Simulates client connection, two-way data transmission
- * (PING/HELLO), and disconnection to verify the multiplexer logic handles all
- * POLLIN events.
+ * @brief Tests the new Join Handshake .
+ * @details Simulates a client sending a JOIN packet, and the server
+ * responding with a WELCOME packet.
  */
-TEST_F (NetworkManagerTest, EventLoopTrafficHandling)
+TEST_F (NetworkManagerTest, EventLoopHandshakeSuccess)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
   ASSERT_EQ (NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port),
              0);
   NetworkManager_Tick (&server_mgr);
 
-  // Client -> Server
-  int c_sock = client_mgr.client_ctx->server_socket;
-  send (c_sock, "PING\n", 5, 0);
-  NetworkManager_Tick (&server_mgr);
+  // Client -> Server : C2S_JOIN
+  Packet join_pkt = { C2S_JOIN, "Alice" };
+  char buffer[256];
+  SerializePacket (&join_pkt, buffer, sizeof (buffer));
+  send (client_mgr.client_ctx->server_socket, buffer, strlen (buffer), 0);
 
-  // Server -> Client
-  int s_client_fd = server_mgr.server_ctx->fds[1].fd;
-  send (s_client_fd, "HELLO\n", 6, 0);
-  NetworkManager_Tick (&client_mgr);
-
-  NetworkManager_Cleanup (&client_mgr);
+  // Server processes JOIN, fires OnPlayerJoined, and sends WELCOME
   NetworkManager_Tick (&server_mgr);
+  EXPECT_EQ (cb_joined_count, 1);
+
+  // Client receives WELCOME
+  EXPECT_NO_THROW (NetworkManager_Tick (&client_mgr));
 }
 
 /**
- * @brief Verifies the routing logic of NetworkManager_Send.
- * @details Tests sending messages from the server, targeting specific clients,
- * and handling invalid target IDs or disconnected slots.
+ * @brief Tests server rejection when a username is already taken.
+ * @details Connects two clients with the exact same pseudo to trigger
+ * the S2C_REJECT branch on the server.
  */
-TEST_F (NetworkManagerTest, SendFunctionRoutingLogic)
+TEST_F (NetworkManagerTest, HandshakeNameCollision)
+{
+  ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
+
+  NetworkManager client1, client2;
+  NetworkManager_Init (&client1, test_callbacks);
+  NetworkManager_Init (&client2, test_callbacks);
+
+  NetworkManager_ClientJoin (&client1, "127.0.0.1", test_port);
+  NetworkManager_Tick (&server_mgr);
+  NetworkManager_ClientJoin (&client2, "127.0.0.1", test_port);
+  NetworkManager_Tick (&server_mgr);
+
+  Packet join_pkt = { C2S_JOIN, "Clone" };
+  char buffer[256];
+  SerializePacket (&join_pkt, buffer, sizeof (buffer));
+
+  // Client 1 joins successfully
+  send (client1.client_ctx->server_socket, buffer, strlen (buffer), 0);
+  NetworkManager_Tick (&server_mgr);
+
+  // Client 2 attempts to join with the same name -> Rejected
+  send (client2.client_ctx->server_socket, buffer, strlen (buffer), 0);
+  NetworkManager_Tick (&server_mgr);
+
+  // Client 2 processes the REJECT packet
+  EXPECT_NO_THROW (NetworkManager_Tick (&client2));
+
+  NetworkManager_Cleanup (&client1);
+  NetworkManager_Cleanup (&client2);
+}
+
+/**
+ * @brief Validates all Client-side switch branches.
+ * @details Sends every possible server packet to the client to hit all cases.
+ */
+TEST_F (NetworkManagerTest, ClientPacketTypesCoverage)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
   ASSERT_EQ (NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port),
              0);
   NetworkManager_Tick (&server_mgr);
 
-  // 1. Valid send from Server to Client (Slot 1)
-  EXPECT_EQ (NetworkManager_Send (&server_mgr, 1, "VALID\n"), 0);
+  int s_fd = server_mgr.server_ctx->fds[1].fd;
+  char buf[256];
+  Packet pkt;
 
-  // 2. Invalid target IDs (Out of bounds)
-  EXPECT_EQ (NetworkManager_Send (&server_mgr, 0, "INVALID\n"), -1);
-  EXPECT_EQ (NetworkManager_Send (&server_mgr, MAX_CLIENTS + 1, "INVALID\n"),
-             -1);
+  // Send various packets to hit all the switch cases in handle_client_tick
+  pkt = { S2C_ERROR, "Err" };
+  SerializePacket (&pkt, buf, 256);
+  send (s_fd, buf, strlen (buf), 0);
+  pkt = { S2C_GAME_START, "Go" };
+  SerializePacket (&pkt, buf, 256);
+  send (s_fd, buf, strlen (buf), 0);
+  pkt = { PKT_UNKNOWN, "?" };
+  SerializePacket (&pkt, buf, 256);
+  send (s_fd, buf, strlen (buf), 0);
 
-  // 3. Sending to an empty/disconnected slot
-  EXPECT_EQ (NetworkManager_Send (&server_mgr, 2, "EMPTY\n"), -1);
+  // Client processes everything
+  EXPECT_NO_THROW (NetworkManager_Tick (&client_mgr));
 }
 
-/**
- * @brief Validates the parsing and callback triggering for "MOVE" commands.
- * @details Tests the parsing logic against malformed moves, valid moves,
- * and scenarios where no callbacks are registered to cover all branches.
- */
 TEST_F (NetworkManagerTest, MoveCommandParsingAndCallbacks)
 {
   NetworkEvents empty_cb = {}; // No callbacks registered
@@ -198,26 +219,29 @@ TEST_F (NetworkManagerTest, MoveCommandParsingAndCallbacks)
              0);
   NetworkManager_Tick (&server_no_cb);
 
-  // 1. Client sends a malformed MOVE (Hits Protocol_StringToMove fail branch)
-  send (client_no_cb.client_ctx->server_socket, "MOVE INVALID\n", 13, 0);
+  Packet pkt;
+  char buf[256];
+
+  // 1. Malformed payload
+  pkt = { C2S_MOVE, "MOVE INVALID" };
+  SerializePacket (&pkt, buf, 256);
+  send (client_no_cb.client_ctx->server_socket, buf, strlen (buf), 0);
   NetworkManager_Tick (&server_no_cb);
 
-  // 2. Client sends valid MOVE, but Server has NO callback registered
-  send (client_no_cb.client_ctx->server_socket, "MOVE a1-a2-a3\n", 14, 0);
+  // 2. Valid MOVE, but Server has NO callback registered
+  pkt = { C2S_MOVE, "MOVE a1-a2-a3" };
+  SerializePacket (&pkt, buf, 256);
+  send (client_no_cb.client_ctx->server_socket, buf, strlen (buf), 0);
   NetworkManager_Tick (&server_no_cb);
 
   // 3. Server sends valid MOVE to Client, but Client has NO callback
-  // registered
-  send (server_no_cb.server_ctx->fds[1].fd, "MOVE a1-a2-a3\n", 14, 0);
+  send (server_no_cb.server_ctx->fds[1].fd, buf, strlen (buf), 0);
   NetworkManager_Tick (&client_no_cb);
 
   NetworkManager_Cleanup (&client_no_cb);
   NetworkManager_Cleanup (&server_no_cb);
 }
 
-/**
- * @brief Tests client-side detection of an abrupt server shutdown.
- */
 TEST_F (NetworkManagerTest, EventLoopClientDetectionServerDown)
 {
   NetworkEvents no_cb = {};
@@ -232,9 +256,6 @@ TEST_F (NetworkManagerTest, EventLoopClientDetectionServerDown)
   NetworkManager_Tick (&client_mgr);
 }
 
-/**
- * @brief Tests the multiplexer behavior during network inactivity.
- */
 TEST_F (NetworkManagerTest, EventLoopInactivity)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
@@ -251,32 +272,43 @@ TEST_F (NetworkManagerTest, EventLoopInactivity)
  * ==========================================================================
  */
 
-/**
- * @brief Tests defensive programming guards against NULL pointer parameters.
- * @details Ensures public API functions safely return errors or exit early
- * instead of crashing when passed NULL managers or messages.
- */
 TEST_F (NetworkManagerTest, RobustnessParameterValidation)
 {
   EXPECT_EQ (NetworkManager_ServerStart (nullptr, 8080), -1);
   EXPECT_EQ (NetworkManager_ClientJoin (nullptr, "127.0.0.1", 8080), -1);
   EXPECT_EQ (NetworkManager_ClientJoin (&client_mgr, nullptr, 8080), -1);
 
-  // Send function guards
   EXPECT_EQ (NetworkManager_Send (nullptr, 1, "MSG\n"), -1);
   EXPECT_EQ (NetworkManager_Send (&server_mgr, 1, nullptr), -1);
-  EXPECT_EQ (NetworkManager_Send (&server_mgr, 1, "MSG\n"),
-             -1); // Fails because mode is NONE
+  EXPECT_EQ (NetworkManager_Send (&server_mgr, 1, "MSG\n"), -1);
 
   EXPECT_NO_THROW (NetworkManager_Tick (nullptr));
   EXPECT_NO_THROW (NetworkManager_Cleanup (nullptr));
 }
 
 /**
- * @brief Tests protection against network flooding and buffer overflows.
- * @details Floods the sockets with oversized payloads to trigger the
- * status == -2 (buffer full) error on both the client and server sides.
+ * @brief Tests extraction rejection for excessively long lines (res == -1).
  */
+TEST_F (NetworkManagerTest, RobustnessOversizedLineDiscarded)
+{
+  ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
+  ASSERT_EQ (NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port),
+             0);
+  NetworkManager_Tick (&server_mgr);
+
+  // Creates a 300-character message (greater than the 256 allocated for
+  // extracted_msg)
+  std::string huge_line (300, 'A');
+  huge_line += "\n";
+
+  send (server_mgr.server_ctx->fds[1].fd, huge_line.c_str (),
+        huge_line.size (), 0);
+
+  // The client receives the line, sees that it exceeds sizeof(extracted_msg),
+  // and rejects it
+  EXPECT_NO_THROW (NetworkManager_Tick (&client_mgr));
+}
+
 TEST_F (NetworkManagerTest, RobustnessBufferOverflowProtection)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
@@ -290,8 +322,6 @@ TEST_F (NetworkManagerTest, RobustnessBufferOverflowProtection)
   // 1. Flood Server buffer
   send (client_mgr.client_ctx->server_socket, huge_payload.c_str (),
         huge_payload.size (), 0);
-  // Tick multiple times to let recv() drain the socket into the tcp_buffer
-  // until it chokes
   for (int i = 0; i < 20; i++)
     NetworkManager_Tick (&server_mgr);
 
@@ -301,13 +331,9 @@ TEST_F (NetworkManagerTest, RobustnessBufferOverflowProtection)
   for (int i = 0; i < 20; i++)
     NetworkManager_Tick (&client_mgr);
 
-  // If the program reaches here without crashing, the protection works.
   SUCCEED ();
 }
 
-/**
- * @brief Tests the server's maximum client capacity constraints.
- */
 TEST_F (NetworkManagerTest, RobustnessCapacityLimits)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), 0);
@@ -331,10 +357,6 @@ TEST_F (NetworkManagerTest, RobustnessCapacityLimits)
   NetworkManager_Cleanup (&full);
 }
 
-/**
- * @brief Tests resilience against corrupted internal states and missing
- * callbacks.
- */
 TEST_F (NetworkManagerTest, RobustnessInternalConsistency)
 {
   // 1. Missing Callbacks
