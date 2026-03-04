@@ -21,10 +21,6 @@ typedef enum
   NET_MODE_CLIENT
 } NetworkMode;
 
-/**
- * @brief Déclarations opaques.
- * Le reste du projet sait qu'elles existent mais pas ce qu'elles contiennent.
- */
 typedef struct ServerContext ServerContext;
 typedef struct ClientContext ClientContext;
 
@@ -51,8 +47,8 @@ typedef struct
 typedef struct
 {
   NetworkMode current_mode;
-  ServerContext *server_ctx; // Pointeur vers structure opaque
-  ClientContext *client_ctx; // Pointeur vers structure opaque
+  ServerContext *server_ctx;
+  ClientContext *client_ctx;
   NetworkEvents callbacks;
 } NetworkManager;
 
@@ -67,5 +63,7 @@ void NetworkManager_Tick (NetworkManager *manager);
 int NetworkManager_ServerStart (NetworkManager *manager, int port);
 int NetworkManager_ClientJoin (NetworkManager *manager, const char *ip,
                                int port);
+int NetworkManager_Send (NetworkManager *manager, int target_client,
+                         const char *message);
 
 #endif // NETWORK_COMMON_H
