@@ -292,3 +292,9 @@ bitboard_print (Bitboard bb, uint8_t width)
     }
   printf ("\n");
 }
+
+int
+bitboard_count_bits (Bitboard bb)
+{
+  return __builtin_popcountll (bb.low) + __builtin_popcountll (bb.high);
+}

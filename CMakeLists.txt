@@ -1,71 +1,61 @@
 cmake_minimum_required(VERSION 3.14)
 project(AmazonGame LANGUAGES C CXX)
-enable_testing()
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+
+include(FetchContent)
+FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/releases/download/v1.15.2/googletest-1.15.2.tar.gz
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        DOWNLOAD_NO_PROGRESS TRUE
+      )
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+include(CTest)
+include(GoogleTest)
+
+enable_testing()
 add_compile_options(-Wall -Wextra -g)
 
-# --- TENSORFLOW (Manual download) ---
-# --- TENSORFLOW (Téléchargement dynamique) ---
-# TODO : When necessary (about 8th or 9th week)
-
-include_directories(${TF_DIR}/include)
-link_directories(${TF_DIR}/lib)
-# --- System dependencies - should be downloaded prior using sudo apt-get ---
-
-# 1. GTK
+# --- DEPENDENCIES ---
+find_package(OpenMP REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUI REQUIRED gtk4)
+pkg_check_modules(READLINE REQUIRED readline)
 add_definitions(${GUI_CFLAGS_OTHER})
+add_definitions(${READLINE_CFLAGS_OTHER})
+file(COPY "${CMAKE_SOURCE_DIR}/src/view/ui" DESTINATION "${CMAKE_BINARY_DIR}")
 
-# 2. GoogleTest
-find_package(GTest REQUIRED)
-
-# 3. Others
 find_package(Intl)
 find_package(Doxygen)
 
-# --- SOURCES ---
-file(GLOB_RECURSE SRC "src/*.c")
-file(GLOB_RECURSE TEST_SOURCES "tests/*.cpp")
-list(REMOVE_ITEM SRC "${CMAKE_SOURCE_DIR}/src/main.c")
+# --- SUBDIRECTORIES ---
+add_subdirectory(src)
+add_subdirectory(tests)
 
-# --- TARGETS ---
-add_executable(amazons-c src/main.c ${SRC})
-target_include_directories(amazons-c PRIVATE ${GUI_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(amazons-c PRIVATE ${GUI_LIBRARIES} m GTest::GTest)
-
-# Tests
-add_executable(unit_tests ${TEST_SOURCES})
-target_include_directories(unit_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
-target_link_libraries(unit_tests PRIVATE GTest::GTest GTest::Main m)
-gtest_discover_tests(unit_tests)
-
-# --- DOC & COVERAGE ---
-if(DOXYGEN_FOUND)
-    add_custom_target(doc COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile)
-endif()
-
-# Gcovr for code coverage
-option(ENABLE_COVERAGE "Active Gcovr" OFF)
-if(ENABLE_COVERAGE)
+# --- COVERAGE ---
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_compile_options(--coverage)
     add_link_options(--coverage)
-    add_custom_target(coverage_report 
-        COMMAND gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage.html
+    add_custom_target(coverage
+        COMMAND ${CMAKE_COMMAND} -E make_directory coverage
+        COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage/index.html
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
 
 
-#TEMP test network TODO
-# --- TESTS RÉSEAU (C PUR) ---
-add_executable(test_network_buffer tests/test_buffer_tcp.c src/network/tcp_buffer.c)
-target_include_directories(test_network_buffer PRIVATE "${CMAKE_SOURCE_DIR}/include")
-add_test(NAME TestBufferTCP COMMAND test_network_buffer)
-
-# --- TEST BITBOARD (C PUR) ---
+# --- TEST BITBOARD (TEMP) ---
 add_executable(test_bitboard tests/test_bitboard.c src/gamemodel/bitboard.c)
 target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
 add_test(NAME TestBitboard COMMAND test_bitboard)
+
+# --- TESTS GUI (TEMP) ---
+add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c src/view/gui_pages.c)
+target_include_directories(test_gui_application PRIVATE "${CMAKE_SOURCE_DIR}/include" ${GUI_INCLUDE_DIRS} ${READLINE_INCLUDE_DIRS})
+target_link_libraries(test_gui_application PRIVATE ${GUI_LIBRARIES} ${READLINE_LIBRARIES})
