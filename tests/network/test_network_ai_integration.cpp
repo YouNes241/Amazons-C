@@ -76,7 +76,7 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
 
   // 4. TRANSLATION: Move ➔ String (Serialization)
   char network_message[64];
-  Protocol_MoveToString (ai_move, network_message);
+  Protocol_MoveToString (ai_move, network_message, sizeof (network_message));
   printf ("[TEST] AI playing, translation sent : %s", network_message);
 
   // 5. TCP SEND: The client sends the text to the server
@@ -122,7 +122,7 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
 TEST (NetworkProtocolTest, MoveToString_NullBufferGuard)
 {
   Move m = { { 0, 0 }, { 0, 1 }, { 0, 2 } };
-  EXPECT_NO_THROW (Protocol_MoveToString (m, nullptr));
+  EXPECT_NO_THROW (Protocol_MoveToString (m, nullptr, 0));
 }
 
 /**
@@ -160,4 +160,37 @@ TEST (NetworkProtocolTest, StringToMove_InvalidFormats)
 
   // 4. Wrong prefix (Not matching "MOVE ")
   EXPECT_FALSE (Protocol_StringToMove ("JUMP a1-b2-c3", &m));
+}
+
+/**
+ * @brief Tests the protocol parser against out-of-bounds coordinates.
+ * @details Exercises every single lower (< 'a', < 1) and upper (> 'j', > 10)
+ * boundary for the source queen, destination queen, and arrow destination.
+ * **Coverage Goal:** Achieves 100% branch coverage on coordinate validation
+ * logic by targeting the short-circuiting behavior of the '||' operators.
+ */
+TEST (NetworkProtocolTest, StringToMove_OutOfBoundsCoordinates)
+{
+  Move m;
+
+  // --- SOURCE QUEEN ---
+  // Colonnes hors bornes (< 'a' et > 'j')
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE A1-a2-a3\n",
+                                       &m)); // c_src < 'a' (ASCII 'A' < 'a')
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE z1-a2-a3\n", &m)); // c_src > 'j'
+  // Lignes hors bornes (< 1 et > 10)
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a0-a2-a3\n", &m));  // r_src < 1
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a11-a2-a3\n", &m)); // r_src > 10
+
+  // --- DESTINATION QUEEN ---
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-A2-a3\n", &m));  // c_dst < 'a'
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-z2-a3\n", &m));  // c_dst > 'j'
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a0-a3\n", &m));  // r_dst < 1
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a11-a3\n", &m)); // r_dst > 10
+
+  // --- ARROW DESTINATION ---
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-A3\n", &m));  // c_arr < 'a'
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-z3\n", &m));  // c_arr > 'j'
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a0\n", &m));  // r_arr < 1
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a11\n", &m)); // r_arr > 10
 }

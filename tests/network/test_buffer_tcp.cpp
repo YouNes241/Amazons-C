@@ -85,8 +85,8 @@ TEST_F (TcpBufferTest, CapacityAndSafety)
   // 2. Small Output Buffer (Truncation test)
   tcp_buffer_append (&buffer, "TOO_LONG\n", 9);
   char small_out[4];
-  EXPECT_EQ (tcp_buffer_extract_line (&buffer, small_out, 4), 1);
-  EXPECT_EQ (strlen (small_out), 3); // Must be null-terminated safely
+  EXPECT_EQ (tcp_buffer_extract_line (&buffer, small_out, 4), -1);
+  EXPECT_EQ (buffer.length, 0); // Must be null-terminated safely
 }
 
 /**

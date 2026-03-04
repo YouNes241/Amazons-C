@@ -9,14 +9,14 @@
 
 #include "../include/game_types.h"
 #include <stdbool.h>
-
+#include <stddef.h>
 /**
  * @brief Transforms a Move structure into a network message (e.g., "MOVE
  * a1-a4-b4\n")
  * @param m The move to translate.
  * @param buffer_out The output text (must be at least 32 characters).
  */
-void Protocol_MoveToString (Move m, char *buffer_out);
+void Protocol_MoveToString (Move m, char *buffer_out, size_t buf_size);
 
 /**
  * @brief Transforms a network message (e.g., "MOVE a1-a4-b4") into a Move

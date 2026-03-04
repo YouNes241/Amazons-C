@@ -136,7 +136,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   set_nonblocking (sock);
 
   // initialize Server Context
-  manager->current_mode = NET_MODE_SERVER;
+
   manager->server_ctx = malloc (sizeof (ServerContext));
   if (manager->server_ctx == NULL)
     {
@@ -144,6 +144,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
       close (sock);
       return -1;
     }
+  manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->num_clients = 0;
 
@@ -214,7 +215,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   set_nonblocking (sock);
 
   // initialize Client Context
-  manager->current_mode = NET_MODE_CLIENT;
+
   manager->client_ctx = malloc (sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
@@ -222,6 +223,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
       close (sock);
       return -1;
     }
+  manager->current_mode = NET_MODE_CLIENT;
   manager->client_ctx->server_socket = sock;
 
   manager->client_ctx->fd_info.fd = sock;
@@ -330,7 +332,7 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
                                     &ctx->clients[client_index].buffer);
 
   if (status == 0)
-    return; // nothing to read
+    return;
 
   if (status == -1)
     {
@@ -338,7 +340,6 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
       close (ctx->fds[client_index].fd);
       ctx->fds[client_index].fd = -1;
       ctx->num_clients--;
-
       if (manager->callbacks.OnPlayerDisconnected)
         manager->callbacks.OnPlayerDisconnected ("Network disconnection");
       return;
@@ -351,9 +352,20 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
     }
 
   char extracted_msg[256];
-  while (tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
-                                  extracted_msg, sizeof (extracted_msg)))
+  int res;
+  while (
+      (res = tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
+                                      extracted_msg, sizeof (extracted_msg)))
+      != 0)
     {
+      if (res == -1)
+        {
+          printf ("[SERVER] Warning: oversized message from client %d, "
+                  "discarded.\n",
+                  client_index);
+          continue;
+        }
+
       printf ("[SERVER] Client command received %d : '%s'\n", client_index,
               extracted_msg);
       Move parsed_move;
@@ -362,14 +374,11 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
           if (Protocol_StringToMove (extracted_msg, &parsed_move))
             {
               if (manager->callbacks.OnMoveReceived)
-                {
-                  manager->callbacks.OnMoveReceived (parsed_move);
-                }
+                manager->callbacks.OnMoveReceived (parsed_move);
             }
         }
     }
 }
-
 /**
  * @brief Handles the server's multiplexing logic.
  */
@@ -415,6 +424,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
       printf ("[CLIENT] The server has cut the connection.\n");
       if (manager->callbacks.OnPlayerDisconnected)
         manager->callbacks.OnPlayerDisconnected ("Server closed");
+      NetworkManager_Cleanup (manager);
       return;
     }
 
@@ -425,9 +435,18 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
     }
 
   char extracted_msg[256];
-  while (tcp_buffer_extract_line (&ctx->buffer, extracted_msg,
-                                  sizeof (extracted_msg)))
+  int res;
+  while ((res = tcp_buffer_extract_line (&ctx->buffer, extracted_msg,
+                                         sizeof (extracted_msg)))
+         != 0)
     {
+      if (res == -1)
+        {
+          printf ("[CLIENT] Warning: oversized message from server, "
+                  "discarded.\n");
+          continue;
+        }
+
       printf ("[CLIENT] Server command received : '%s'\n", extracted_msg);
       Move parsed_move;
       if (strncmp (extracted_msg, "MOVE", 4) == 0)
@@ -435,9 +454,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
           if (Protocol_StringToMove (extracted_msg, &parsed_move))
             {
               if (manager->callbacks.OnMoveReceived)
-                {
-                  manager->callbacks.OnMoveReceived (parsed_move);
-                }
+                manager->callbacks.OnMoveReceived (parsed_move);
             }
         }
     }
