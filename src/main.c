@@ -219,9 +219,8 @@ amazons_completion (const char *text, int start, int end)
 }
 
 int
-main (int argc, char *argv[])
+parse_options (int argc, char *argv[], game_config_t *config)
 {
-  game_config_t config;
   int opt;
   int option_index = 0;
 
@@ -238,9 +237,9 @@ main (int argc, char *argv[])
           { "version", no_argument, 0, 'V' },
           { 0, 0, 0, 0 } };
 
-  init_default_config (&config);
+  init_default_config (config);
 
-  load_config_file (&config);
+  load_config_file (config);
 
   // getopt_long parcourt les arguments de la ligne de commande et les compare
   // aux options définies dans long_options.
@@ -255,9 +254,9 @@ main (int argc, char *argv[])
       switch (opt)
         {
         case 'n':
-          config.board_size = atoi (optarg);
-          if (config.board_size < MIN_BOARD_SIZE
-              || config.board_size > MAX_BOARD_SIZE)
+          config->board_size = atoi (optarg);
+          if (config->board_size < MIN_BOARD_SIZE
+              || config->board_size > MAX_BOARD_SIZE)
             {
               fprintf (
                   stderr,
@@ -268,12 +267,12 @@ main (int argc, char *argv[])
           break;
 
         case 'b':
-          config.blitz_mode = true;
+          config->blitz_mode = true;
           break;
 
         case 't':
-          config.time_per_player = atoi (optarg);
-          if (config.time_per_player <= 0 || config.time_per_player > 1800)
+          config->time_per_player = atoi (optarg);
+          if (config->time_per_player <= 0 || config->time_per_player > 1800)
             {
               fprintf (stderr, "Erreur : Le temps par joueur doit etre un "
                                "entier positif entre 1 et 1800 secondes.\n");
@@ -282,21 +281,21 @@ main (int argc, char *argv[])
           break;
 
         case 'c':
-          config.mode = MODE_CONTEST;
+          config->mode = MODE_CONTEST;
           break;
 
         case 'g':
-          config.mode = MODE_GUI;
+          config->mode = MODE_GUI;
           break;
 
         case 'a':
-          config.ai_enabled = true;
+          config->ai_enabled = true;
           break;
 
         case 'd':
         case 'v':
 
-          config.verbose = true;
+          config->verbose = true;
           break;
 
         case 'V':
@@ -328,12 +327,83 @@ main (int argc, char *argv[])
       fprintf (stderr, "Erreur : argument inconnu '%s'\n", argv[optind]);
       return EXIT_FAILURE;
     }
+  return EXIT_SUCCESS;
+}
 
-  rl_attempted_completion_function = amazons_completion;
-  char *input_buffer; // buffer pour contenir les commandes de l'utilisateur
-  bool game_running = true;
+void
+handle_command (char *input_buffer, game_config_t *config, bool *game_running)
+{
   pos_t move_pos; // structure pour stocker les coordonnées d'un coup
                   // (temporaire)
+
+  if (strcmp (input_buffer, "quit") == 0)
+    {
+      *game_running = false;
+    }
+  else if (strcmp (input_buffer, "pause") == 0)
+    {
+      printf ("Jeu en pause...\n");
+    }
+  else if (strcmp (input_buffer, "hint") == 0)
+    {
+      printf ("Conseil : (IA en cours de calcul...)\n");
+    }
+  else if (strncmp (input_buffer, "help", 4) == 0)
+    {
+      printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
+              "redo, show, set\n");
+    }
+  else if (strncmp (input_buffer, "new", 3) == 0)
+    {
+      printf ("Nouvelle partie : %s\n", &input_buffer[3]);
+    }
+  else if (strncmp (input_buffer, "load ", 5) == 0)
+    {
+      printf ("Chargement de : %s\n", &input_buffer[5]);
+    }
+  else if (strncmp (input_buffer, "save ", 5) == 0)
+    {
+      printf ("Sauvegarde dans : %s\n", &input_buffer[5]);
+    }
+  else if (strncmp (input_buffer, "undo", 4) == 0)
+    {
+      printf ("Annulation : %s\n", &input_buffer[4]);
+    }
+  else if (strncmp (input_buffer, "redo", 4) == 0)
+    {
+      printf ("Action rejouée : %s\n", &input_buffer[4]);
+    }
+  else if (strncmp (input_buffer, "show ", 5) == 0)
+    {
+      printf ("Affichage de : %s\n", &input_buffer[5]);
+    }
+  else if (strncmp (input_buffer, "set ", 4) == 0)
+    {
+      printf ("Configuration : %s\n", &input_buffer[4]);
+    }
+  else if (strncmp (input_buffer, "details", 7) == 0)
+    {
+      display_config (config);
+    }
+  else
+    {
+      /* On vérifie si c'est un mouvement (ex: e2-e4) */
+      if (parse_coordinates (input_buffer, &move_pos) == 0)
+        {
+          printf ("Coup valide reçu.\n");
+        }
+      else
+        {
+          fprintf (stderr, "Erreur : commande inconnue '%s'\n", input_buffer);
+        }
+    }
+}
+
+void
+run_interactive_mode (game_config_t *config)
+{
+  char *input_buffer; // buffer pour contenir les commandes de l'utilisateur
+  bool game_running = true;
 
   while (game_running)
     {
@@ -356,71 +426,30 @@ main (int argc, char *argv[])
       /* On ajoute la commande à l'historique*/
       add_history (input_buffer);
 
-      if (strcmp (input_buffer, "quit") == 0)
-        {
-          game_running = false;
-        }
-      else if (strcmp (input_buffer, "pause") == 0)
-        {
-          printf ("Jeu en pause...\n");
-        }
-      else if (strcmp (input_buffer, "hint") == 0)
-        {
-          printf ("Conseil : (IA en cours de calcul...)\n");
-        }
-      else if (strncmp (input_buffer, "help", 4) == 0)
-        {
-          printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
-                  "redo, show, set\n");
-        }
-      else if (strncmp (input_buffer, "new", 3) == 0)
-        {
-          printf ("Nouvelle partie : %s\n", &input_buffer[3]);
-        }
-      else if (strncmp (input_buffer, "load ", 5) == 0)
-        {
-          printf ("Chargement de : %s\n", &input_buffer[5]);
-        }
-      else if (strncmp (input_buffer, "save ", 5) == 0)
-        {
-          printf ("Sauvegarde dans : %s\n", &input_buffer[5]);
-        }
-      else if (strncmp (input_buffer, "undo", 4) == 0)
-        {
-          printf ("Annulation : %s\n", &input_buffer[4]);
-        }
-      else if (strncmp (input_buffer, "redo", 4) == 0)
-        {
-          printf ("Action rejouée : %s\n", &input_buffer[4]);
-        }
-      else if (strncmp (input_buffer, "show ", 5) == 0)
-        {
-          printf ("Affichage de : %s\n", &input_buffer[5]);
-        }
-      else if (strncmp (input_buffer, "set ", 4) == 0)
-        {
-          printf ("Configuration : %s\n", &input_buffer[4]);
-        }
-      else if (strncmp (input_buffer, "details", 7) == 0)
-        {
-          display_config (&config);
-        }
-      else
-        {
-          /* On vérifie si c'est un mouvement (ex: e2-e4) */
-          if (parse_coordinates (input_buffer, &move_pos) == 0)
-            {
-              printf ("Coup valide reçu.\n");
-            }
-          else
-            {
-              fprintf (stderr, "Erreur : commande inconnue '%s'\n",
-                       input_buffer);
-            }
-        }
+      handle_command (input_buffer, config, &game_running);
 
       free (input_buffer);
     }
+}
+
+int
+main (int argc, char *argv[])
+{
+  game_config_t *config = malloc (sizeof (game_config_t));
+
+  int result = parse_options (argc, argv, config);
+
+  if (result != EXIT_SUCCESS)
+    {
+      free (config);
+      return result;
+    }
+
+  rl_attempted_completion_function = amazons_completion;
+
+  run_interactive_mode (config);
+
+  free (config);
 
   return EXIT_SUCCESS;
 }
