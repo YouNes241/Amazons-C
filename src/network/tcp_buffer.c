@@ -73,37 +73,31 @@ tcp_buffer_append (tcp_buffer_t *buf, const char *new_data, size_t new_len)
 int
 tcp_buffer_extract_line (tcp_buffer_t *buf, char *out_msg, size_t max_out_len)
 {
-
   if (buf == NULL || out_msg == NULL)
-    {
-      return 0;
-    }
+    return 0;
 
   char *newline = memchr (buf->data, '\n', buf->length);
-
   if (newline == NULL)
-    {
-      return 0;
-    }
+    return 0;
 
   size_t msg_len = newline - buf->data;
-
-  size_t copy_len = msg_len;
-  if (copy_len >= max_out_len)
-    {
-      copy_len = max_out_len - 1;
-    }
-
-  memcpy (out_msg, buf->data, copy_len);
-  out_msg[copy_len] = '\0';
-
   size_t total_consumed = msg_len + 1;
   size_t remaining = buf->length - total_consumed;
 
-  if (remaining > 0)
+  // Message too long for output buffer: consume and discard
+  if (msg_len >= max_out_len)
     {
       memmove (buf->data, buf->data + total_consumed, remaining);
+      buf->length = remaining;
+      buf->data[buf->length] = '\0';
+      return -1;
     }
+
+  memcpy (out_msg, buf->data, msg_len);
+  out_msg[msg_len] = '\0';
+
+  if (remaining > 0)
+    memmove (buf->data, buf->data + total_consumed, remaining);
 
   buf->length = remaining;
   buf->data[buf->length] = '\0';

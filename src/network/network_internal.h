@@ -29,6 +29,8 @@ typedef struct
 {
   int fd;              // Client socket file descriptor
   tcp_buffer_t buffer; // Dedicated TCP buffer for this client
+  char username[32];   // The username sent via C2S_JOIN
+  bool is_joined;
   // TODO add later: player_id, name, status (IDLE, INGAME), etc.
 } ConnectedClient;
 
