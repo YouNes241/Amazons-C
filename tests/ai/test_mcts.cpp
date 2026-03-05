@@ -149,3 +149,34 @@ TEST (AIFactoryTest, CreateMCTSReturnsCorrectImplementation)
 
   ai.vtable->clean (&ai);
 }
+
+// 5. Triggering the child loop inside of MCTS to ensure coverage of that code
+// path
+TEST (MCTSCoverageTest, TriggerChildLoop)
+{
+  CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 4);
+  for (int i = 0; i < 4; i++)
+    {
+      cc[i] = (CellContent *)malloc (sizeof (CellContent) * 4);
+      for (int j = 0; j < 4; j++)
+        cc[i][j] = CONTENT_EMPTY;
+    }
+
+  cc[0][0] = CONTENT_WHITE_QUEEN;
+  cc[3][3] = CONTENT_BLACK_QUEEN;
+
+  GameState state = { .size = 4,
+                      .board = cc,
+                      .current_player = PLAYER_WHITE,
+                      .status = GAME_IN_PROGRESS,
+                      .turn_count = 0 };
+
+  Param p = { (char *)"time_limit", (char *)"3000" };
+  ConfigMap cm = { .list = &p, .count = 1 };
+
+  AI_Interface ai = create_ai ("mcts", cm);
+  ai.vtable->get_best_move (&ai, state);
+
+  ai.vtable->clean (&ai);
+  free_gs_board (&state);
+}
