@@ -1,4 +1,6 @@
 #include "../../include/controller.h"
+#include "../../include/cli_view.h"
+#include "../../include/game_engine.h"
 #include "../../include/input.h"
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -41,6 +43,7 @@ command_generator (const char *text, int state)
 char **
 amazons_completion (const char *text, int start, int end)
 {
+  (void)end;
   /* Empêche Readline de chercher des fichiers si on ne trouve pas de commande
    */
   rl_attempted_completion_over = 1;
@@ -56,11 +59,9 @@ amazons_completion (const char *text, int start, int end)
 }
 
 void
-handle_command (char *input_buffer, game_config_t *config, bool *game_running)
+handle_command (char *input_buffer, game_config_t *config, bool *game_running,
+                GameState *current_game)
 {
-  pos_t move_pos; // structure pour stocker les coordonnées d'un coup
-                  // (temporaire)
-
   if (strcmp (input_buffer, "quit") == 0)
     {
       *game_running = false;
@@ -100,7 +101,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running)
     }
   else if (strncmp (input_buffer, "show ", 5) == 0)
     {
-      printf ("Affichage de : %s\n", &input_buffer[5]);
+      cli_display_board (current_game);
     }
   else if (strncmp (input_buffer, "set ", 4) == 0)
     {
@@ -112,14 +113,32 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running)
     }
   else
     {
-      /* On vérifie si c'est un mouvement (ex: e2-e4) */
-      if (parse_coordinates (input_buffer, &move_pos) == 0)
+      Move player_move;
+      if (parse_coordinates (input_buffer, &player_move) == 0)
         {
-          printf ("Coup valide reçu.\n");
+          if (is_move_legal (current_game, player_move))
+            {
+              apply_move (current_game, player_move);
+              if (is_game_over (current_game, current_game->current_player))
+                {
+                  cli_display_board (current_game);
+
+                  // Annonce du gagnant
+                  PlayerColor winner = get_winner (current_game);
+                  printf ("Le joueur %s a gagné !\n",
+                          winner == PLAYER_WHITE ? "Blancs" : "Noirs");
+                  *game_running = false;
+                }
+            }
+          else
+            {
+              // Le coup a un bon format, mais il viole les règles du jeu
+              printf ("Coup illégal selon les règles du jeu.\n");
+            }
         }
       else
         {
-          fprintf (stderr, "Erreur : commande inconnue '%s'\n", input_buffer);
+          fprintf (stderr, "Format invalide. Utilisez : a1-a3(a4)\n");
         }
     }
 }
@@ -127,14 +146,33 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running)
 void
 run_interactive_mode (game_config_t *config)
 {
+  GameState current_game;
+  current_game.size = config->board_size;
+  game_init (&current_game);
+
   rl_attempted_completion_function = amazons_completion;
+
+  cli_clear_screen (); // On nettoie le terminal
+  printf ("Bienvenue dans le jeu des Amazones !\n");
+
+  // Affichage du plateau au démarrage
+  cli_display_board (&current_game);
 
   char *input_buffer; // buffer pour contenir les commandes de l'utilisateur
   bool game_running = true;
 
   while (game_running)
     {
-      input_buffer = readline (">> ");
+      char prompt[32];
+      if (current_game.current_player == PLAYER_WHITE)
+        {
+          snprintf (prompt, sizeof (prompt), "[White] >> ");
+        }
+      else
+        {
+          snprintf (prompt, sizeof (prompt), "[Black] >> ");
+        }
+      input_buffer = readline (prompt);
 
       /* Si l'utilisateur fait Ctrl+D, readline renvoie NULL */
       if (input_buffer == NULL)
@@ -153,8 +191,12 @@ run_interactive_mode (game_config_t *config)
       /* On ajoute la commande à l'historique*/
       add_history (input_buffer);
 
-      handle_command (input_buffer, config, &game_running);
-
+      handle_command (input_buffer, config, &game_running, &current_game);
       free (input_buffer);
+
+      if (game_running)
+        {
+          cli_display_board (&current_game);
+        }
     }
 }
