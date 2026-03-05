@@ -222,19 +222,22 @@ TEST_F (NetworkManagerTest, MoveCommandParsingAndCallbacks)
   Packet pkt;
   char buf[256];
 
-  // 1. Malformed payload
+  // 1. Malformed payload (C2S_MOVE)
   pkt = { C2S_MOVE, "MOVE INVALID" };
   SerializePacket (&pkt, buf, 256);
   send (client_no_cb.client_ctx->server_socket, buf, strlen (buf), 0);
   NetworkManager_Tick (&server_no_cb);
 
-  // 2. Valid MOVE, but Server has NO callback registered
+  // 2. Valid MOVE, but Server has NO callback registered (C2S_MOVE)
   pkt = { C2S_MOVE, "MOVE a1-a2-a3" };
   SerializePacket (&pkt, buf, 256);
   send (client_no_cb.client_ctx->server_socket, buf, strlen (buf), 0);
   NetworkManager_Tick (&server_no_cb);
 
   // 3. Server sends valid MOVE to Client, but Client has NO callback
+
+  pkt = { S2C_MOVE, "MOVE a1-a2-a3" };
+  SerializePacket (&pkt, buf, 256);
   send (server_no_cb.server_ctx->fds[1].fd, buf, strlen (buf), 0);
   NetworkManager_Tick (&client_no_cb);
 

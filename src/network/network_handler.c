@@ -46,7 +46,7 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   if (name_taken)
     {
       resp.type = S2C_REJECT;
-      strcpy (resp.payload, "Username already taken");
+      strncpy (resp.payload, "Username already taken", MAX_PAYLOAD_SIZE - 1);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
     }
@@ -58,7 +58,7 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
       ctx->clients[client_index].is_joined = true;
 
       resp.type = S2C_WELCOME;
-      strcpy (resp.payload, "Welcome !");
+      strncpy (resp.payload, "Welcome !", MAX_PAYLOAD_SIZE - 1);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
 
@@ -112,7 +112,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       // TODO: F41.x - call callback OnGameStarted
       break;
 
-    case C2S_MOVE:
+    case S2C_MOVE:
       process_move_packet (manager, pkt->payload);
       break;
 

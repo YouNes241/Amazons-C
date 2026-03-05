@@ -5,7 +5,7 @@
 extern "C"
 {
 #include "../../src/network/network_internal.h"
-#include "../../src/network/network_packet.h" // NOUVEAU: On inclut les paquets
+#include "../../src/network/network_packet.h"
 #include "ai_factory.h"
 #include "network_protocol.h"
 }
@@ -152,20 +152,25 @@ TEST (NetworkProtocolTest, StringToMove_OutOfBoundsCoordinates)
   Move m;
 
   // --- SOURCE QUEEN ---
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE A1-a2-a3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE z1-a2-a3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a0-a2-a3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a11-a2-a3\n", &m));
+  EXPECT_FALSE (
+      Protocol_StringToMove ("MOVE A1-a2-a3\n", &m)); // Majuscule (Invalide)
+  EXPECT_FALSE (
+      Protocol_StringToMove ("MOVE !1-a2-a3\n", &m)); // Caractère spécial
+  EXPECT_FALSE (
+      Protocol_StringToMove ("MOVE a0-a2-a3\n", &m)); // Zéro (Invalide)
+  EXPECT_FALSE (
+      Protocol_StringToMove ("MOVE a27-a2-a3\n", &m)); // Au-delà de 26
 
   // --- DESTINATION QUEEN ---
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-A2-a3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-z2-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-?2-a3\n", &m));
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a0-a3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a11-a3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a27-a3\n", &m));
 
   // --- ARROW DESTINATION ---
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-A3\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-z3\n", &m));
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-+3\n", &m));
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a0\n", &m));
-  EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-a2-a11\n", &m));
+  EXPECT_FALSE (
+      Protocol_StringToMove ("MOVE a1-a2-a99\n", &m)); // Nombre absurde
 }

@@ -49,6 +49,8 @@ DeserializePacket (const char *buffer_in, Packet *pkt_out)
     {
       return false; // cant read int
     }
+  if (type_val <= PKT_UNKNOWN || type_val >= PKT_TYPE_MAX)
+    return false;
   pkt_out->type = (PacketType)type_val;
 
   // 3. Extract the payload (everything after the '|')

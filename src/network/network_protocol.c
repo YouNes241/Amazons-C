@@ -39,31 +39,28 @@ Protocol_StringToMove (const char *message, Move *move_out)
   char c_src, c_dst, c_arr;
   int r_src, r_dst, r_arr;
 
-  // sscanf reads the string and extracts the variables according to the given
-  // format. It returns the number of variables found (we expect 6).
   int parsed = sscanf (message, "MOVE %c%d-%c%d-%c%d", &c_src, &r_src, &c_dst,
                        &r_dst, &c_arr, &r_arr);
 
   if (parsed != 6)
     return false;
 
-  // Validate column characters ('a' to 'j' for a 10-column board)
-  if (c_src < 'a' || c_src > 'j')
+  if (c_src < 'a' || c_src > 'z')
     return false;
-  if (c_dst < 'a' || c_dst > 'j')
+  if (c_dst < 'a' || c_dst > 'z')
     return false;
-  if (c_arr < 'a' || c_arr > 'j')
+  if (c_arr < 'a' || c_arr > 'z')
     return false;
 
-  // Validate row numbers (1 to 10 in protocol, which maps to 0-9 internally)
-  if (r_src < 1 || r_src > 10)
+  if (r_src < 1 || r_src > 26)
     return false;
-  if (r_dst < 1 || r_dst > 10)
+  if (r_dst < 1 || r_dst > 26)
     return false;
-  if (r_arr < 1 || r_arr > 10)
+  if (r_arr < 1 || r_arr > 26)
     return false;
+
   move_out->queen_src.col = CharToCol (c_src);
-  move_out->queen_src.row = r_src - 1; // We reset index to 0
+  move_out->queen_src.row = r_src - 1;
 
   move_out->queen_dst.col = CharToCol (c_dst);
   move_out->queen_dst.row = r_dst - 1;

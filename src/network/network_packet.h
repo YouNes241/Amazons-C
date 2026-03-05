@@ -16,7 +16,9 @@ typedef enum
   S2C_GAME_START = 3, // Server -> Client: The game starts
   S2C_ERROR = 4,      // Server -> Client: Error message (e.g., invalid move)
   S2C_WELCOME = 5,    // Server -> Acceptance of nickname
-  S2C_REJECT = 6      // Server ->  Username rejected (already taken, etc.)
+  S2C_REJECT = 6,     // Server ->  Username rejected (already taken, etc.)
+  S2C_MOVE = 7,
+  PKT_TYPE_MAX = 8,
 } PacketType;
 
 /* ==========================================================================
