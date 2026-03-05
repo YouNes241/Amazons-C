@@ -1,0 +1,47 @@
+<!-- WIP -->
+
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="info_window">
+    <property name="title">Game Informations</property>
+    <property name="default-width">500</property>
+    <property name="default-height">400</property>
+    <property name="modal">true</property>
+    <property name="destroy-with-parent">true</property>
+    <property name="visible">false</property> 
+
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">20</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="margin-start">30</property>
+        <property name="margin-end">30</property>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="label">Rules of Amazons</property>
+            <property name="css-classes">title-2</property>
+            <property name="margin-bottom">20</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="label">
+                1. Each player has 4 amazons.
+                2. An amazon moves like a chess queen.
+                3. After moving, she must shoot an arrow.
+                4. The arrow also moves like a queen.
+                5. The square where the arrow lands is burned.
+                6. The last player able to move wins!
+            </property>
+            <property name="justify">center</property> 
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

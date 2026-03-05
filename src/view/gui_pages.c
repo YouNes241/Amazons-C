@@ -3,6 +3,7 @@
 
 static void navigationClick (GtkButton *button, gpointer user_data);
 static void quitButtonClick (GtkButton *button, gpointer user_data);
+static void infoButtonClick (GtkButton *button, gpointer user_data);
 
 GtkWidget *
 createMainMenuPage ()
@@ -135,14 +136,17 @@ createGamePage ()
 {
   GtkBuilder *builder;
   GtkWidget *box;
+  GtkWidget *infoBtn;
   GtkWidget *quitBtn;
 
   builder = gtk_builder_new_from_file ("ui/game.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
+  infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
   quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
 
   g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
+  g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoButtonClick), NULL);
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -153,14 +157,14 @@ createGamePage ()
 static void
 navigationClick (GtkButton *button, gpointer user_data)
 {
-  const char *target_page = (const char *)user_data;
+  const char *targetPage = (const char *)user_data;
 
   GtkWidget *stack
       = gtk_widget_get_ancestor (GTK_WIDGET (button), GTK_TYPE_STACK);
 
-  if (stack != NULL && target_page != NULL)
+  if (stack != NULL && targetPage != NULL)
     {
-      gtk_stack_set_visible_child_name (GTK_STACK (stack), target_page);
+      gtk_stack_set_visible_child_name (GTK_STACK (stack), targetPage);
     }
 }
 
@@ -175,4 +179,24 @@ quitButtonClick (GtkButton *button, gpointer user_data)
     {
       gtk_window_close (GTK_WINDOW (root));
     }
+}
+
+static void
+infoButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)user_data;
+
+  GtkWindow *mainWindow
+      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
+
+  GtkBuilder *builder
+      = gtk_builder_new_from_file ("ui/game_pages/info_popup.ui");
+  GtkWindow *infoWindow
+      = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
+
+  gtk_window_set_transient_for (infoWindow, mainWindow);
+
+  gtk_window_present (infoWindow);
+
+  g_object_unref (builder);
 }
