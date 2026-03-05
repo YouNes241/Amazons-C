@@ -175,7 +175,11 @@ TEST (MCTSCoverageTest, TriggerChildLoop)
   ConfigMap cm = { .list = &p, .count = 1 };
 
   AI_Interface ai = create_ai ("mcts", cm);
-  ai.vtable->get_best_move (&ai, state);
+  Move m = ai.vtable->get_best_move (&ai, state);
+
+  printf ("Best move: Queen from (%d,%d) to (%d,%d) with arrow to (%d,%d)\n",
+          m.queen_src.row, m.queen_src.col, m.queen_dst.row, m.queen_dst.col,
+          m.arrow_dst.row, m.arrow_dst.col);
 
   ai.vtable->clean (&ai);
   free_gs_board (&state);
