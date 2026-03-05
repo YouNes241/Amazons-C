@@ -28,6 +28,44 @@ is_valid_coord (int8_t x, int8_t y, uint8_t board_size)
   return (x >= 0 && x < board_size && y >= 0 && y < board_size);
 }
 
+static void
+place_initial_queens (GameState *state)
+{
+  if (state == NULL || state->board == NULL)
+    return;
+
+  uint8_t size = state->size;
+
+  const uint8_t FIRST_ROW = 0;
+  const uint8_t FIRST_COL = 0;
+  const uint8_t LAST_ROW = size - 1;
+  const uint8_t LAST_COL = size - 1;
+
+  const uint8_t OFFSET = size / 3;
+  const uint8_t OPP_OFFSET = LAST_COL - OFFSET;
+
+  const uint8_t white_coords[4][2] = { { FIRST_ROW, OFFSET },
+                                       { FIRST_ROW, OPP_OFFSET },
+                                       { OFFSET, FIRST_COL },
+                                       { OFFSET, LAST_COL } };
+
+  const uint8_t black_coords[4][2] = { { LAST_ROW, OFFSET },
+                                       { LAST_ROW, OPP_OFFSET },
+                                       { LAST_ROW - OFFSET, FIRST_COL },
+                                       { LAST_ROW - OFFSET, LAST_COL } };
+
+  for (int i = 0; i < 4; i++)
+    {
+      uint8_t w_row = white_coords[i][0];
+      uint8_t w_col = white_coords[i][1];
+      state->board[w_row][w_col] = CONTENT_WHITE_QUEEN;
+
+      uint8_t b_row = black_coords[i][0];
+      uint8_t b_col = black_coords[i][1];
+      state->board[b_row][b_col] = CONTENT_BLACK_QUEEN;
+    }
+}
+
 void
 game_init (GameState *state)
 {
@@ -69,15 +107,7 @@ game_init (GameState *state)
   state->status = GAME_IN_PROGRESS;
   state->turn_count = 0;
 
-  state->board[0][3] = CONTENT_WHITE_QUEEN;
-  state->board[0][size - 4] = CONTENT_WHITE_QUEEN;
-  state->board[3][0] = CONTENT_WHITE_QUEEN;
-  state->board[3][size - 1] = CONTENT_WHITE_QUEEN;
-
-  state->board[size - 1][3] = CONTENT_BLACK_QUEEN;
-  state->board[size - 1][size - 4] = CONTENT_BLACK_QUEEN;
-  state->board[size - 4][0] = CONTENT_BLACK_QUEEN;
-  state->board[size - 4][size - 1] = CONTENT_BLACK_QUEEN;
+  place_initial_queens (state);
 }
 
 void
