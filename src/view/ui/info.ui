@@ -35,7 +35,7 @@
             <property name="spacing">10</property> <child>
               <object class="GtkLabel" id="authors_title">
                 <property name="label">Authors</property>
-                <property name="css-classes">title-3</property> 
+                <property name="css-classes">title-2</property> 
               </object>
             </child>
             
@@ -57,7 +57,7 @@
             <child>
               <object class="GtkLabel" id="version_title">
                 <property name="label">Version</property>
-                <property name="css-classes">title-4</property> 
+                <property name="css-classes">title-2</property> 
               </object>
             </child>
             

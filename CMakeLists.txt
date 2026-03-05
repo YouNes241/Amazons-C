@@ -56,6 +56,6 @@ target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "
 add_test(NAME TestBitboard COMMAND test_bitboard)
 
 # --- TESTS GUI (TEMP) ---
-add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c src/view/gui_pages.c)
+add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c src/view/gui_pages.c src/view/gui_utils.c)
 target_include_directories(test_gui_application PRIVATE "${CMAKE_SOURCE_DIR}/include" ${GUI_INCLUDE_DIRS} ${READLINE_INCLUDE_DIRS})
 target_link_libraries(test_gui_application PRIVATE ${GUI_LIBRARIES} ${READLINE_LIBRARIES})

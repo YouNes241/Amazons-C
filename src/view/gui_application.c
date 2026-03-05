@@ -76,14 +76,16 @@ initWindow (GtkApplication *app, gpointer userData)
   GtkWidget *multiplayerMenuPage = createMultiplayerMenuPage ();
   GtkWidget *configPage = createConfigPage ();
   GtkWidget *infoPage = createInfoPage ();
+  GtkWidget *gamePage = createGamePage ();
 
-  gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "page_main_menu");
+  gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "main_menu_page");
   gtk_stack_add_named (GTK_STACK (stack), singleplayerMenuPage,
-                       "page_singleplayer");
+                       "singleplayer_page");
   gtk_stack_add_named (GTK_STACK (stack), multiplayerMenuPage,
-                       "page_multiplayer");
-  gtk_stack_add_named (GTK_STACK (stack), configPage, "page_config");
-  gtk_stack_add_named (GTK_STACK (stack), infoPage, "page_info");
+                       "multiplayer_page");
+  gtk_stack_add_named (GTK_STACK (stack), configPage, "config_page");
+  gtk_stack_add_named (GTK_STACK (stack), infoPage, "info_page");
+  gtk_stack_add_named (GTK_STACK (stack), gamePage, "game_page");
 
   gtk_window_set_child (GTK_WINDOW (window), globalOverlay);
   gtk_window_present (GTK_WINDOW (window));

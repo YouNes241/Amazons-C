@@ -1,43 +1,85 @@
-/* WIP */
-
 window {
-    background-color: #1e1e2e; 
-    color: #cdd6f4;
+    background-color: rgb(70, 65, 102);
+    color: gold;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 20px;
 }
 
 .title-1 {
-    font-size: 56px;
+    font-size: 58px;
     font-weight: 900;
     letter-spacing: 4px;
-    color: #b4befe;
-    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5); 
+}
+
+.title-2 {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: 4px;
+}
+
+button, button label {
+    color: rgb(70, 65, 102);
 }
 
 button {
-    font-size: 18px;
-    font-weight: bold;
-    color: #1e1e2e;
-    background-color: #f38ba8; 
+    font-size: 20px;
+    font-weight: 500;
+    background-image: none;
+    background-color: gold;
     border: none;
-    box-shadow: 0px 6px 0px #b4befe; 
-    transition: all 0.1s ease-in-out;
+    border-radius: 5px;
 }
 
 button:hover {
-    background-color: #ff9ebb;
+    background-color: #e6ac00;
 }
 
-button:active {
-    box-shadow: 0px 0px 0px transparent;
-    margin-top: 4px; 
+popover > contents {
+    background-color: rgb(70, 65, 102);
+    border: 2px solid gold; 
+    border-radius: 8px;
+    padding: 5px; 
 }
 
-#return_btn {
+popover button, popover button label {
+    color: gold;
+}
+
+popover button {
     background-color: transparent;
-    color: #cdd6f4;
-    box-shadow: none;
 }
 
-#return_btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+popover button:hover, popover button:hover label {
+    color: rgb(70, 65, 102);
+}
+
+popover button:hover {
+    background-color: gold;
+}
+
+.cell-light {
+    background-color: #e0e0e0; 
+    border-radius: 0;        
+    border: none;
+}
+
+.cell-dark {
+    background-color: #8c8c8c; 
+    border-radius: 0;
+    border: none;
+}
+
+.cell-light:hover, .cell-dark:hover {
+    background-color: gold; 
+    opacity: 0.8;
+}
+
+.piece-white {
+    font-size: 40px;
+    color: white;
+}
+
+.piece-black {
+    font-size: 40px;
+    color: black;
 }
