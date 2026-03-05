@@ -1,6 +1,7 @@
 #ifndef EVALUATOR_H
 #define EVALUATOR_H
 
+#include "bitboard_state.h"
 #include "game_types.h"
 
 typedef float (*Evaluator) (BitboardState *state);

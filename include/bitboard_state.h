@@ -3,6 +3,15 @@
 
 #include "game_types.h"
 
+typedef struct
+{
+  Bitboard white_queens;
+  Bitboard black_queens;
+  Bitboard arrows;
+  uint8_t size;
+  bool white_to_move;
+} BitboardState;
+
 /**
  * @brief Allocates and initializes a new bitboard state with no pieces or
  * arrows.

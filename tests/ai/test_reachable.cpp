@@ -3,7 +3,6 @@
 extern "C"
 {
 #include "bitboard.h"
-#include "utils.h"
 }
 
 class GetReachableTest : public ::testing::Test
@@ -35,8 +34,6 @@ TEST_F (GetReachableTest, CenterEmptyBoard)
 
   // Diagonal check: North-West to (0,0)
   EXPECT_TRUE (bitboard_get_bit (reachable, 0));
-
-  // Print it
 }
 
 // 2. Test that obstacles correctly block the "Slide"

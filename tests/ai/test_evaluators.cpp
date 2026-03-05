@@ -4,9 +4,6 @@ extern "C"
 #include "ai_factory.h"
 #include "bitboard.h"
 #include "evaluator.h"
-#include "minimax.h"
-#include "random.h"
-#include "utils.h"
 }
 
 // Symmetry test : a position and its mirror should have the same score

@@ -3,10 +3,7 @@
 extern "C"
 {
 #include "ai_factory.h"
-#include "ai_interface.h"
-#include "bitboard.h"
-#include "mcts.h"
-#include "utils.h"
+#include "mcts_types.h"
 }
 
 // Helper to free GameState board

@@ -3,7 +3,6 @@
 extern "C"
 {
 #include "ai_factory.h"
-#include "ai_interface.h"
 #include "minimax.h"
 #include "random.h"
 }
