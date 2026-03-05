@@ -5,7 +5,10 @@
 #include <stdint.h>
 
 /**
- * Represents the state of 128 squares (sufficient for a board up to 11x11).
+ * @brief Represents the state of 128 squares (sufficient for a board up to
+ * 11x11).
+ *
+ * The bitboard is split into two 64-bit parts:
  * - low  : indices 0 to 63
  * - high : indices 64 to 127
  */
@@ -15,67 +18,124 @@ typedef struct
   uint64_t high;
 } Bitboard;
 
-// Create an empty bitboard (all zeros)
+/**
+ * @brief Create an empty bitboard with all bits set to 0.
+ * @return A new empty bitboard.
+ */
 Bitboard bitboard_create_empty (void);
 
-// Create a full bitboard (all ones)
+/**
+ * @brief Create a full bitboard with all bits set to 1.
+ * @return A new full bitboard.
+ */
 Bitboard bitboard_create_full (void);
 
-// Set the bit at the given index (0-127) to 1
+/**
+ * @brief Set the bit at the given index to 1.
+ * @param bb Pointer to the bitboard to modify.
+ * @param index Bit index (0-127); indices 0-63 map to low, 64-127 map to high.
+ */
 void bitboard_set_bit (Bitboard *bb, uint8_t index);
 
-// Clear the bit at the given index
+/**
+ * @brief Clear the bit at the given index to 0.
+ * @param bb Pointer to the bitboard to modify.
+ * @param index Bit index (0-127).
+ */
 void bitboard_clear_bit (Bitboard *bb, uint8_t index);
 
-// Returns true if the bit is set (1)
-static inline bool
-bitboard_get_bit (Bitboard bb, uint8_t index)
-{
-  if (index < 64)
-    {
-      return (bb.low >> index) & 1;
-    }
-  return (bb.high >> (index - 64)) & 1;
-}
+/**
+ * @brief Check if a specific bit is set to 1.
+ * @param bb The bitboard to check.
+ * @param index Bit index (0-127).
+ * @return True if the bit is set, false otherwise.
+ */
+bool bitboard_get_bit (Bitboard bb, uint8_t index);
 
-// Toggle the bit (0 becomes 1, 1 becomes 0)
+/**
+ * @brief Toggle a bit (flip 0 to 1 or 1 to 0).
+ * @param bb Pointer to the bitboard to modify.
+ * @param index Bit index (0-127).
+ */
 void bitboard_toggle_bit (Bitboard *bb, uint8_t index);
 
-// Union : combine two bitboards
+/**
+ * @brief Bitwise OR: combine two bitboards.
+ * @param a First bitboard.
+ * @param b Second bitboard.
+ * @return New bitboard with bits set where either input has a 1.
+ */
 Bitboard bitboard_or (Bitboard a, Bitboard b);
 
-// Intersection : keep the common bits
+/**
+ * @brief Bitwise AND: keep only common bits.
+ * @param a First bitboard.
+ * @param b Second bitboard.
+ * @return New bitboard with bits set only where both inputs have a 1.
+ */
 Bitboard bitboard_and (Bitboard a, Bitboard b);
 
-// A XOR B : keep the differing bits
+/**
+ * @brief Bitwise XOR: keep differing bits.
+ * @param a First bitboard.
+ * @param b Second bitboard.
+ * @return New bitboard with bits set where inputs differ.
+ */
 Bitboard bitboard_xor (Bitboard a, Bitboard b);
 
-// Negation : invert all bits
+/**
+ * @brief Bitwise NOT: invert all bits.
+ * @param a The bitboard to invert.
+ * @return New bitboard with all bits inverted.
+ */
 Bitboard bitboard_not (Bitboard a);
 
-// Shift bits left (towards higher indices)
-// Useful to compute moves toward South/East
+/**
+ * @brief Shift bits left (towards higher indices).
+ * @param bb The bitboard to shift.
+ * @param shift Number of positions to shift left.
+ * @return New bitboard with bits shifted left.
+ * @note Useful to compute moves toward South/East.
+ */
 Bitboard bitboard_shift_left (Bitboard bb, uint8_t shift);
 
-// Shift bits right (towards lower indices)
-// Useful to compute moves toward North/West
+/**
+ * @brief Shift bits right (towards lower indices).
+ * @param bb The bitboard to shift.
+ * @param shift Number of positions to shift right.
+ * @return New bitboard with bits shifted right.
+ * @note Useful to compute moves toward North/West.
+ */
 Bitboard bitboard_shift_right (Bitboard bb, uint8_t shift);
 
 /**
- * @brief Counts the number of set bits (1s) in the bitboard.
- * @param bb The bitboard to count bits in.
- * @return The total count of bits set to 1 in the bitboard.
+ * @brief Count the number of set bits (population count).
+ * @param bb The bitboard to count.
+ * @return Number of bits set to 1.
  */
 int bitboard_count_bits (Bitboard bb);
 
-// Check if two bitboards are identical
+/**
+ * @brief Check if two bitboards are equal.
+ * @param a First bitboard.
+ * @param b Second bitboard.
+ * @return True if both bitboards are identical, false otherwise.
+ */
 bool bitboard_equals (Bitboard a, Bitboard b);
 
-// Check if the bitboard is empty (all bits zero)
+/**
+ * @brief Check if bitboard is empty (all bits are 0).
+ * @param bb The bitboard to check.
+ * @return True if all bits are zero, false otherwise.
+ */
 bool bitboard_is_zero (Bitboard bb);
 
-// Print the bitboard to the console
-// Parameter 'width': grid width for display (e.g., 10)
+/**
+ * @brief Print the bitboard to the console.
+ * @param bb The bitboard to print.
+ * @param width Grid width for display (typically 10 for a 10x10 board). Must
+ * be 4-11.
+ */
 void bitboard_print (Bitboard bb, uint8_t width);
 
 /**

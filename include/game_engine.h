@@ -1,7 +1,7 @@
 #ifndef GAME_ENGINE_H
 #define GAME_ENGINE_H
 
-#include "../src/gamemodel/bitboard.h"
+#include "bitboard.h"
 #include "game_types.h"
 #include <stdbool.h>
 #include <stdint.h>

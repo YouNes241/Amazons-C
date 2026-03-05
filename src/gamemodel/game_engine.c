@@ -381,7 +381,7 @@ get_reachable_squares (Bitboard obstacles, uint8_t start_index,
 
 int
 generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
-                    PlayerColor current_player, uint8_t board_size,
+                    uint8_t board_size, PlayerColor current_player,
                     Move *out_moves)
 {
   int count = 0;

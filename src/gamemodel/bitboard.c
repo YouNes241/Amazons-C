@@ -1,4 +1,4 @@
-#include "bitboard.h"
+#include "../../include/bitboard.h"
 #include <stdio.h>
 
 /**
