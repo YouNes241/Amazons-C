@@ -1,5 +1,6 @@
 #ifndef INPUT_H
 #define INPUT_H
+#include "game_types.h"
 
 /**
  * Structure simple pour stocker une position pour l'instant
@@ -12,7 +13,5 @@ typedef struct
 
 // Traduit une chaîne type "e2" en structure coord_t.
 // Retourne 0 si succès, -1 si le format est invalide.
-
-int parse_coordinates (const char *input, pos_t *out_pos);
-
+int parse_coordinates (const char *input, Move *move);
 #endif

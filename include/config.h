@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #define MIN_BOARD_SIZE 4
 #define MAX_BOARD_SIZE 11
@@ -38,4 +39,8 @@ typedef struct
   lang_t language;
 } game_config_t;
 
+void init_default_config (game_config_t *config);
+void display_config (game_config_t *config);
+void load_config_file (game_config_t *config);
+void get_config_path (char *path, size_t size);
 #endif
