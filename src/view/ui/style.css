@@ -56,3 +56,30 @@ popover button:hover, popover button:hover label {
 popover button:hover {
     background-color: gold;
 }
+
+.cell-light {
+    background-color: #e0e0e0; 
+    border-radius: 0;        
+    border: none;
+}
+
+.cell-dark {
+    background-color: #8c8c8c; 
+    border-radius: 0;
+    border: none;
+}
+
+.cell-light:hover, .cell-dark:hover {
+    background-color: gold; 
+    opacity: 0.8;
+}
+
+.piece-white {
+    font-size: 40px;
+    color: white;
+}
+
+.piece-black {
+    font-size: 40px;
+    color: black;
+}

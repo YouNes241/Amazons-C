@@ -1,9 +1,17 @@
 #include "gui_pages.h"
+#include "gui_utils.h"
 #include <gtk/gtk.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static void navigationClick (GtkButton *button, gpointer user_data);
 static void quitButtonClick (GtkButton *button, gpointer user_data);
 static void infoButtonClick (GtkButton *button, gpointer user_data);
+static GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,
+                                   gpointer user_data);
+static gboolean onDrop (GtkDropTarget *target, const GValue *value, double x,
+                        double y, gpointer user_data);
+static void fireArrow (GtkButton *button, gpointer user_data);
 
 GtkWidget *
 createMainMenuPage ()
@@ -138,12 +146,60 @@ createGamePage ()
   GtkWidget *box;
   GtkWidget *infoBtn;
   GtkWidget *quitBtn;
+  GtkWidget *boardGrid;
 
   builder = gtk_builder_new_from_file ("ui/game.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
   infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
   quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  boardGrid = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
+
+  for (unsigned int i = 0; i < GRID_HEIGHT * GRID_WIDTH; i++)
+    {
+      unsigned int x = i % GRID_WIDTH;
+      unsigned int y = i / GRID_WIDTH;
+
+      GtkWidget *cellBtn = gtk_button_new ();
+      gtk_widget_set_size_request (cellBtn, 60, 60);
+
+      if ((x + y) % 2 == 0)
+        {
+          gtk_widget_add_css_class (cellBtn, "cell-light");
+        }
+      else
+        {
+          gtk_widget_add_css_class (cellBtn, "cell-dark");
+        }
+
+      gameBoard[i] = cellBtn;
+
+      g_signal_connect (cellBtn, "clicked", G_CALLBACK (fireArrow),
+                        GINT_TO_POINTER (i));
+
+      GtkDragSource *dragSource = gtk_drag_source_new ();
+      g_signal_connect (dragSource, "prepare", G_CALLBACK (onDrag),
+                        GINT_TO_POINTER (i));
+      gtk_widget_add_controller (cellBtn, GTK_EVENT_CONTROLLER (dragSource));
+
+      GtkDropTarget *dropTarget
+          = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+      g_signal_connect (dropTarget, "drop", G_CALLBACK (onDrop),
+                        GINT_TO_POINTER (i));
+      gtk_widget_add_controller (cellBtn, GTK_EVENT_CONTROLLER (dropTarget));
+
+      gtk_grid_attach (GTK_GRID (boardGrid), cellBtn, x, y, 1, 1);
+    }
+
+  drawPiece (0, 6, PIECE_WHITE);
+  drawPiece (3, 9, PIECE_WHITE);
+  drawPiece (6, 9, PIECE_WHITE);
+  drawPiece (9, 6, PIECE_WHITE);
+
+  drawPiece (0, 3, PIECE_BLACK);
+  drawPiece (3, 0, PIECE_BLACK);
+  drawPiece (6, 0, PIECE_BLACK);
+  drawPiece (9, 3, PIECE_BLACK);
 
   g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
   g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoButtonClick), NULL);
@@ -199,4 +255,76 @@ infoButtonClick (GtkButton *button, gpointer user_data)
   gtk_window_present (infoWindow);
 
   g_object_unref (builder);
+}
+
+static GdkContentProvider *
+onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
+{
+  (void)source;
+  (void)x;
+  (void)y;
+
+  int srcIndex = GPOINTER_TO_INT (user_data);
+  int srcX = srcIndex % GRID_WIDTH;
+  int srcY = srcIndex / GRID_WIDTH;
+
+  if (getPiece (srcX, srcY) == PIECE_EMPTY)
+    return NULL;
+
+  char strIndex[8];
+  snprintf (strIndex, sizeof (strIndex), "%d", srcIndex);
+
+  GValue value = G_VALUE_INIT;
+  g_value_init (&value, G_TYPE_STRING);
+  g_value_set_string (&value, strIndex);
+
+  GdkContentProvider *provider = gdk_content_provider_new_for_value (&value);
+  g_value_unset (&value);
+
+  return provider;
+}
+
+static gboolean
+onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
+        gpointer user_data)
+{
+  (void)target;
+  (void)x;
+  (void)y;
+
+  int destIndex = GPOINTER_TO_INT (user_data);
+  const char *srcString = g_value_get_string (value);
+  int srcIndex = atoi (srcString);
+
+  int srcX = srcIndex % GRID_WIDTH;
+  int srcY = srcIndex / GRID_WIDTH;
+  int destX = destIndex % GRID_WIDTH;
+  int destY = destIndex / GRID_WIDTH;
+
+  if (getPiece (destX, destY) != PIECE_EMPTY)
+    return FALSE;
+
+  PieceType currentPiece = getPiece (srcX, srcY);
+  drawPiece (srcX, srcY, PIECE_EMPTY);
+  drawPiece (destX, destY, currentPiece);
+
+  g_print ("Move from (%d, %d) to (%d, %d)\n", srcX, srcY, destX, destY);
+
+  return TRUE;
+}
+
+static void
+fireArrow (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+
+  int index = GPOINTER_TO_INT (user_data);
+  int x = index % GRID_WIDTH;
+  int y = index / GRID_WIDTH;
+
+  if (getPiece (x, y) == PIECE_EMPTY)
+    {
+      drawPiece (x, y, PIECE_ARROW);
+      g_print ("Arrow fired on (%d, %d)\n", x, y);
+    }
 }

@@ -120,9 +120,10 @@
         <property name="vexpand">true</property> 
         
         <child>
-          <object class="GtkLabel">
-            <property name="label">[ BOARD_PLACEHOLDER ]</property>
-            <property name="css-classes">dim-label title-2</property>
+          <object class="GtkGrid" id="board_grid">
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="css-classes">game-board</property>
           </object>
         </child>
       </object>
