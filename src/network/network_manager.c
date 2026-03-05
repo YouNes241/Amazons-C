@@ -5,6 +5,8 @@
  */
 
 #include "network_common.h"
+#include "network_internal.h"
+#include "network_protocol.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,35 +17,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#define MAX_CLIENTS 64
-// Internal Structures
-
-/**
- * @brief Internal context structure for Server mode.
- * @details Has data specific to the server, like the listening socket.
- */
-struct ServerContext
-{
-  int listen_socket; // listen for incoming connections.
-
-  // The monitoring table.
-  // Index 0 will ALWAYS be the listen_socket (the entry point).
-  // Indexes 1 through MAX_CLIENTS will be the connected players.
-  struct pollfd fds[MAX_CLIENTS + 1];
-  int num_clients;
-};
-
-/**
- * @brief Internal context structure for Client mode.
- * @details Holds data specific to the client, such as the connection to the
- * server.
- */
-struct ClientContext
-{
-  int server_socket;     // connected to the remote server.
-  struct pollfd fd_info; // The client only monitors one thing: the server
-};
 
 // Private Utility Functions
 
@@ -63,6 +36,29 @@ set_nonblocking (int fd)
   if (flags == -1)
     return -1;
   return fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/**
+ * @brief Reads data from a socket and injects it into the target TCP buffer.
+ * @return 1 (success), 0 (nothing to read/EAGAIN), -1 (disconnection), -2
+ * (buffer full)
+ */
+static int
+receive_into_buffer (int sock, tcp_buffer_t *buffer)
+{
+  char temp[256];
+  int bytes_received = recv (sock, temp, sizeof (temp) - 1, 0);
+
+  if (bytes_received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    return 0; // nothing new
+
+  if (bytes_received <= 0)
+    return -1; // Disconnect
+
+  if (!tcp_buffer_append (buffer, temp, bytes_received))
+    return -2; // critical error : full buffer
+
+  return 1; // Succes
 }
 
 // Public Implementation
@@ -92,10 +88,20 @@ NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
  * @param manager Pointer to the NetworkManager instance.
  * @param port The port number to listen on (e.g., 8080).
  * @return int 0 on success, -1 on failure.
+ * @note certain error branches (e.g., socket creation or malloc failure) are
+ * defensive checks against catastrophic system exhaustion and are not intended
+ * to be triggered during normal unit testing
  */
 int
 NetworkManager_ServerStart (NetworkManager *manager, int port)
 {
+  if (manager == NULL)
+    return -1;
+  if (manager->current_mode != NET_MODE_NONE || manager->server_ctx != NULL)
+    {
+      printf ("[NETWORK] Manager is already active!\n");
+      return -1;
+    }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
@@ -170,6 +176,13 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
 int
 NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
 {
+  if (manager == NULL || ip == NULL)
+    return -1;
+  if (manager->current_mode != NET_MODE_NONE || manager->client_ctx != NULL)
+    {
+      printf ("[NETWORK] Already connected or active!\n");
+      return -1;
+    }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
@@ -213,6 +226,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
 
   manager->client_ctx->fd_info.fd = sock;
   manager->client_ctx->fd_info.events = POLLIN;
+  tcp_buffer_init (&manager->client_ctx->buffer);
   printf ("[NETWORK] Connected to the server %s:%d\n", ip, port);
   return 0;
 }
@@ -229,6 +243,8 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
 void
 NetworkManager_Cleanup (NetworkManager *manager)
 {
+  if (manager == NULL)
+    return;
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
       for (int i = 1; i <= MAX_CLIENTS; i++)
@@ -252,148 +268,252 @@ NetworkManager_Cleanup (NetworkManager *manager)
     }
   manager->current_mode = NET_MODE_NONE;
 }
+// ==========================================================================
+// Private Helper Functions for Tick
+// ==========================================================================
+
+/**
+ * @brief Handles a new incoming connection for the server.
+ * @details Accepts the socket, finds a free slot, configures the pollfd array,
+ * and initializes the dedicated TCP buffer for the new client.
+ */
+static void
+handle_server_new_connection (NetworkManager *manager, ServerContext *ctx)
+{
+  struct sockaddr_in client_addr;
+  socklen_t addr_len = sizeof (client_addr);
+  int client_fd = accept (ctx->listen_socket, (struct sockaddr *)&client_addr,
+                          &addr_len);
+
+  if (client_fd >= 0)
+    {
+      set_nonblocking (client_fd);
+      bool accepted = false;
+
+      for (int i = 1; i <= MAX_CLIENTS; i++)
+        {
+          if (ctx->fds[i].fd == -1)
+            {
+              ctx->fds[i].fd = client_fd;
+              ctx->fds[i].events = POLLIN;
+              ctx->clients[i].fd = client_fd;
+              tcp_buffer_init (&ctx->clients[i].buffer);
+              ctx->num_clients++;
+              accepted = true;
+
+              printf ("[SERVER] New client connected (Slot %d)\n", i);
+              if (manager->callbacks.OnPlayerJoined)
+                {
+                  manager->callbacks.OnPlayerJoined (
+                      "Unknown"); // TODO change later
+                }
+              break;
+            }
+        }
+
+      if (!accepted)
+        {
+          printf ("[SERVER] Full! Connection refused.\n");
+          close (client_fd);
+        }
+    }
+}
+
+/**
+ * @brief Handles incoming data or disconnection from a specific client.
+ */
+static void
+handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
+                           int client_index)
+{
+  int status = receive_into_buffer (ctx->fds[client_index].fd,
+                                    &ctx->clients[client_index].buffer);
+
+  if (status == 0)
+    return; // nothing to read
+
+  if (status == -1)
+    {
+      printf ("[SERVER] Client %d has disconnected.\n", client_index);
+      close (ctx->fds[client_index].fd);
+      ctx->fds[client_index].fd = -1;
+      ctx->num_clients--;
+
+      if (manager->callbacks.OnPlayerDisconnected)
+        manager->callbacks.OnPlayerDisconnected ("Network disconnection");
+      return;
+    }
+
+  if (status == -2)
+    {
+      printf ("[SERVER] Error: Buffer full for client %d.\n", client_index);
+      return;
+    }
+
+  char extracted_msg[256];
+  while (tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
+                                  extracted_msg, sizeof (extracted_msg)))
+    {
+      printf ("[SERVER] Client command received %d : '%s'\n", client_index,
+              extracted_msg);
+      Move parsed_move;
+      if (strncmp (extracted_msg, "MOVE", 4) == 0)
+        {
+          if (Protocol_StringToMove (extracted_msg, &parsed_move))
+            {
+              if (manager->callbacks.OnMoveReceived)
+                {
+                  manager->callbacks.OnMoveReceived (parsed_move);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Handles the server's multiplexing logic.
+ */
+static void
+handle_server_tick (NetworkManager *manager, ServerContext *ctx)
+{
+  int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
+  if (poll_count <= 0)
+    return;
+
+  // 1. Is there a new connection at the door?
+  if (ctx->fds[0].revents & POLLIN)
+    {
+      handle_server_new_connection (manager, ctx);
+    }
+
+  // 2. Is there data from existing clients?
+  for (int i = 1; i <= MAX_CLIENTS; i++)
+    {
+      if (ctx->fds[i].fd != -1
+          && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+        {
+          handle_server_client_data (manager, ctx, i);
+        }
+    }
+}
+
+/**
+ * @brief Handles the client's multiplexing logic.
+ */
+static void
+handle_client_tick (NetworkManager *manager, ClientContext *ctx)
+{
+  int poll_count = poll (&ctx->fd_info, 1, 0);
+  if (poll_count <= 0
+      || !(ctx->fd_info.revents & (POLLIN | POLLHUP | POLLERR)))
+    return;
+
+  int status = receive_into_buffer (ctx->server_socket, &ctx->buffer);
+
+  if (status == -1)
+    {
+      printf ("[CLIENT] The server has cut the connection.\n");
+      if (manager->callbacks.OnPlayerDisconnected)
+        manager->callbacks.OnPlayerDisconnected ("Server closed");
+      return;
+    }
+
+  if (status == -2)
+    {
+      printf ("[CLIENT] Error: Buffer full.\n");
+      return;
+    }
+
+  char extracted_msg[256];
+  while (tcp_buffer_extract_line (&ctx->buffer, extracted_msg,
+                                  sizeof (extracted_msg)))
+    {
+      printf ("[CLIENT] Server command received : '%s'\n", extracted_msg);
+      Move parsed_move;
+      if (strncmp (extracted_msg, "MOVE", 4) == 0)
+        {
+          if (Protocol_StringToMove (extracted_msg, &parsed_move))
+            {
+              if (manager->callbacks.OnMoveReceived)
+                {
+                  manager->callbacks.OnMoveReceived (parsed_move);
+                }
+            }
+        }
+    }
+}
 
 /**
  * @brief Processes all pending network events without blocking the main
  * thread.
- * * @details This function acts as the core multiplexer for the network module
- * and must be called periodically within the main game loop (e.g., once per
- * frame). It uses a non-blocking poll() approach (timeout of 0) to ensure the
- * game engine never freezes.
- * * Behavior depends on the current network mode:
- * - **SERVER Mode**:
- * - Checks the listening socket for new incoming connections. If a client
- * attempts to connect and there is an available slot, it accepts the
- * connection, sets the socket to non-blocking, and triggers the
- * `OnPlayerJoined` callback. If full, it rejects.
- * - Iterates through all currently connected clients to check for incoming
- * data. It reads the data or detects disconnections, triggering
- * `OnPlayerDisconnected` and freeing the internal slot if a client drops.
- * * - **CLIENT Mode**:
- * - Monitors the active connection to the server. If data is available, it
- * reads it.
- * - Detects if the server has closed the connection and triggers the
- * `OnPlayerDisconnected` callback accordingly.
- * * @note In the current iteration (F40.4), incoming data is read and printed
- * to standard output but not yet pushed to the TCP Buffer. This will be
- * implemented in F40.5.
- * * @param manager Pointer to the initialized NetworkManager instance.
+ * * @details Delegates the actual multiplexing logic to internal helper
+ * functions depending on the current network mode (SERVER or CLIENT).
  */
 void
 NetworkManager_Tick (NetworkManager *manager)
 {
-  if (manager->current_mode == NET_MODE_NONE)
-    return;
+  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
+    {
+      return;
+    }
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
-      ServerContext *ctx = manager->server_ctx;
-
-      int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
-      if (poll_count <= 0)
-        return;
-
-      if (ctx->fds[0].revents & POLLIN)
-        {
-          struct sockaddr_in client_addr;
-          socklen_t addr_len = sizeof (client_addr);
-          int client_fd = accept (ctx->listen_socket,
-                                  (struct sockaddr *)&client_addr, &addr_len);
-
-          if (client_fd >= 0)
-            {
-              set_nonblocking (client_fd);
-
-              bool accepted = false;
-              for (int i = 1; i <= MAX_CLIENTS; i++)
-                {
-                  if (ctx->fds[i].fd == -1)
-                    {
-                      ctx->fds[i].fd = client_fd;
-                      ctx->fds[i].events = POLLIN;
-                      ctx->num_clients++;
-                      accepted = true;
-
-                      printf ("[SERVEUR] Nouveau client connecté (Slot %d)\n",
-                              i);
-
-                      if (manager->callbacks.OnPlayerJoined)
-                        {
-                          manager->callbacks.OnPlayerJoined (
-                              "Unknown"); // TODO change later for login name
-                        }
-                      break;
-                    }
-                }
-
-              if (!accepted)
-                {
-                  printf ("[SERVEUR] Plein ! Connexion refusée.\n");
-                  close (client_fd);
-                }
-            }
-        }
-
-      for (int i = 1; i <= MAX_CLIENTS; i++)
-        {
-          if (ctx->fds[i].fd != -1 && (ctx->fds[i].revents & POLLIN))
-            {
-              // TODO F40.5  here: do the true recv()
-              char temp[256];
-              int bytes_received
-                  = recv (ctx->fds[i].fd, temp, sizeof (temp) - 1, 0);
-              if (bytes_received < 0
-                  && (errno == EAGAIN || errno == EWOULDBLOCK))
-                {
-                  continue; // False alarm, let's move on to the next client
-                }
-              else if (bytes_received <= 0)
-                {
-                  printf ("[SERVEUR] Le client %d s'est déconnecté.\n", i);
-                  close (ctx->fds[i].fd);
-                  ctx->fds[i].fd = -1;
-                  ctx->num_clients--;
-                  if (manager->callbacks.OnPlayerDisconnected)
-                    {
-                      manager->callbacks.OnPlayerDisconnected (
-                          "Déconnexion réseau");
-                    }
-                }
-              else
-                {
-                  temp[bytes_received] = '\0';
-                  printf ("[SERVEUR] Message brut reçu : %s\n", temp);
-                }
-            }
-        }
+      handle_server_tick (manager, manager->server_ctx);
     }
   else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
-      ClientContext *ctx = manager->client_ctx;
-
-      int poll_count = poll (&ctx->fd_info, 1, 0);
-      if (poll_count <= 0)
-        return;
-
-      if (ctx->fd_info.revents & POLLIN)
-        {
-          char temp[256];
-          int bytes_received
-              = recv (ctx->server_socket, temp, sizeof (temp) - 1, 0);
-
-          if (bytes_received <= 0)
-            {
-              printf ("[CLIENT] Le serveur a coupé la connexion.\n");
-              if (manager->callbacks.OnPlayerDisconnected)
-                {
-                  manager->callbacks.OnPlayerDisconnected ("Serveur fermé");
-                }
-            }
-          else
-            {
-              temp[bytes_received] = '\0';
-              printf ("[CLIENT] Message brut du serveur : %s\n", temp);
-            }
-        }
+      handle_client_tick (manager, manager->client_ctx);
     }
+}
+
+/**
+* @brief Sends a text message over the network.
+* @param manager Pointer to the manager.
+* @param target_client The client index (1 to MAX_CLIENTS) if you are the
+server. Ignored (set to 0) if you are the client.
+* @param message The message to send (ideally should end with '\n').
+* @return Returns 0 for success, -1 for failure.
+*/
+int
+NetworkManager_Send (NetworkManager *manager, int target_client,
+                     const char *message)
+{
+  if (manager == NULL || message == NULL
+      || manager->current_mode == NET_MODE_NONE)
+    return -1;
+
+  int target_socket = -1;
+  const char *log_prefix = "";
+
+  // 1. Déterminer le socket cible selon le mode
+  if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
+    {
+      target_socket = manager->client_ctx->server_socket;
+      log_prefix = "[CLIENT]";
+    }
+  else if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
+    {
+      if (target_client < 1 || target_client > MAX_CLIENTS)
+        return -1;
+
+      target_socket = manager->server_ctx->fds[target_client].fd;
+      log_prefix = "[SERVER]";
+    }
+
+  // 2. Vérifier si on a trouvé un destinataire valide
+  if (target_socket == -1)
+    {
+      printf ("%s Error: Invalid target.\n", log_prefix);
+      return -1;
+    }
+
+  // 3. Un seul appel d'envoi pour tout le monde !
+  if (send (target_socket, message, strlen (message), 0) < 0)
+    {
+      perror (log_prefix);
+      return -1;
+    }
+
+  return 0;
 }

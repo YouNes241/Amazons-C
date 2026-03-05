@@ -30,7 +30,8 @@ typedef struct
 typedef enum
 {
   PLAYER_WHITE = 0,
-  PLAYER_BLACK = 1
+  PLAYER_BLACK = 1,
+  NO_PLAYER = 2 // Used for error cases or when there is no winner yet
 } PlayerColor;
 
 typedef enum

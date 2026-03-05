@@ -50,6 +50,10 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
 endif()
 
 
+# --- TEST BITBOARD (TEMP) ---
+add_executable(test_bitboard tests/test_bitboard.c src/gamemodel/bitboard.c)
+target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
+add_test(NAME TestBitboard COMMAND test_bitboard)
 
 # --- TESTS GUI (TEMP) ---
 add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c src/view/gui_pages.c)
