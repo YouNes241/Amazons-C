@@ -9,134 +9,146 @@ extern "C"
 #include "utils.h"
 }
 
-// Test symmetrical board
-TEST (EvaluatorTest, SymmetryReturnsZero)
+// Symmetry test : a position and its mirror should have the same score
+TEST (EvaluatorTest, SymmetryAllSizes)
 {
-  BitboardState state = create_empty_state (10);
-
-  // Original starting pos in amazons
-  bitboard_set_bit (&state.black_queens, 3);
-  bitboard_set_bit (&state.black_queens, 6);
-  bitboard_set_bit (&state.black_queens, 30);
-  bitboard_set_bit (&state.black_queens, 39);
-  bitboard_set_bit (&state.white_queens, 60);
-  bitboard_set_bit (&state.white_queens, 69);
-  bitboard_set_bit (&state.white_queens, 93);
-  bitboard_set_bit (&state.white_queens, 96);
-
-  bitboard_state_print (&state);
-
   Evaluator eval_me = get_evaluator_by_name ("me");
   Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
   Evaluator eval_rth = get_evaluator_by_name ("rth");
 
-  EXPECT_NEAR (eval_me (&state), 0.0f, 0.001f);
-  EXPECT_NEAR (eval_qdkd (&state), 0.0f, 0.001f);
-  EXPECT_NEAR (eval_rth (&state), 0.0f, 0.001f);
+  for (uint8_t size = 4; size <= 11; size++)
+    {
+      BitboardState state = create_empty_state (size);
+
+      uint8_t r1 = 1, c1 = 1;
+      uint8_t r2 = size - 1 - r1;
+      uint8_t c2 = size - 1 - c1;
+
+      bitboard_set_bit (&state.white_queens, r1 * size + c1);
+      bitboard_set_bit (&state.black_queens, r2 * size + c2);
+
+      bitboard_set_bit (&state.arrows, 0 * size + 1);
+      bitboard_set_bit (&state.arrows, (size - 1) * size + (size - 2));
+
+      EXPECT_NEAR (eval_me (&state), 0.0f, 0.001f)
+          << "Symmetry failed for 'me' at size " << (int)size;
+      EXPECT_NEAR (eval_qdkd (&state), 0.0f, 0.001f)
+          << "Symmetry failed for 'qdkd' at size " << (int)size;
+      EXPECT_NEAR (eval_rth (&state), 0.0f, 0.001f)
+          << "Symmetry failed for 'rth' at size " << (int)size;
+    }
 }
 
-// 2. Test de Mobilité : Une reine blanche au centre doit battre une reine
-// noire dans un coin.
+// Mobility test : a centered queen vs a cornered queen
 TEST (EvaluatorTest, MobilityAdvantage)
 {
   BitboardState state = create_empty_state (10);
 
-  // Blanche au centre (plus de mouvements)
   bitboard_set_bit (&state.white_queens, 45);
-  // Noire dans un coin (très peu de mouvements)
   bitboard_set_bit (&state.black_queens, 0);
 
   Evaluator eval_me = get_evaluator_by_name ("me");
-  // Le score doit être positif car avantage Blanc
+
   EXPECT_GT (eval_me (&state), 0.0f);
 }
 
-// 3. Test d'Enfermement (RTH) : Si une reine noire est totalement entourée
-// d'indices/flèches.
-TEST (EvaluatorTest, BlackTrappedRTH)
+TEST (EvaluatorTest, BlackTrappedEverywhere)
 {
-  BitboardState state = create_empty_state (10);
-
-  // Reine blanche libre
-  bitboard_set_bit (&state.white_queens, 55);
-
-  // Reine noire en (0,0) mais entourée de flèches en (0,1), (1,1), (1,0)
-  bitboard_set_bit (&state.black_queens, 0);
-  bitboard_set_bit (&state.arrows, 1);
-  bitboard_set_bit (&state.arrows, 10);
-  bitboard_set_bit (&state.arrows, 11);
-
   Evaluator eval_rth = get_evaluator_by_name ("rth");
-  float score = eval_rth (&state);
 
-  // La blanche possède quasiment tout le terrain, le score doit être
-  // massivement positif
-  EXPECT_GT (score, 50.0f);
+  for (uint8_t size = 4; size <= 11; size++)
+    {
+      for (uint8_t r = 0; r < size; r++)
+        {
+          for (uint8_t c = 0; c < size; c++)
+            {
+              BitboardState state = create_empty_state (size);
+              uint8_t black_pos = r * size + c;
+
+              // 1. Place the Black Queen at the current tile
+              bitboard_set_bit (&state.black_queens, black_pos);
+
+              // 2. Surround her with arrows on all valid neighbors
+              for (int dr = -1; dr <= 1; dr++)
+                {
+                  for (int dc = -1; dc <= 1; dc++)
+                    {
+                      int nr = (int)r + dr;
+                      int nc = (int)c + dc;
+
+                      // If it's a valid neighbor and not the queen's square
+                      if (nr >= 0 && nr < size && nc >= 0 && nc < size)
+                        {
+                          uint8_t neighbor_idx = nr * size + nc;
+                          if (neighbor_idx != black_pos)
+                            {
+                              bitboard_set_bit (&state.arrows, neighbor_idx);
+                            }
+                        }
+                    }
+                }
+
+              // 3. Place a free White Queen as far away as possible
+              uint8_t white_r = (r < size / 2) ? (size - 1) : 0;
+              uint8_t white_c = (c < size / 2) ? (size - 1) : 0;
+              bitboard_set_bit (&state.white_queens, white_r * size + white_c);
+
+              float score = eval_rth (&state);
+
+              EXPECT_GT (score, 10.0f)
+                  << "Failure: Black trapped at (" << (int)r << "," << (int)c
+                  << ") on " << (int)size << "x" << (int)size
+                  << " board was not penalized enough.";
+            }
+        }
+    }
 }
 
-// 4. Test QDKD : Vérifier que le mélange Queen/King distance fonctionne
+// QDKD test : a position with a clear mobility advantage should have a
+// positive score
 TEST (EvaluatorTest, QDKDWeightedScore)
 {
   BitboardState state = create_empty_state (10);
 
-  // Position asymétrique simple
   bitboard_set_bit (&state.white_queens, 44);
   bitboard_set_bit (&state.black_queens, 0);
 
   Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
   float score = eval_qdkd (&state);
 
-  EXPECT_NE (score, 0.0f);
+  EXPECT_GT (score, 0.0f);
 }
 
-TEST (EvaluatorTest, Symmetry4x4)
+// Checks that all evaluators have a score of 0, for any game size.
+TEST (EvaluatorTest, SymmetryRange4to11)
 {
-  BitboardState state = create_empty_state (4);
-  // Let's place one queen for each at mirrored spots
-  bitboard_set_bit (&state.white_queens, 12); // a1 (bottom left)
-  bitboard_set_bit (&state.black_queens, 3);  // d4 (top right)
-
-  bitboard_state_print (&state);
-
   Evaluator eval_me = get_evaluator_by_name ("me");
   Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
   Evaluator eval_rth = get_evaluator_by_name ("rth");
 
-  float rth_score = eval_rth (&state);
-  EXPECT_NEAR (rth_score, 0.0f, 0.001f);
+  for (uint8_t size = 4; size <= 11; size++)
+    {
+      BitboardState state = create_empty_state (size);
 
-  float qdkd_score = eval_qdkd (&state);
-  printf ("qdkd : %f", qdkd_score);
-  EXPECT_NEAR (qdkd_score, 0.0f, 0.001f);
+      // Place White Queen at bottom-left corner: (row = size-1, col = 0)
+      uint8_t white_idx = (size - 1) * size;
+      // Place Black Queen at top-right corner: (row = 0, col = size-1)
+      uint8_t black_idx = size - 1;
 
-  float me_score = eval_me (&state);
-  EXPECT_NEAR (me_score, 0.0f, 0.001f);
+      bitboard_set_bit (&state.white_queens, white_idx);
+      bitboard_set_bit (&state.black_queens, black_idx);
+
+      // Verify symmetry (Score should be 0.0)
+      EXPECT_NEAR (eval_me (&state), 0.0f, 0.001f)
+          << "Failed 'me' symmetry at size " << (int)size;
+      EXPECT_NEAR (eval_qdkd (&state), 0.0f, 0.001f)
+          << "Failed 'qdkd' symmetry at size " << (int)size;
+      EXPECT_NEAR (eval_rth (&state), 0.0f, 0.001f)
+          << "Failed 'rth' symmetry at size " << (int)size;
+    }
 }
 
-TEST (EvaluatorTest, Symmetry11x11)
-{
-  BitboardState state = create_empty_state (11);
-  // Mirror pieces across the center
-  bitboard_set_bit (&state.white_queens, 110); // a1 (index 110)
-  bitboard_set_bit (&state.black_queens, 10);  // k11 (index 10)
-
-  bitboard_state_print (&state);
-
-  Evaluator eval_me = get_evaluator_by_name ("me");
-  Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
-  Evaluator eval_rth = get_evaluator_by_name ("rth");
-
-  float rth_score = eval_rth (&state);
-  EXPECT_NEAR (rth_score, 0.0f, 0.001f);
-
-  float qdkd_score = eval_qdkd (&state);
-  printf ("qdkd : %f", qdkd_score);
-  EXPECT_NEAR (qdkd_score, 0.0f, 0.001f);
-
-  float me_score = eval_me (&state);
-  EXPECT_NEAR (me_score, 0.0f, 0.001f);
-}
-
+// Checks that random moves works.
 TEST (EvaluatorTest, RandomMove)
 {
   // bitboardstate to gamestate
@@ -177,6 +189,7 @@ TEST (EvaluatorTest, RandomMove)
   EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < 10);
 }
 
+// Checks that minimax move works.
 TEST (EvaluatorTest, MiniMaxMove)
 {
   // bitboardstate to gamestate
@@ -199,8 +212,8 @@ TEST (EvaluatorTest, MiniMaxMove)
   cc[9][3] = CONTENT_WHITE_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { .size = 10,  // Move this to the top!
-                      .board = cc, // Then board...
+  GameState state = { .size = 10,
+                      .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
                       .turn_count = 0 };
@@ -228,6 +241,10 @@ TEST (EvaluatorTest, MiniMaxMove)
   EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < 10);
 }
 
+// Checks that minimax move works when the opponent is completely trapped
+// (should always find the winning move).
+// This test also serves to check that the depth is efficiently prunned when
+// unnecessary, as the winning move is at depth 1.
 TEST (EvaluatorTest, MiniMaxWin)
 {
   // bitboardstate to gamestate
@@ -249,8 +266,8 @@ TEST (EvaluatorTest, MiniMaxWin)
   cc[8][9] = CONTENT_EMPTY;
   cc[7][9] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { .size = 10,  // Move this to the top!
-                      .board = cc, // Then board...
+  GameState state = { .size = 10,
+                      .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
                       .turn_count = 0 };
@@ -258,7 +275,7 @@ TEST (EvaluatorTest, MiniMaxWin)
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  Param depth = { .key = "depth", .value = "1" };
+  Param depth = { .key = "depth", .value = "3" };
 
   Param evaluator_qdkd = { .key = "evaluator", .value = "qdkd" };
   Param evaluator_rth = { .key = "evaluator", .value = "rth" };

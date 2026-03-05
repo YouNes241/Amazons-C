@@ -298,3 +298,38 @@ bitboard_count_bits (Bitboard bb)
 {
   return __builtin_popcountll (bb.low) + __builtin_popcountll (bb.high);
 }
+
+Bitboard
+bitboard_get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size)
+{
+  Bitboard reachable = bitboard_create_empty ();
+  uint8_t start_r = start_index / size;
+  uint8_t start_c = start_index % size;
+
+  for (int8_t dr = -1; dr <= 1; dr++)
+    for (int8_t dc = -1; dc <= 1; dc++)
+      {
+        // origin
+        if (dr == 0 && dc == 0)
+          continue;
+
+        // any movement
+        for (int dist = 1; dist < size; dist++)
+          {
+            int8_t r = start_r + (dr * dist);
+            int8_t c = start_c + (dc * dist);
+
+            if (r < 0 || r >= size || c < 0 || c >= size)
+              break;
+
+            uint8_t current_idx = r * size + c;
+
+            // If we hit an obstacle, stop.
+            if (bitboard_get_bit (occupied, current_idx))
+              break;
+
+            bitboard_set_bit (&reachable, current_idx);
+          }
+      }
+  return reachable;
+}

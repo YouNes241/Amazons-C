@@ -14,7 +14,13 @@ typedef float (*Evaluator) (BitboardState *state);
  */
 Evaluator get_evaluator_by_name (const char *name);
 
-BitboardState sync_from_logic (GameState *gs);
-
+/**
+ * @brief Evaluates the board state based on mobility, calculating the
+ * difference in the number of legal moves available to the current player
+ * versus the opponent.
+ * @param state The current board state to evaluate.
+ * @return A float score representing the mobility advantage. Positive means
+ * the current player has more mobility, negative means less.
+ */
 Bitboard expand_king_step (Bitboard sources, Bitboard empty, uint8_t width);
 #endif

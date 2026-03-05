@@ -24,82 +24,52 @@ typedef struct
   int score;
 } ScoredMove;
 
-/**
- * @brief Calculates the maximum number of moves possible in the current board
- * state.
- * @note It only calculates it once, as the size should not change.
- * (singleplayer)
- * @param state The current board state to evaluate.
- * @return Max number of legal moves possibles
- */
-static int
-get_move_limit (BitboardState state)
+int
+get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
+                 Move *moves_array)
 {
-  static int possible_moves = -1;
-  if (possible_moves == -1)
+  Bitboard reachable = bitboard_get_reachable (queen_index, occupied, size);
+  int count = 0;
+
+  while (!bitboard_is_zero (reachable))
     {
-      BitboardState temp_state = create_empty_state (state.size);
-      uint8_t center_idx
-          = (temp_state.size / 2) * temp_state.size + (temp_state.size / 2);
-      bitboard_set_bit (&temp_state.white_queens, center_idx);
-      possible_moves = get_legal_moves (temp_state, NULL)
-                       * bitboard_count_bits (state.white_queens);
+      int idx = pop_lsb (&reachable);
+      moves_array[count++]
+          = (Move){ .queen_src = idx_to_pos (queen_index, size),
+                    .queen_dst = idx_to_pos (idx, size),
+                    .arrow_dst = { -1, -1 } };
     }
-  return possible_moves;
+  return count;
 }
 
-/**
- * @brief Applies a move on a BitboardState and returns the resulting state.
- * @param state The current board state before the move.
- * @param move The move to apply, containing source and destination for the
- * queen and the arrow.
- * @return A new BitboardState with the move applied.
- */
-static BitboardState
-apply_move_bitboard (BitboardState state, Move move)
+int
+get_arrow_moves (Move *queen_moves, Move *final_moves, int queen_move_count,
+                 Bitboard occupied, uint8_t size)
 {
-  // Init
-  BitboardState next = state;
-  Position q_src = move.queen_src;
-  Position q_dst = move.queen_dst;
-  Position a_dst = move.arrow_dst;
-  int size = state.size;
+  int count = 0;
 
-  // Convert pos for bits
-  uint8_t src_idx = q_src.row * size + q_src.col;
-  uint8_t dst_idx = q_dst.row * size + q_dst.col;
-  uint8_t arr_idx = a_dst.row * size + a_dst.col;
-
-  // Who's moving ?
-  Bitboard *my_queens
-      = (state.white_to_move) ? &next.white_queens : &next.black_queens;
-
-  // Remove
-  bitboard_clear_bit (my_queens, src_idx);
-
-  // Place
-  bitboard_set_bit (my_queens, dst_idx);
-  bitboard_set_bit (&next.arrows, arr_idx);
-
-  next.white_to_move = !state.white_to_move;
-
-  return next;
-}
-
-/**
- * @brief Checks if a given parameter key matches the expected key and, if so,
- * parses its value as an integer and assigns it to the target variable.
- * @param p The parameter to check, containing a key and a value.
- * @param key The expected key to match against the parameter's key.
- * @param target The value to set based on the parameter's valuation. *
- */
-static void
-check_param (Param p, const char *key, int *target)
-{
-  if (strcmp (p.key, key) == 0)
+  for (int i = 0; i < queen_move_count; i++)
     {
-      *target = atoi (p.value);
+      Move qm = queen_moves[i];
+      uint8_t idx = qm.queen_dst.row * size + qm.queen_dst.col;
+
+      Bitboard new_occupied = occupied;
+      bitboard_clear_bit (&new_occupied,
+                          qm.queen_src.row * size + qm.queen_src.col);
+      bitboard_set_bit (&new_occupied, idx);
+
+      Bitboard reachable = bitboard_get_reachable (idx, new_occupied, size);
+
+      while (!bitboard_is_zero (reachable))
+        {
+          int arrow_idx = pop_lsb (&reachable);
+          final_moves[count++]
+              = (Move){ .queen_src = qm.queen_src,
+                        .queen_dst = qm.queen_dst,
+                        .arrow_dst = idx_to_pos (arrow_idx, size) };
+        }
     }
+  return count;
 }
 
 /**
@@ -169,27 +139,6 @@ minimax_clean (AI_Interface *self)
   self->context = NULL;
 
   printf ("[Minimax] Clean OK\n");
-}
-
-/**
- * @brief Checks if the game is over by determining if there are no legal moves
- * available for the current player.
- * @param state The current board state to evaluate.
- * @return true if the game is over (no legal moves), false otherwise.
- */
-static bool
-is_game_over (BitboardState state)
-{
-  Bitboard my_queens = (state.white_to_move == true) ? state.white_queens
-                                                     : state.black_queens;
-
-  Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
-  occupied = bitboard_or (occupied, state.arrows);
-  Bitboard empty = bitboard_not (occupied);
-
-  Bitboard adjacent_moves = expand_king_step (my_queens, empty, state.size);
-
-  return bitboard_is_zero (adjacent_moves);
 }
 
 /**

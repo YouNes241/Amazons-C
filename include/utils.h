@@ -1,32 +1,27 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "bitboard.h"
 #include "game_types.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 /**
- * @brief Prints a visual representation of the game board to standard output.
- * @param state Pointer to the BitboardState to be visualized.
+ * @brief Retrieves the current time in milliseconds since the Unix epoch.
+ * @return The current time in milliseconds.
  */
-void bitboard_state_print (const BitboardState *state);
+unsigned long get_time_ms ();
 
 /**
- * @brief Allocates and initializes a new bitboard state with no pieces or
- * arrows.
- * @param size The dimension of the board.
- * @return An initialized BitboardState structure.
+ * @brief Converts a linear index to a Position struct based on the board size.
+ * @param index The linear index to convert (0 to size*size - 1).
+ * @param size The dimension of the board (e.g., 10 for a 10x10 board).
+ * @return A Position struct with row and column corresponding to the index.
  */
-BitboardState create_empty_state (uint8_t size);
+Position idx_to_pos (uint8_t index, uint8_t size);
 
-Bitboard get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size);
-
-int get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
-                     Move *moves_array);
-
-int get_arrow_moves (Move *queen_moves, Move *final_moves,
-                     int queen_move_count, Bitboard occupied, uint8_t size);
-
-int get_legal_moves (BitboardState state, Move *moves_array);
+/**
+ * @brief Compares two moves for equality.
+ * @param a The first move to compare.
+ * @param b The second move to compare.
+ * @return true if the moves are identical in terms of queen source, queen
+ */
+bool moves_are_equal (Move a, Move b);
 #endif

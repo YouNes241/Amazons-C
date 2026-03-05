@@ -29,7 +29,6 @@ protected:
   void
   SetUp () override
   {
-    // Initialize with default or empty params
     ConfigMap empty_params = { .list = NULL, .count = 0 };
     ai = create_ai ("mcts", empty_params);
   }

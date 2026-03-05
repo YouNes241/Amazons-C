@@ -13,8 +13,12 @@ typedef struct
 
 extern const AI_VTable minimax_vtable;
 
+/**
+ * @brief Initializes the Minimax AI with parameters for depth, time limit, and
+ * evaluator choice.
+ * @param self The AI_Interface instance to initialize, which will hold the
+ * context for the Minimax algorithm.
+ */
 void create_minimax_ai (AI_Interface *ai);
-
-int get_legal_moves (BitboardState state, Move *moves_array);
 
 #endif

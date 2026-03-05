@@ -334,6 +334,7 @@ mcts_init (AI_Interface *self, ConfigMap *params)
     return;
 
   data->time_constraint = 5000;
+  // TODO : Finish implementing missing parameters
   data->max_iterations = 100000;
   data->max_workers = 1;
 
