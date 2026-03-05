@@ -5,6 +5,7 @@
  */
 
 #include "network_common.h"
+#include "network_handlers.h"
 #include "network_internal.h"
 #include "network_packet.h"
 #include "network_protocol.h"
@@ -19,50 +20,27 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-// Private Utility Functions
-
-/**
- * @brief Sets a file descriptor (socket) to non-blocking mode.
- *
- * @details This is done so that read/write operations on the socket do not
- * halt the program execution if no data is immediately available.
- *
- * @param fd The file descriptor to modify.
- * @return int 0 on success, -1 on failure.
+/* ==========================================================================
+ * Forward Declarations (Private Helpers)
+ * ==========================================================================
  */
-static int
-set_nonblocking (int fd)
-{
-  int flags = fcntl (fd, F_GETFL, 0);
-  if (flags == -1)
-    return -1;
-  return fcntl (fd, F_SETFL, flags | O_NONBLOCK);
-}
 
-/**
- * @brief Reads data from a socket and injects it into the target TCP buffer.
- * @return 1 (success), 0 (nothing to read/EAGAIN), -1 (disconnection), -2
- * (buffer full)
+static int set_nonblocking (int fd);
+static int receive_into_buffer (int sock, tcp_buffer_t *buffer);
+static void handle_server_new_connection (ServerContext *ctx);
+static void disconnect_server_client (NetworkManager *manager,
+                                      ServerContext *ctx, int client_index);
+static void process_buffer_packets (NetworkManager *manager,
+                                    tcp_buffer_t *buffer, int client_index);
+static void handle_server_client_data (NetworkManager *manager,
+                                       ServerContext *ctx, int client_index);
+static void handle_server_tick (NetworkManager *manager, ServerContext *ctx);
+static void handle_client_tick (NetworkManager *manager, ClientContext *ctx);
+
+/* ==========================================================================
+ * Public API Implementation
+ * ==========================================================================
  */
-static int
-receive_into_buffer (int sock, tcp_buffer_t *buffer)
-{
-  char temp[256];
-  int bytes_received = recv (sock, temp, sizeof (temp) - 1, 0);
-
-  if (bytes_received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-    return 0; // nothing new
-
-  if (bytes_received <= 0)
-    return -1; // Disconnect
-
-  if (!tcp_buffer_append (buffer, temp, bytes_received))
-    return -2; // critical error : full buffer
-
-  return 1; // Succes
-}
-
-// Public Implementation
 
 /**
  * @brief Initializes the NetworkManager structure.
@@ -137,7 +115,6 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   set_nonblocking (sock);
 
   // initialize Server Context
-
   manager->server_ctx = malloc (sizeof (ServerContext));
   if (manager->server_ctx == NULL)
     {
@@ -216,7 +193,6 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   set_nonblocking (sock);
 
   // initialize Client Context
-
   manager->client_ctx = malloc (sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
@@ -270,289 +246,6 @@ NetworkManager_Cleanup (NetworkManager *manager)
       printf ("[NETWORK] Disconnected from the server.\n");
     }
   manager->current_mode = NET_MODE_NONE;
-}
-// ==========================================================================
-// Private Helper Functions for Tick
-// ==========================================================================
-
-/**
- * @brief Handles a new incoming connection for the server.
- * @details Accepts the socket, finds a free slot, configures the pollfd array,
- * and initializes the dedicated TCP buffer for the new client.
- */
-static void
-handle_server_new_connection (ServerContext *ctx)
-{
-  struct sockaddr_in client_addr;
-  socklen_t addr_len = sizeof (client_addr);
-  int client_fd = accept (ctx->listen_socket, (struct sockaddr *)&client_addr,
-                          &addr_len);
-
-  if (client_fd >= 0)
-    {
-      set_nonblocking (client_fd);
-      bool accepted = false;
-
-      for (int i = 1; i <= MAX_CLIENTS; i++)
-        {
-          if (ctx->fds[i].fd == -1)
-            {
-              ctx->fds[i].fd = client_fd;
-              ctx->fds[i].events = POLLIN;
-              ctx->clients[i].fd = client_fd;
-              tcp_buffer_init (&ctx->clients[i].buffer);
-              ctx->clients[i].is_joined = false;
-              memset (ctx->clients[i].username, 0, 32);
-              ctx->num_clients++;
-              accepted = true;
-
-              printf ("[SERVER] TCP Connection established (Slot %d) - "
-                      "Waiting for JOIN packet...\n",
-                      i);
-
-              break;
-            }
-        }
-
-      if (!accepted)
-        {
-          printf ("[SERVER] Full! Connection refused.\n");
-          close (client_fd);
-        }
-    }
-}
-
-/**
- * @brief Handles incoming data or disconnection from a specific client.
- */
-static void
-handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
-                           int client_index)
-{
-  int status = receive_into_buffer (ctx->fds[client_index].fd,
-                                    &ctx->clients[client_index].buffer);
-
-  if (status == 0)
-    return;
-
-  if (status == -1)
-    {
-      printf ("[SERVER] Client %d has disconnected.\n", client_index);
-      close (ctx->fds[client_index].fd);
-      ctx->fds[client_index].fd = -1;
-      ctx->num_clients--;
-      if (manager->callbacks.OnPlayerDisconnected)
-        manager->callbacks.OnPlayerDisconnected ("Network disconnection");
-      return;
-    }
-
-  if (status == -2)
-    {
-      printf ("[SERVER] Error: Buffer full for client %d.\n", client_index);
-      return;
-    }
-
-  char extracted_msg[256];
-  while (tcp_buffer_extract_line (&ctx->clients[client_index].buffer,
-                                  extracted_msg, sizeof (extracted_msg)))
-    {
-      Packet pkt;
-      if (!DeserializePacket (extracted_msg, &pkt))
-        {
-          printf ("[SERVER] Incorrect format of received package : %s\n",
-                  extracted_msg);
-          continue;
-        }
-
-      char out_buffer[256];
-      Packet resp;
-
-      switch (pkt.type)
-        {
-        case C2S_JOIN:
-          {
-            // 1. Check if the username is already taken.
-            bool name_taken = false;
-            for (int j = 1; j <= MAX_CLIENTS; j++)
-              {
-                if (j != client_index && ctx->fds[j].fd != -1
-                    && ctx->clients[j].is_joined)
-                  {
-                    if (strcmp (ctx->clients[j].username, pkt.payload) == 0)
-                      {
-                        name_taken = true;
-                        break;
-                      }
-                  }
-              }
-
-            if (name_taken)
-              {
-                resp.type = S2C_REJECT;
-                strcpy (resp.payload, "Username already taken");
-                SerializePacket (&resp, out_buffer, sizeof (out_buffer));
-                send (ctx->fds[client_index].fd, out_buffer,
-                      strlen (out_buffer), 0);
-              }
-            else
-              {
-                // 2. Accept player
-                strncpy (ctx->clients[client_index].username, pkt.payload, 31);
-                ctx->clients[client_index].username[31] = '\0';
-                ctx->clients[client_index].is_joined = true;
-
-                resp.type = S2C_WELCOME;
-                strcpy (resp.payload, "Welcome !");
-                SerializePacket (&resp, out_buffer, sizeof (out_buffer));
-                send (ctx->fds[client_index].fd, out_buffer,
-                      strlen (out_buffer), 0);
-
-                // 3. Inform the game engine
-                if (manager->callbacks.OnPlayerJoined)
-                  {
-                    manager->callbacks.OnPlayerJoined (
-                        ctx->clients[client_index].username);
-                  }
-              }
-            break;
-          }
-        case C2S_MOVE:
-          {
-            Move parsed_move;
-            // Note : pkt.payload contains "MOVE a1-a2-a3"
-            if (Protocol_StringToMove (pkt.payload, &parsed_move))
-              {
-                if (manager->callbacks.OnMoveReceived)
-                  {
-                    manager->callbacks.OnMoveReceived (parsed_move);
-                  }
-              }
-            break;
-          }
-        default:
-          printf ("[SERVER] Unmanaged package (Type: %d)\n", pkt.type);
-          break;
-        }
-    }
-}
-/**
- * @brief Handles the server's multiplexing logic.
- */
-static void
-handle_server_tick (NetworkManager *manager, ServerContext *ctx)
-{
-  int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
-  if (poll_count <= 0)
-    return;
-
-  // 1. Is there a new connection at the door
-  if (ctx->fds[0].revents & POLLIN)
-    {
-      handle_server_new_connection (ctx);
-    }
-
-  // 2. Is there data from existing clients
-  for (int i = 1; i <= MAX_CLIENTS; i++)
-    {
-      if (ctx->fds[i].fd != -1
-          && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
-        {
-          handle_server_client_data (manager, ctx, i);
-        }
-    }
-}
-
-/**
- * @brief Handles the client's multiplexing logic.
- * @details Reads raw bytes, buffers them, extracts lines, deserializes
- * packets, and triggers the appropriate game logic based on the packet type.
- */
-static void
-handle_client_tick (NetworkManager *manager, ClientContext *ctx)
-{
-  int poll_count = poll (&ctx->fd_info, 1, 0);
-  if (poll_count <= 0
-      || !(ctx->fd_info.revents & (POLLIN | POLLHUP | POLLERR)))
-    return;
-
-  int status = receive_into_buffer (ctx->server_socket, &ctx->buffer);
-
-  if (status == -1)
-    {
-      printf ("[CLIENT] The server has cut the connection.\n");
-      if (manager->callbacks.OnPlayerDisconnected)
-        manager->callbacks.OnPlayerDisconnected ("Server closed");
-      NetworkManager_Cleanup (manager);
-      return;
-    }
-
-  if (status == -2)
-    {
-      printf ("[CLIENT] Error: Buffer full.\n");
-      return;
-    }
-
-  char extracted_msg[256];
-  int res;
-  while ((res = tcp_buffer_extract_line (&ctx->buffer, extracted_msg,
-                                         sizeof (extracted_msg)))
-         != 0)
-    {
-      if (res == -1)
-        {
-          printf ("[CLIENT] Warning: oversized message from server, "
-                  "discarded.\n");
-          continue;
-        }
-
-      Packet pkt;
-      if (!DeserializePacket (extracted_msg, &pkt))
-        {
-          printf ("[CLIENT] Incorrect format of received package : %s\n",
-                  extracted_msg);
-          continue;
-        }
-
-      // Traitement du paquet en fonction de son type
-      switch (pkt.type)
-        {
-        case S2C_WELCOME:
-          printf ("[CLIENT] Connection accepted by server: %s\n", pkt.payload);
-          // Le serveur nous a acceptés, on est officiellement dans la partie !
-          break;
-
-        case S2C_REJECT:
-          printf ("[CLIENT] Connection rejected: %s\n", pkt.payload);
-          // Le pseudo est pris ou le serveur est plein.
-          NetworkManager_Cleanup (manager);
-          break;
-
-        case S2C_ERROR:
-          printf ("[CLIENT] Server Error: %s\n", pkt.payload);
-          break;
-
-        case S2C_GAME_START:
-          printf ("[CLIENT] Game is starting!\n");
-          // TODO: F41.x - call callback OnGameStarted
-          break;
-
-        case C2S_MOVE:
-          {
-            Move parsed_move;
-            // Note : pkt.payload contains "MOVE a1-a2-a3"
-            if (Protocol_StringToMove (pkt.payload, &parsed_move))
-              {
-                if (manager->callbacks.OnMoveReceived)
-                  manager->callbacks.OnMoveReceived (parsed_move);
-              }
-            break;
-          }
-
-        default:
-          printf ("[CLIENT] Unmanaged package (Type: %d)\n", pkt.type);
-          break;
-        }
-    }
 }
 
 /**
@@ -628,4 +321,241 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
     }
 
   return 0;
+}
+
+/* ==========================================================================
+ * Private Helper Implementations
+ * ==========================================================================
+ */
+
+/**
+ * @brief Sets a file descriptor (socket) to non-blocking mode.
+ *
+ * @details This is done so that read/write operations on the socket do not
+ * halt the program execution if no data is immediately available.
+ *
+ * @param fd The file descriptor to modify.
+ * @return int 0 on success, -1 on failure.
+ */
+static int
+set_nonblocking (int fd)
+{
+  int flags = fcntl (fd, F_GETFL, 0);
+  if (flags == -1)
+    return -1;
+  return fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+/**
+ * @brief Reads data from a socket and injects it into the target TCP buffer.
+ * @return 1 (success), 0 (nothing to read/EAGAIN), -1 (disconnection), -2
+ * (buffer full)
+ */
+static int
+receive_into_buffer (int sock, tcp_buffer_t *buffer)
+{
+  char temp[256];
+  int bytes_received = recv (sock, temp, sizeof (temp) - 1, 0);
+
+  if (bytes_received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    return 0; // nothing new
+
+  if (bytes_received <= 0)
+    return -1; // Disconnect
+
+  if (!tcp_buffer_append (buffer, temp, bytes_received))
+    return -2; // critical error : full buffer
+
+  return 1; // Succes
+}
+
+/**
+ * @brief Handles a new incoming connection for the server.
+ * @details Accepts the socket, finds a free slot, configures the pollfd array,
+ * and initializes the dedicated TCP buffer for the new client.
+ */
+static void
+handle_server_new_connection (ServerContext *ctx)
+{
+  struct sockaddr_in client_addr;
+  socklen_t addr_len = sizeof (client_addr);
+  int client_fd = accept (ctx->listen_socket, (struct sockaddr *)&client_addr,
+                          &addr_len);
+
+  if (client_fd >= 0)
+    {
+      set_nonblocking (client_fd);
+      bool accepted = false;
+
+      for (int i = 1; i <= MAX_CLIENTS; i++)
+        {
+          if (ctx->fds[i].fd == -1)
+            {
+              ctx->fds[i].fd = client_fd;
+              ctx->fds[i].events = POLLIN;
+              ctx->clients[i].fd = client_fd;
+              tcp_buffer_init (&ctx->clients[i].buffer);
+              ctx->clients[i].is_joined = false;
+              memset (ctx->clients[i].username, 0, 32);
+              ctx->num_clients++;
+              accepted = true;
+
+              printf ("[SERVER] TCP Connection established (Slot %d) - "
+                      "Waiting for JOIN packet...\n",
+                      i);
+
+              break;
+            }
+        }
+
+      if (!accepted)
+        {
+          printf ("[SERVER] Full! Connection refused.\n");
+          close (client_fd);
+        }
+    }
+}
+
+/**
+ * @brief Cleans up a specific client slot on the server.
+ */
+static void
+disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
+                          int client_index)
+{
+  printf ("[SERVER] Client %d has disconnected.\n", client_index);
+  close (ctx->fds[client_index].fd);
+  ctx->fds[client_index].fd = -1;
+  ctx->num_clients--;
+  if (manager->callbacks.OnPlayerDisconnected)
+    manager->callbacks.OnPlayerDisconnected ("Network disconnection");
+}
+
+/**
+ * @brief Common helper to extract and process all complete packets from a
+ * buffer.
+ */
+static void
+process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
+                        int client_index)
+{
+  char extracted_msg[256];
+  int res;
+  const char *log_prefix
+      = (manager->current_mode == NET_MODE_SERVER) ? "[SERVER]" : "[CLIENT]";
+
+  while ((res = tcp_buffer_extract_line (buffer, extracted_msg,
+                                         sizeof (extracted_msg)))
+         != 0)
+    {
+      if (res == -1)
+        {
+          printf ("%s Warning: oversized message discarded.\n", log_prefix);
+          continue;
+        }
+
+      Packet pkt;
+      if (!DeserializePacket (extracted_msg, &pkt))
+        {
+          printf ("%s Incorrect format of received package : %s\n", log_prefix,
+                  extracted_msg);
+          continue;
+        }
+
+      // Route the packet to the correct handler
+      if (manager->current_mode == NET_MODE_SERVER)
+        {
+          handle_server_packet (manager, manager->server_ctx, client_index,
+                                &pkt);
+        }
+      else
+        {
+          handle_client_packet (manager, &pkt);
+        }
+    }
+}
+
+/**
+ * @brief Handles incoming data or disconnection from a specific client.
+ */
+static void
+handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
+                           int client_index)
+{
+  int status = receive_into_buffer (ctx->fds[client_index].fd,
+                                    &ctx->clients[client_index].buffer);
+
+  if (status == 0)
+    return;
+  if (status == -1)
+    {
+      disconnect_server_client (manager, ctx, client_index);
+      return;
+    }
+  if (status == -2)
+    {
+      printf ("[SERVER] Error: Buffer full for client %d.\n", client_index);
+      return;
+    }
+
+  // Use the unified packet processing loop!
+  process_buffer_packets (manager, &ctx->clients[client_index].buffer,
+                          client_index);
+}
+
+/**
+ * @brief Handles the server's multiplexing logic.
+ */
+static void
+handle_server_tick (NetworkManager *manager, ServerContext *ctx)
+{
+  int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
+  if (poll_count <= 0)
+    return;
+
+  if (ctx->fds[0].revents & POLLIN)
+    {
+      handle_server_new_connection (ctx);
+    }
+
+  for (int i = 1; i <= MAX_CLIENTS; i++)
+    {
+      if (ctx->fds[i].fd != -1
+          && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+        {
+          handle_server_client_data (manager, ctx, i);
+        }
+    }
+}
+
+/**
+ * @brief Handles the client's multiplexing logic.
+ */
+static void
+handle_client_tick (NetworkManager *manager, ClientContext *ctx)
+{
+  int poll_count = poll (&ctx->fd_info, 1, 0);
+  if (poll_count <= 0
+      || !(ctx->fd_info.revents & (POLLIN | POLLHUP | POLLERR)))
+    return;
+
+  int status = receive_into_buffer (ctx->server_socket, &ctx->buffer);
+
+  if (status == -1)
+    {
+      printf ("[CLIENT] The server has cut the connection.\n");
+      if (manager->callbacks.OnPlayerDisconnected)
+        manager->callbacks.OnPlayerDisconnected ("Server closed");
+      NetworkManager_Cleanup (manager);
+      return;
+    }
+
+  if (status == -2)
+    {
+      printf ("[CLIENT] Error: Buffer full.\n");
+      return;
+    }
+
+  // Use the unified packet processing loop! (client_index is 0)
+  process_buffer_packets (manager, &ctx->buffer, 0);
 }

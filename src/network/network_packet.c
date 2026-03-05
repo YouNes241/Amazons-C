@@ -25,8 +25,8 @@ SerializePacket (const Packet *pkt, char *buffer_out, size_t max_len)
 
 /**
  * @brief Deserializes a string like "TYPE|PAYLOAD" into a Packet struct.
- * @note The input string should NOT contain the '\n' (already stripped by
- * tcp_buffer_extract_line).
+ * @note The input string should NOT contain the '\n' wich is removed by
+ * tcp_buffer_extract_line.
  */
 bool
 DeserializePacket (const char *buffer_in, Packet *pkt_out)
