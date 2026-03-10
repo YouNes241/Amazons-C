@@ -24,7 +24,7 @@ createMainMenuPage ()
   GtkWidget *infoBtn;
   GtkWidget *quitBtn;
 
-  builder = gtk_builder_new_from_file ("ui/main_menu.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/main_menu.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "main_menu_box"));
 
   singleplayerBtn
@@ -59,7 +59,7 @@ createSingleplayerMenuPage ()
   GtkWidget *newGameBtn;
   GtkWidget *returnBtn;
 
-  builder = gtk_builder_new_from_file ("ui/singleplayer.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/singleplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_box"));
 
   newGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
@@ -83,7 +83,7 @@ createMultiplayerMenuPage ()
   GtkWidget *box;
   GtkWidget *returnBtn;
 
-  builder = gtk_builder_new_from_file ("ui/multiplayer.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/multiplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
 
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
@@ -104,7 +104,7 @@ createConfigPage ()
   GtkWidget *box;
   GtkWidget *returnBtn;
 
-  builder = gtk_builder_new_from_file ("ui/config.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/config.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "config_box"));
 
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
@@ -125,7 +125,7 @@ createInfoPage ()
   GtkWidget *box;
   GtkWidget *returnBtn;
 
-  builder = gtk_builder_new_from_file ("ui/info.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/info.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "info_box"));
 
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
@@ -148,7 +148,7 @@ createGamePage ()
   GtkWidget *quitBtn;
   GtkWidget *boardGrid;
 
-  builder = gtk_builder_new_from_file ("ui/game.ui");
+  builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
   infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
@@ -246,7 +246,7 @@ infoButtonClick (GtkButton *button, gpointer user_data)
       = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
 
   GtkBuilder *builder
-      = gtk_builder_new_from_file ("ui/game_pages/info_popup.ui");
+      = gtk_builder_new_from_resource ("/amazons/ui/game_pages/info_popup.ui");
   GtkWindow *infoWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
 

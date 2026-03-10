@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/amazons/ui">
+    <file>main_menu.ui</file>
+    <file>singleplayer.ui</file>
+    <file>multiplayer.ui</file>
+    <file>config.ui</file>
+    <file>info.ui</file>
+    <file>game.ui</file>
+    <file>game_pages/info_popup.ui</file>
+    <file>style.css</file>
+  </gresource>
+</gresources>
