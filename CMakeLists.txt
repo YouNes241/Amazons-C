@@ -28,7 +28,7 @@ pkg_check_modules(GUI REQUIRED gtk4)
 pkg_check_modules(READLINE REQUIRED readline)
 add_definitions(${GUI_CFLAGS_OTHER})
 add_definitions(${READLINE_CFLAGS_OTHER})
-file(COPY "${CMAKE_SOURCE_DIR}/src/view/ui" DESTINATION "${CMAKE_BINARY_DIR}")
+find_program(GLIB_COMPILE_RESOURCES NAMES glib-compile-resources REQUIRED)
 
 find_package(Intl)
 find_package(Doxygen)
@@ -49,13 +49,13 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
     )
 endif()
 
-
 # --- TEST BITBOARD (TEMP) ---
-add_executable(test_bitboard tests/test_bitboard.c src/gamemodel/bitboard.c)
+add_executable(test_bitboard tests/test_bitboard.c)
 target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
+target_link_libraries(test_bitboard PRIVATE amazons_core)
 add_test(NAME TestBitboard COMMAND test_bitboard)
 
 # --- TESTS GUI (TEMP) ---
-add_executable(test_gui_application tests/test_gui_application.c src/view/gui_application.c src/view/gui_pages.c src/view/gui_utils.c)
+add_executable(test_gui_application tests/test_gui_application.c)
 target_include_directories(test_gui_application PRIVATE "${CMAKE_SOURCE_DIR}/include" ${GUI_INCLUDE_DIRS} ${READLINE_INCLUDE_DIRS})
-target_link_libraries(test_gui_application PRIVATE ${GUI_LIBRARIES} ${READLINE_LIBRARIES})
+target_link_libraries(test_gui_application PRIVATE amazons_core ${GUI_LIBRARIES} ${READLINE_LIBRARIES})

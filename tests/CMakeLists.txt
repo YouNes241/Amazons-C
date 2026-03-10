@@ -2,7 +2,7 @@
 file(GLOB_RECURSE TEST_SOURCES "*.cpp")
 
 # --- CREATE TEST EXECUTABLE ---
-add_executable(unit_tests ${TEST_SOURCES} ${GAME_SRC})
+add_executable(unit_tests ${TEST_SOURCES})
 
 # --- INCLUDES ---
 target_include_directories(unit_tests PRIVATE 
@@ -19,6 +19,7 @@ endif()
 
 # GTest
 target_link_libraries(unit_tests PRIVATE 
+    amazons_core
     GTest::gtest_main 
     ${GUI_LIBRARIES} 
     ${READLINE_LIBRARIES}
