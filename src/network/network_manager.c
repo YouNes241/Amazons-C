@@ -21,43 +21,6 @@
 #include <unistd.h>
 
 /* ==========================================================================
- * CONSTANTES (Remplacement des "Magic Numbers")
- * ==========================================================================
- */
-
-// Codes de retour génériques
-#define NET_SUCCESS 0
-#define NET_ERROR -1
-#define NET_BUFFER_FULL -2
-#define NET_NO_DATA 0
-#define NET_DATA_READ 1
-
-// Codes de retour d'extraction de paquets (tcp_buffer_extract_line)
-#define EXTRACT_NO_MSG 0
-#define EXTRACT_MSG_OVERFLOW -1
-
-// Tailles de tampons et limites
-#define MAX_PENDING_CONNECTIONS 10
-#define RECV_TEMP_BUFFER_SIZE 256
-#define MAX_FORMATTED_PKT_SIZE 512
-#define MAX_MOVE_STR_SIZE 128
-#define MAX_USERNAME_SIZE 32
-
-// Indexation, cibles réseau et poll
-#define INVALID_SOCKET -1
-#define ENABLE_SOCKET_OPTION 1
-#define LISTEN_SOCKET_INDEX 0
-#define FIRST_CLIENT_INDEX 1
-#define TARGET_SERVER 0
-#define TARGET_CLIENT_1 1
-#define POLL_TIMEOUT_IMMEDIATE 0
-#define SINGLE_FD_COUNT 1
-
-// États de vérification d'adversaire
-#define HAS_OPPONENT 1
-#define NO_OPPONENT 0
-
-/* ==========================================================================
  * Forward Declarations (Private Helpers)
  * ==========================================================================
  */
@@ -530,7 +493,7 @@ handle_server_new_connection (ServerContext *ctx)
               ctx->clients[i].fd = client_fd;
               tcp_buffer_init (&ctx->clients[i].buffer);
               ctx->clients[i].is_joined = false;
-              memset (ctx->clients[i].username, 0, MAX_USERNAME_SIZE);
+              memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
               ctx->num_clients++;
               accepted = true;
 

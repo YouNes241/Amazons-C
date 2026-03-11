@@ -24,10 +24,22 @@ typedef enum
 } PacketType;
 
 /* ==========================================================================
- * STRUCT: GENERIC PACKET
+ * CONSTANTS
  * ==========================================================================
  */
+
 #define MAX_PAYLOAD_SIZE 256
+
+#define SERIALIZE_ERROR -1 // Return code in case of serialization failure
+#define EMPTY_LEN 0        // Zero size for validation
+
+#define PACKET_SEPARATOR '|' // Character delimiting the PAYLOAD and the TYPE
+#define PACKET_FORMAT "%d|%s\n" // Output format: "TYPE|PAYLOAD\n"
+#define TYPE_PARSE_FORMAT "%d"  // Format for reading the package type
+#define PAYLOAD_PTR_OFFSET 1    // Offset to point just after the separator
+#define EXPECTED_TYPE_TOKENS 1  // Number of elements that sscanf should find
+#define NULL_CHAR_SPACE                                                       \
+  1 // Reserved space for the end-of-string character '\0'
 
 typedef struct
 {

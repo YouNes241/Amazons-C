@@ -17,7 +17,7 @@
 void
 tcp_buffer_init (tcp_buffer_t *buf)
 {
-  buf->length = 0;
+  buf->length = EMPTY_BUFFER_LENGTH;
   memset (buf->data, 0, TCP_BUFFER_SIZE);
 }
 
@@ -67,21 +67,21 @@ tcp_buffer_append (tcp_buffer_t *buf, const char *new_data, size_t new_len)
  * @param buf Pointer to the TCP buffer.
  * @param out_msg Buffer where the extracted message will be stored.
  * @param max_out_len Maximum size of the output buffer.
- * @return int 1 if a message was extracted, 0 if no complete message (newline)
- * was found.
+ * @return int EXTRACT_SUCCESS (1), EXTRACT_NO_MSG (0), EXTRACT_MSG_OVERFLOW
+ * (-1)
  */
 int
 tcp_buffer_extract_line (tcp_buffer_t *buf, char *out_msg, size_t max_out_len)
 {
   if (buf == NULL || out_msg == NULL)
-    return 0;
+    return EXTRACT_NO_MSG;
 
-  char *newline = memchr (buf->data, '\n', buf->length);
+  char *newline = memchr (buf->data, NEWLINE_CHAR, buf->length);
   if (newline == NULL)
-    return 0;
+    return EXTRACT_NO_MSG;
 
   size_t msg_len = newline - buf->data;
-  size_t total_consumed = msg_len + 1;
+  size_t total_consumed = msg_len + NEWLINE_CHAR_LEN;
   size_t remaining = buf->length - total_consumed;
 
   // Message too long for output buffer: consume and discard
@@ -90,7 +90,7 @@ tcp_buffer_extract_line (tcp_buffer_t *buf, char *out_msg, size_t max_out_len)
       memmove (buf->data, buf->data + total_consumed, remaining);
       buf->length = remaining;
       buf->data[buf->length] = '\0';
-      return -1;
+      return EXTRACT_MSG_OVERFLOW;
     }
 
   memcpy (out_msg, buf->data, msg_len);
@@ -102,5 +102,5 @@ tcp_buffer_extract_line (tcp_buffer_t *buf, char *out_msg, size_t max_out_len)
   buf->length = remaining;
   buf->data[buf->length] = '\0';
 
-  return 1;
+  return EXTRACT_SUCCESS;
 }

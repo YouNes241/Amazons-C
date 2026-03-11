@@ -12,21 +12,24 @@
 #include <time.h>
 #include <unistd.h>
 
-/* --- Variables statiques (Contexte global du jeu) --- */
+/* ---Static variables (Global game context) --- */
+
 static GameState *g_current_game = NULL;
 static game_config_t *g_config = NULL;
 static bool *g_game_running = NULL;
 static NetworkManager *g_net_manager = NULL;
-static PlayerColor g_my_role = PLAYER_WHITE; // Par défaut pour le serveur
+static PlayerColor g_my_role = PLAYER_WHITE; // By default for the server
 
-/* --- Gestion du temps --- */
+/* --- Time management --- */
+
 static time_t g_turn_start_time;
 static int g_timeout_limit = 60;
 static bool g_timeout_sent = false;
 
 static char *commands_list[]
-    = { "new",  "help", "quit", "load", "save",    "pause", "hint",
-        "undo", "redo", "show", "set",  "details", NULL };
+    = { "new",   "help",    "quit",         "load", "save",
+        "pause", "hint",    "undo",         "redo", "show",
+        "set",   "details", "start server", "join", NULL };
 
 /* ==========================================================================
    HELPERS UI & PROMPT
@@ -40,12 +43,23 @@ static char *commands_list[]
 static void
 update_prompt_string ()
 {
-  static char prompt_str[64];
-  const char *my_color_str = (g_my_role == PLAYER_WHITE) ? "W" : "B";
+  static char prompt_str[PROMPT_MAX_LEN];
   const char *turn_str
       = (g_current_game->current_player == PLAYER_WHITE) ? "White" : "Black";
 
-  sprintf (prompt_str, "[%s] Turn: %s >> ", my_color_str, turn_str);
+  // If we are on a network, we display our role [W] or [B]
+  if (g_net_manager != NULL && g_net_manager->current_mode != NET_MODE_NONE)
+    {
+      const char *my_color_str = (g_my_role == PLAYER_WHITE) ? "W" : "B";
+      snprintf (prompt_str, sizeof (prompt_str), "[%s] Turn: %s >> ",
+                my_color_str, turn_str);
+    }
+  else
+    {
+      // In local mode, we just display whose turn it is.
+      snprintf (prompt_str, sizeof (prompt_str), "[%s] >> ", turn_str);
+    }
+
   rl_set_prompt (prompt_str);
 }
 
@@ -57,9 +71,9 @@ static void
 refresh_prompt ()
 {
   update_prompt_string ();
-  rl_replace_line ("", 0); // Clears the current line's memory
-  rl_on_new_line ();       // Prepares ReadLine for a new line
-  rl_redisplay ();         // Forces the display
+  rl_replace_line ("", READLINE_NO_CLEAR); // Clears the current line's memory
+  rl_on_new_line ();                       // Prepares ReadLine for a new line
+  rl_redisplay ();                         // Forces the display
 }
 
 /* --- Autocomplete --- */
@@ -92,7 +106,7 @@ amazons_completion (const char *text, int start, int end)
 }
 
 /* ==========================================================================
-   CALLBACKS RÉSEAU
+   network callback
    ==========================================================================
  */
 
@@ -115,7 +129,7 @@ on_network_move_received (Move m)
       apply_move (g_current_game, m);
       printf ("[NETWORK] The opponent played !\n");
 
-      // Reset du timer car c'est maintenant à notre tour
+      // Reset the timer because it's our turn now
 
       g_timeout_sent = false;
       g_turn_start_time = time (NULL);
@@ -126,7 +140,7 @@ on_network_move_received (Move m)
 }
 
 /**
- * @brief Appelé quand le réseau nous informe que l'adversaire a timeout
+ * @brief Called when the network informs us that the opponent has timed out
  */
 static void
 on_network_timeout_received ()
@@ -134,22 +148,22 @@ on_network_timeout_received ()
   printf ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
           "turn to play!.\n");
 
-  // 1. On change le joueur actuel localement
+  // 1. We are changing the current player locally
   g_current_game->current_player
       = (g_current_game->current_player == PLAYER_WHITE) ? PLAYER_BLACK
                                                          : PLAYER_WHITE;
 
-  // 2. SURTOUT : On reset notre chrono pour commencer nos 60s à nous !
+  // 2. MOST IMPORTANTLY: We reset our timer to begin our own 60 seconds !
 
   g_timeout_sent = false;
   g_turn_start_time = time (NULL);
-  // 3. On rafraîchit l'affichage
+  // 3. We refresh the display
   cli_display_board (g_current_game);
   refresh_prompt ();
 }
 
 /* ==========================================================================
-   LOGIQUE DES COMMANDES (handle_command)
+   COMMAND LOGIC (handle_command)
    ==========================================================================
  */
 
@@ -158,63 +172,66 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
                 GameState *current_game, NetworkManager *net_manager)
 {
 
-  // 1. QUITTER
+  // 1. QUIT
   if (strcmp (input_buffer, "quit") == 0)
     {
       *game_running = false;
       return;
     }
 
-  // 2. AIDE & CONFIG
-  else if (strncmp (input_buffer, "help", 4) == 0)
+  // 2. HELP & CONFIGURATION
+  else if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
     {
-      printf ("Aide : new, help, quit, load, save, pause, hint, undo, redo, "
+      printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
+              "redo,start server,join ip port username, "
               "show, set, details\n");
       return;
     }
-  else if (strncmp (input_buffer, "details", 7) == 0)
+  else if (strncmp (input_buffer, "details", CMD_LEN_DETAILS) == 0)
     {
       display_config (config);
       return;
     }
 
-  // 3. RÉSEAU : SERVER START
-  else if (strncmp (input_buffer, "server start", 12) == 0)
+  // 3. NETWORK: SERVER START
+  else if (strncmp (input_buffer, "server start", CMD_LEN_SERVER_START) == 0)
     {
-      int port = 12345;
-      if (strlen (input_buffer) > 13)
-        sscanf (input_buffer + 13, "%d", &port);
+      int port = DEFAULT_PORT;
+      if (strlen (input_buffer) > CMD_LEN_SERVER_START + CMD_SPACE_OFFSET)
+        sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
+                &port);
       NetworkManager_ServerStart (net_manager, port);
       return;
     }
 
-  // 4. RÉSEAU : JOIN (Parsing complet)
-  else if (strncmp (input_buffer, "join", 4) == 0)
+  // 4. NETWORK: JOIN (Full parsing)
+  else if (strncmp (input_buffer, "join", CMD_LEN_JOIN) == 0)
     {
-      char ip[64] = "127.0.0.1";
-      int port = 12345;
-      char username[32] = "Anonymous";
+      char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
+      int port = DEFAULT_PORT;
+      char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
 
-      if (strlen (input_buffer) > 5)
+      if (strlen (input_buffer) > CMD_LEN_JOIN + CMD_SPACE_OFFSET)
         {
-          char arg1[64], arg2[32];
-          int parsed = sscanf (input_buffer + 5, "%63s %31s", arg1, arg2);
+          char arg1[MAX_IP_LEN + 1], arg2[MAX_USERNAME_LEN + 1];
+          int parsed = sscanf (input_buffer + CMD_LEN_JOIN + CMD_SPACE_OFFSET,
+                               "%63s %31s", arg1, arg2);
           if (parsed >= 1)
             {
               char *colon = strchr (arg1, ':');
               if (colon)
                 {
                   *colon = '\0';
-                  strncpy (ip, arg1, 63);
+                  strncpy (ip, arg1, MAX_IP_LEN);
                   port = atoi (colon + 1);
                 }
               else
                 {
-                  strncpy (ip, arg1, 63);
+                  strncpy (ip, arg1, MAX_IP_LEN);
                 }
             }
           if (parsed == 2)
-            strncpy (username, arg2, 31);
+            strncpy (username, arg2, MAX_USERNAME_LEN);
         }
 
       if (NetworkManager_ClientJoin (net_manager, ip, port) == 0)
@@ -224,32 +241,32 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       return;
     }
 
-  // 5. GESTION DE PARTIE (UNDO / REDO / SAVE / LOAD / NEW)
-  else if (strncmp (input_buffer, "new", 3) == 0)
+  // 5. GAME MANAGEMENT (UNDO / REDO / SAVE / LOAD / NEW)
+  else if (strncmp (input_buffer, "new", CMD_LEN_NEW) == 0)
     {
       printf ("New local game.\n");
       game_init (current_game);
       g_turn_start_time = time (NULL);
       return;
     }
-  else if (strncmp (input_buffer, "undo", 4) == 0)
+  else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
     {
       printf ("Cancellation: (logic to be implemented)\n");
       return;
     }
-  else if (strncmp (input_buffer, "redo", 4) == 0)
+  else if (strncmp (input_buffer, "redo", CMD_LEN_REDO) == 0)
     {
       printf ("Action replayed: (logic to be implemented)\n");
       return;
     }
-  else if (strncmp (input_buffer, "save ", 5) == 0)
+  else if (strncmp (input_buffer, "save ", CMD_LEN_SAVE) == 0)
     {
-      printf ("Saved in: %s\n", &input_buffer[5]);
+      printf ("Saved in: %s\n", &input_buffer[CMD_LEN_SAVE]);
       return;
     }
-  else if (strncmp (input_buffer, "load ", 5) == 0)
+  else if (strncmp (input_buffer, "load ", CMD_LEN_LOAD) == 0)
     {
-      printf ("Loading of : %s\n", &input_buffer[5]);
+      printf ("Loading of : %s\n", &input_buffer[CMD_LEN_LOAD]);
       return;
     }
   else if (strcmp (input_buffer, "pause") == 0)
@@ -262,17 +279,17 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       printf ("Tip: (AI in progress)...)\n");
       return;
     }
-  else if (strncmp (input_buffer, "show", 4) == 0)
+  else if (strncmp (input_buffer, "show", CMD_LEN_SHOW) == 0)
     {
       cli_display_board (current_game);
       return;
     }
 
-  // 6. LOGIQUE DE JEU (COUPS)
+  // 6. GAME LOGIC (MOVES)
   Move player_move;
-  if (parse_coordinates (input_buffer, &player_move) == 0)
+  if (parse_coordinates (input_buffer, &player_move) == PARSE_MOVE_SUCCESS)
     {
-      // --- VERROU DE TOUR (Actif UNIQUEMENT en mode réseau) ---
+      // --- Turn lock (Active ONLY in network mode) ---
       if (net_manager->current_mode != NET_MODE_NONE)
         {
           if (current_game->current_player != g_my_role)
@@ -287,7 +304,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
           apply_move (current_game, player_move);
           NetworkManager_SendMove (net_manager, player_move);
           g_timeout_sent = false;
-          // On a joué, on reset le timer pour l'attente
+          // We played, we reset the timer for the wait.
           g_turn_start_time = time (NULL);
 
           if (is_game_over (current_game, current_game->current_player))
@@ -321,31 +338,32 @@ linehandler (char *line)
   if (line == NULL)
     return;
 
-  printf ("\n"); // Valide visuellement l'entrée
+  printf ("\n"); // Visually validate the entry
 
   if (line[0] != '\0')
     {
       add_history (line);
-      rl_replace_line ("", 0);
+      rl_replace_line ("", READLINE_NO_CLEAR);
       handle_command (line, g_config, g_game_running, g_current_game,
                       g_net_manager);
     }
   else
     {
-      rl_replace_line ("", 0);
+      rl_replace_line ("", READLINE_NO_CLEAR);
     }
   free (line);
 
   if (*g_game_running)
     {
-      // 1. On affiche le plateau à la fin du traitement
+      // 1. The plateau is displayed at the end of the processing.
       cli_display_board (g_current_game);
 
-      // 2. On met à jour le texte du prompt
+      // 2. We are updating the text of the prompt
       update_prompt_string ();
 
-      // 3. On signale le saut de ligne à Readline.
-      // Le redisplay sera fait automatiquement par Readline en sortant d'ici.
+      // 3. The line break is signaled to Readline.
+      // The redisplay will be handled automatically by Readline when you exit
+      // this page.
       rl_on_new_line ();
     }
 }
@@ -382,18 +400,18 @@ run_interactive_mode (game_config_t *config)
   printf ("Welcome to the Amazones' Game !\n");
   cli_display_board (&current_game);
 
-  // Installation du handler Readline
+  // Installing the Readline handler
   rl_callback_handler_install ("[White] >> ", linehandler);
 
-  struct pollfd fds[1];
-  fds[0].fd = STDIN_FILENO;
-  fds[0].events = POLLIN;
+  struct pollfd fds[STDIN_FD_COUNT];
+  fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
+  fds[STDIN_FD_INDEX].events = POLLIN;
 
   while (game_running)
     {
       NetworkManager_Tick (&net_manager);
 
-      // --- LOGIQUE DE TIMEOUT SYNCHRONISÉE ---
+      // --- SYNCHRONIZED TIMEOUT LOGIC ---
       if (g_current_game->current_player == g_my_role)
         {
           if (NetworkManager_HasOpponent (&net_manager))
@@ -405,13 +423,13 @@ run_interactive_mode (game_config_t *config)
                   printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
                           "adversary..\n");
 
-                  // Switch de tour
+                  // Turn switch
                   g_current_game->current_player
                       = (g_current_game->current_player == PLAYER_WHITE)
                             ? PLAYER_BLACK
                             : PLAYER_WHITE;
 
-                  // Envoi réseau
+                  // Network send
                   NetworkManager_SendTimeout (&net_manager);
 
                   g_timeout_sent = true;
@@ -424,15 +442,16 @@ run_interactive_mode (game_config_t *config)
         }
       else
         {
-          // SI CE N'EST PAS MON TOUR :
-          // On reset g_timeout_sent pour être prêt pour notre prochain tour
+          // IF IT'S NOT MY TURN:
+          // We reset g_timeout_sent to be ready for our next turn
           g_timeout_sent = false;
-          // On garde turn_start_time à jour pour avoir nos 60s complètes quand
-          // le tour arrive
+          // We keep turn_start_time updated to have our full 60 seconds when
+          // the turn arrives
           g_turn_start_time = time (NULL);
         }
 
-      if (poll (fds, 1, 100) > 0 && (fds[0].revents & POLLIN))
+      if (poll (fds, STDIN_FD_COUNT, POLL_STDIN_TIMEOUT_MS) > 0
+          && (fds[STDIN_FD_INDEX].revents & POLLIN))
         rl_callback_read_char ();
     }
 
