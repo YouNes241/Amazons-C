@@ -126,6 +126,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->num_clients = 0;
+  manager->server_ctx->next_game_id = 1;
 
   // We configure the monitoring of the main door
   manager->server_ctx->fds[LISTEN_SOCKET_INDEX].fd = sock;
@@ -494,6 +495,8 @@ handle_server_new_connection (ServerContext *ctx)
               tcp_buffer_init (&ctx->clients[i].buffer);
               ctx->clients[i].is_joined = false;
               memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
+              ctx->clients[i].game_id = NO_GAME_ID;
+              ctx->clients[i].status = CLIENT_STATUS_CONNECTED;
               ctx->num_clients++;
               accepted = true;
 

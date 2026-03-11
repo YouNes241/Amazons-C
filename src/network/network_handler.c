@@ -87,6 +87,49 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   if (manager->callbacks.OnPlayerJoined)
     manager->callbacks.OnPlayerJoined (ctx->clients[client_index].username);
 }
+
+/**
+ * @brief Relays a packet only to the correct opponent (same * game_id).
+ */
+static void
+route_packet_to_opponent (NetworkManager *manager, ServerContext *ctx,
+                          int sender_index, Packet *pkt)
+{
+  int sender_game_id = ctx->clients[sender_index].game_id;
+
+  // If the player is not in a game (idle), nothing is routed.
+  if (sender_game_id == NO_GAME_ID)
+    return;
+
+  // 1. We prepare the packet to be relayed.
+  // A small detail: if the client sent C2S_MOVE, we transform it into
+  // S2C_MOVE so that the other client understands it!
+  Packet relay_pkt = *pkt;
+  if (relay_pkt.type == C2S_MOVE)
+    {
+      relay_pkt.type = S2C_MOVE;
+    }
+
+  char out_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&relay_pkt, out_buffer, sizeof (out_buffer)) < 0)
+    return;
+
+  // 2. Loop: Browse clients[]
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (ctx->fds[i].fd != INVALID_SOCKET && ctx->clients[i].is_joined)
+        {
+          // 3. Condition: if (client.game_id == sender.game_id && client.fd
+          // != sender.fd)
+          if (ctx->clients[i].game_id == sender_game_id && i != sender_index)
+            {
+              // 4. Action: send() the package
+              NetworkManager_Send (manager, i, out_buffer);
+            }
+        }
+    }
+}
+
 void
 handle_server_packet (NetworkManager *manager, ServerContext *ctx,
                       int client_index, Packet *pkt)
@@ -98,11 +141,15 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       process_join_packet (manager, ctx, client_index, pkt->payload);
       break;
     case PKT_TIMEOUT:
+      // ROUTING : The opponent is notified that time is up.
+      route_packet_to_opponent (manager, ctx, client_index, pkt);
       if (manager->callbacks.OnTimeoutReceived)
         manager->callbacks.OnTimeoutReceived ();
       break;
 
     case C2S_MOVE:
+      // ROUTING: The move is relayed to the opponent
+      route_packet_to_opponent (manager, ctx, client_index, pkt);
       process_move_packet (manager, pkt->payload);
       break;
 

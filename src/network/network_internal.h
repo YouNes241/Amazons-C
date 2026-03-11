@@ -9,6 +9,7 @@
 #include "../../include/network_common.h"
 #include "tcp_buffer.h"
 #include <poll.h>
+#include <stdbool.h>
 
 /* ==========================================================================
  * 1. Constants
@@ -31,12 +32,6 @@
 #define POLL_TIMEOUT_IMMEDIATE 0
 #define SINGLE_FD_COUNT 1
 
-// Socket & Connection Settings
-#define INVALID_SOCKET -1
-#define MAX_PENDING_CONNECTIONS 10
-#define ENABLE_SOCKET_OPTION 1
-#define POLL_TIMEOUT_IMMEDIATE 0
-#define SINGLE_FD_COUNT 1
 // Buffer Sizes & Limits
 #define RECV_TEMP_BUFFER_SIZE 256
 #define MAX_MOVE_STR_SIZE 128
@@ -58,20 +53,33 @@
 #define ROLE_WHITE_VAL 0
 #define ROLE_BLACK_STR "1"
 
+// no game assigned
+#define NO_GAME_ID -1
+
 /* ==========================================================================
  * 2. Full Structure Definitions
  * ==========================================================================
  */
+
+typedef enum
+{
+  CLIENT_STATUS_CONNECTED, // Connecté (TCP) mais pas encore de pseudo (JOIN)
+  CLIENT_STATUS_IDLE,      // Dans le lobby, prêt à jouer
+  CLIENT_STATUS_WAITGAME,  // A envoyé/reçu une invitation, en attente
+  CLIENT_STATUS_INGAME     // En train de jouer
+} ClientStatus;
 
 /**
  * @brief Represents a client connected to the server with its own buffer.
  */
 typedef struct
 {
-  int fd;              // Client socket file descriptor
-  tcp_buffer_t buffer; // Dedicated TCP buffer for this client
-  char username[32];   // The username sent via C2S_JOIN
+  int fd;                             // Client socket file descriptor
+  tcp_buffer_t buffer;                // Dedicated TCP buffer for this client
+  char username[MAX_USERNAME_LENGTH]; // The username sent via C2S_JOIN
   bool is_joined;
+  int game_id; // id of game playing now
+  ClientStatus status;
   // TODO add later: player_id, name, status (IDLE, INGAME), etc.
 } ConnectedClient;
 
@@ -98,6 +106,8 @@ struct ServerContext
   ConnectedClient clients[MAX_CLIENTS + 1];
 
   int num_clients; // Current number of active connections
+
+  int next_game_id; // To generate unique game IDs (1, 2, 3...)
 };
 
 /**
