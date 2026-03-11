@@ -272,11 +272,14 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   Move player_move;
   if (parse_coordinates (input_buffer, &player_move) == 0)
     {
-      // VERROU DE TOUR
-      if (current_game->current_player != g_my_role)
+      // --- VERROU DE TOUR (Actif UNIQUEMENT en mode réseau) ---
+      if (net_manager->current_mode != NET_MODE_NONE)
         {
-          printf ("[ERROR] It's not your turn! Wait for your opponent.\n");
-          return;
+          if (current_game->current_player != g_my_role)
+            {
+              printf ("[ERROR] It's not your turn! Wait for your opponent.\n");
+              return;
+            }
         }
 
       if (is_move_legal (current_game, player_move))
