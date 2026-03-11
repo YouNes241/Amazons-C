@@ -236,14 +236,14 @@ NetworkManager_Cleanup (NetworkManager *manager)
       close (manager->server_ctx->listen_socket);
       free (manager->server_ctx);
       manager->server_ctx = NULL;
-      printf ("[NETWORK] Server down.\n");
+      printf ("\n[NETWORK] Server down.\n");
     }
   else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
       close (manager->client_ctx->server_socket);
       free (manager->client_ctx);
       manager->client_ctx = NULL;
-      printf ("[NETWORK] Disconnected from the server.\n");
+      printf ("\n[NETWORK] Disconnected from the server.\n");
     }
   manager->current_mode = NET_MODE_NONE;
 }
@@ -270,6 +270,95 @@ NetworkManager_Tick (NetworkManager *manager)
     {
       handle_client_tick (manager, manager->client_ctx);
     }
+}
+/**
+ * @brief Construit et envoie un paquet JOIN proprement.
+ */
+int
+NetworkManager_SendJoin (NetworkManager *manager, const char *username)
+{
+  if (manager == NULL || username == NULL)
+    return -1;
+
+  // 1. On crée le paquet réseau
+  Packet pkt;
+  pkt.type = C2S_JOIN;
+  strncpy (pkt.payload, username, MAX_PAYLOAD_SIZE - 1);
+  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+  // 2. On le sérialise grâce à ton fichier network_packet.c
+  char formatted_buffer[512];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    {
+      return -1;
+    }
+
+  // 3. On utilise le "tuyau bête" pour envoyer la chaîne finale ("1|Alice\n")
+  // Le client envoie toujours au serveur (index 0)
+  return NetworkManager_Send (manager, 0, formatted_buffer);
+}
+
+/**
+ * @brief Convertit un Move en texte, l'encapsule dans un Paquet et l'envoie.
+ */
+int
+NetworkManager_SendMove (NetworkManager *manager, Move m)
+{
+  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
+    return 0; // Si on joue en local, on ne fait rien !
+
+  // 1. Traduire la structure Move en texte (ex: "MOVE e2-e4-e6\n")
+  char move_str[128];
+  Protocol_MoveToString (m, move_str, sizeof (move_str));
+
+  // Petite astuce : on enlève le '\n' ajouté par Protocol_MoveToString
+  // car SerializePacket va déjà en rajouter un !
+  move_str[strcspn (move_str, "\n")] = 0;
+
+  // 2. Créer le paquet réseau
+  Packet pkt;
+  pkt.type = (manager->current_mode == NET_MODE_CLIENT) ? C2S_MOVE : S2C_MOVE;
+  strncpy (pkt.payload, move_str, MAX_PAYLOAD_SIZE - 1);
+  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+  // 3. Sérialiser
+  char formatted_buffer[512];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return -1;
+
+  // 4. Envoyer ! (Si on est client, on envoie au serveur (0). Si on est
+  // serveur, on envoie au client 1)
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? 0 : 1;
+  return NetworkManager_Send (manager, target, formatted_buffer);
+}
+
+/**
+ * @brief Construit et envoie un paquet de TIMEOUT proprement.
+ */
+int
+NetworkManager_SendTimeout (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
+    return -1;
+
+  // 1. Création du paquet réseau
+  Packet pkt;
+  pkt.type = PKT_TIMEOUT; // On utilise le type 0, le handler cherchera le mot
+                          // "TIMEOUT"
+  strncpy (pkt.payload, "TIMEOUT", MAX_PAYLOAD_SIZE - 1);
+  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+  // 2. Sérialisation (ajout du TYPE| et du '\n')
+  char formatted_buffer[512];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    {
+      return -1;
+    }
+
+  // 3. Envoi à l'adversaire (0 pour le serveur si on est client, 1 pour le
+  // client 1 si on est serveur)
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? 0 : 1;
+  return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
 /**
@@ -400,7 +489,7 @@ handle_server_new_connection (ServerContext *ctx)
               ctx->num_clients++;
               accepted = true;
 
-              printf ("[SERVER] TCP Connection established (Slot %d) - "
+              printf ("\n[SERVER] TCP Connection established (Slot %d) - "
                       "Waiting for JOIN packet...\n",
                       i);
 
@@ -410,7 +499,7 @@ handle_server_new_connection (ServerContext *ctx)
 
       if (!accepted)
         {
-          printf ("[SERVER] Full! Connection refused.\n");
+          printf ("\n[SERVER] Full! Connection refused.\n");
           close (client_fd);
         }
     }
@@ -423,7 +512,7 @@ static void
 disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
                           int client_index)
 {
-  printf ("[SERVER] Client %d has disconnected.\n", client_index);
+  printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
   close (ctx->fds[client_index].fd);
   ctx->fds[client_index].fd = -1;
   ctx->num_clients--;
@@ -494,7 +583,7 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
     }
   if (status == -2)
     {
-      printf ("[SERVER] Error: Buffer full for client %d.\n", client_index);
+      printf ("\n[SERVER] Error: Buffer full for client %d.\n", client_index);
       return;
     }
 
@@ -543,19 +632,45 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 
   if (status == -1)
     {
-      printf ("[CLIENT] The server has cut the connection.\n");
+      printf ("\n[CLIENT] The server has cut the connection.\n");
+      NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
         manager->callbacks.OnPlayerDisconnected ("Server closed");
-      NetworkManager_Cleanup (manager);
+
       return;
     }
 
   if (status == -2)
     {
-      printf ("[CLIENT] Error: Buffer full.\n");
+      printf ("\n[CLIENT] Error: Buffer full.\n");
       return;
     }
 
   // Use the unified packet processing loop! (client_index is 0)
   process_buffer_packets (manager, &ctx->buffer, 0);
+}
+
+/**
+ * @brief Vérifie si un adversaire est connecté (utilisé pour le timer)
+ * @return 1 si oui, 0 si non.
+ */
+int
+NetworkManager_HasOpponent (NetworkManager *manager)
+{
+  if (manager == NULL)
+    return 0;
+
+  if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
+    {
+      return (manager->server_ctx->num_clients > 0);
+    }
+
+  if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
+    {
+      // TODO changer plus tard En mode client, si on est connecté,
+      // l'adversaire c'est le serveur
+      return 1;
+    }
+
+  return 0;
 }

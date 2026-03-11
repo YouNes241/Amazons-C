@@ -1,42 +1,87 @@
 #include "../../include/controller.h"
+#include "../../include/ai_factory.h"
+#include "../../include/ai_interface.h"
 #include "../../include/cli_view.h"
 #include "../../include/game_engine.h"
 #include "../../include/input.h"
+#include "../../include/network_common.h"
+#include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+/* --- Variables statiques (Contexte global du jeu) --- */
+static GameState *g_current_game = NULL;
+static game_config_t *g_config = NULL;
+static bool *g_game_running = NULL;
+static NetworkManager *g_net_manager = NULL;
+static PlayerColor g_my_role = PLAYER_WHITE; // Par défaut pour le serveur
+static AI_Interface g_ai;
+static bool g_ai_initialized = false;
+
+/* --- Gestion du temps --- */
+static time_t g_turn_start_time;
+static int g_timeout_limit = 60;
+static bool g_timeout_sent = false;
 
 static char *commands_list[]
     = { "new",  "help", "quit", "load", "save",    "pause", "hint",
         "undo", "redo", "show", "set",  "details", NULL };
 
+/* ==========================================================================
+   HELPERS UI & PROMPT
+   ==========================================================================
+ */
+
+/**
+ * @brief Constructs the prompt string and applies it to Readline (without
+ * displaying it).
+ */
+static void
+update_prompt_string ()
+{
+  static char prompt_str[64];
+  const char *my_color_str = (g_my_role == PLAYER_WHITE) ? "W" : "B";
+  const char *turn_str
+      = (g_current_game->current_player == PLAYER_WHITE) ? "White" : "Black";
+
+  sprintf (prompt_str, "[%s] Turn: %s >> ", my_color_str, turn_str);
+  rl_set_prompt (prompt_str);
+}
+
+/**
+ * @brief Forces immediate prompt refresh (used for network events)
+ * network
+ */
+static void
+refresh_prompt ()
+{
+  update_prompt_string ();
+  rl_replace_line ("", 0); // Clears the current line's memory
+  rl_on_new_line ();       // Prepares ReadLine for a new line
+  rl_redisplay ();         // Forces the display
+}
+
+/* --- Autocomplete --- */
 char *
 command_generator (const char *text, int state)
 {
   static int list_index, len;
   char *name;
-
-  /* Si c'est le début d'une nouvelle recherche */
   if (!state)
     {
       list_index = 0;
       len = strlen (text);
     }
-
-  /* On fouille dans la liste tant qu'il y a des mots */
   while ((name = commands_list[list_index++]))
     {
-      /* Si le début du mot correspond à ce que l'utilisateur a tapé */
       if (strncmp (name, text, len) == 0)
-        {
-          /* On renvoie une copie. Readline l'affichera et fera le 'free' */
-          return strdup (name);
-        }
+        return strdup (name);
     }
-
-  /* On n'a plus rien trouvé qui correspond */
   return NULL;
 }
 
@@ -44,52 +89,152 @@ char **
 amazons_completion (const char *text, int start, int end)
 {
   (void)end;
-  /* Empêche Readline de chercher des fichiers si on ne trouve pas de commande
-   */
   rl_attempted_completion_over = 1;
-
-  /* On ne veut compléter que le premier mot de la ligne */
-  /* Si start == 0, l'utilisateur est au tout début de sa saisie */
   if (start == 0)
-    {
-      return rl_completion_matches (text, command_generator);
-    }
-
+    return rl_completion_matches (text, command_generator);
   return NULL;
 }
 
+/* ==========================================================================
+   CALLBACKS RÉSEAU
+   ==========================================================================
+ */
+
+static void
+on_game_started (PlayerColor color)
+{
+  g_my_role = color;
+  g_turn_start_time = time (NULL); // The timer starts
+  printf ("\n[[GAME] The game begins! You play the %s.\n",
+          (color == PLAYER_WHITE) ? "White" : "Black");
+  refresh_prompt ();
+}
+
+static void
+on_network_move_received (Move m)
+{
+  if (is_move_legal (g_current_game, m))
+    {
+      printf ("\n");
+      apply_move (g_current_game, m);
+      printf ("[NETWORK] The opponent played !\n");
+
+      // Reset du timer car c'est maintenant à notre tour
+
+      g_timeout_sent = false;
+      g_turn_start_time = time (NULL);
+
+      cli_display_board (g_current_game);
+      refresh_prompt ();
+    }
+}
+
+/**
+ * @brief Appelé quand le réseau nous informe que l'adversaire a timeout
+ */
+static void
+on_network_timeout_received ()
+{
+  printf ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
+          "turn to play!.\n");
+
+  // 1. On change le joueur actuel localement
+  g_current_game->current_player
+      = (g_current_game->current_player == PLAYER_WHITE) ? PLAYER_BLACK
+                                                         : PLAYER_WHITE;
+
+  // 2. SURTOUT : On reset notre chrono pour commencer nos 60s à nous !
+
+  g_timeout_sent = false;
+  g_turn_start_time = time (NULL);
+  // 3. On rafraîchit l'affichage
+  cli_display_board (g_current_game);
+  refresh_prompt ();
+}
+
+/* ==========================================================================
+   LOGIQUE DES COMMANDES (handle_command)
+   ==========================================================================
+ */
+
 void
 handle_command (char *input_buffer, game_config_t *config, bool *game_running,
-                GameState *current_game)
+                GameState *current_game, NetworkManager *net_manager)
 {
+
+  // 1. QUITTER
   if (strcmp (input_buffer, "quit") == 0)
     {
       *game_running = false;
+      return;
     }
-  else if (strcmp (input_buffer, "pause") == 0)
-    {
-      printf ("Jeu en pause...\n");
-    }
-  else if (strcmp (input_buffer, "hint") == 0)
-    {
-      printf ("Conseil : (IA en cours de calcul...)\n");
-    }
+
+  // 2. AIDE & CONFIG
   else if (strncmp (input_buffer, "help", 4) == 0)
     {
-      printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
-              "redo, show, set\n");
+      printf ("Aide : new, help, quit, load, save, pause, hint, undo, redo, "
+              "show, set, details\n");
+      return;
     }
+  else if (strncmp (input_buffer, "details", 7) == 0)
+    {
+      display_config (config);
+      return;
+    }
+
+  // 3. RÉSEAU : SERVER START
+  else if (strncmp (input_buffer, "server start", 12) == 0)
+    {
+      int port = 12345;
+      if (strlen (input_buffer) > 13)
+        sscanf (input_buffer + 13, "%d", &port);
+      NetworkManager_ServerStart (net_manager, port);
+      return;
+    }
+
+  // 4. RÉSEAU : JOIN (Parsing complet)
+  else if (strncmp (input_buffer, "join", 4) == 0)
+    {
+      char ip[64] = "127.0.0.1";
+      int port = 12345;
+      char username[32] = "Anonymous";
+
+      if (strlen (input_buffer) > 5)
+        {
+          char arg1[64], arg2[32];
+          int parsed = sscanf (input_buffer + 5, "%63s %31s", arg1, arg2);
+          if (parsed >= 1)
+            {
+              char *colon = strchr (arg1, ':');
+              if (colon)
+                {
+                  *colon = '\0';
+                  strncpy (ip, arg1, 63);
+                  port = atoi (colon + 1);
+                }
+              else
+                {
+                  strncpy (ip, arg1, 63);
+                }
+            }
+          if (parsed == 2)
+            strncpy (username, arg2, 31);
+        }
+
+      if (NetworkManager_ClientJoin (net_manager, ip, port) == 0)
+        {
+          NetworkManager_SendJoin (net_manager, username);
+        }
+      return;
+    }
+
+  // 5. GESTION DE PARTIE (UNDO / REDO / SAVE / LOAD / NEW)
   else if (strncmp (input_buffer, "new", 3) == 0)
     {
-      printf ("Nouvelle partie : %s\n", &input_buffer[3]);
-    }
-  else if (strncmp (input_buffer, "load ", 5) == 0)
-    {
-      printf ("Chargement de : %s\n", &input_buffer[5]);
-    }
-  else if (strncmp (input_buffer, "save ", 5) == 0)
-    {
-      printf ("Sauvegarde dans : %s\n", &input_buffer[5]);
+      printf ("New local game.\n");
+      game_init (current_game);
+      g_turn_start_time = time (NULL);
+      return;
     }
   else if (strncmp (input_buffer, "undo", 4) == 0)
     {
@@ -119,49 +264,114 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
                   "précédemment.\n");
         }
     }
-  else if (strncmp (input_buffer, "show ", 5) == 0)
+  else if (strncmp (input_buffer, "save ", 5) == 0)
+    {
+      printf ("Saved in: %s\n", &input_buffer[5]);
+      return;
+    }
+  else if (strncmp (input_buffer, "load ", 5) == 0)
+    {
+      printf ("Loading of : %s\n", &input_buffer[5]);
+      return;
+    }
+  else if (strcmp (input_buffer, "pause") == 0)
+    {
+      printf ("Game paused...\n");
+      return;
+    }
+  else if (strcmp (input_buffer, "hint") == 0)
+    {
+      printf ("Tip: (AI in progress)...)\n");
+      return;
+    }
+  else if (strncmp (input_buffer, "show", 4) == 0)
     {
       cli_display_board (current_game);
+      return;
     }
-  else if (strncmp (input_buffer, "set ", 4) == 0)
-    {
-      printf ("Configuration : %s\n", &input_buffer[4]);
-    }
-  else if (strncmp (input_buffer, "details", 7) == 0)
-    {
-      display_config (config);
-    }
-  else
-    {
-      Move player_move;
-      if (parse_coordinates (input_buffer, &player_move) == 0)
-        {
-          if (is_move_legal (current_game, player_move))
-            {
-              apply_move (current_game, player_move);
-              if (is_game_over (current_game, current_game->current_player))
-                {
-                  cli_display_board (current_game);
 
-                  // Annonce du gagnant
-                  PlayerColor winner = get_winner (current_game);
-                  printf ("Le joueur %s a gagné !\n",
-                          winner == PLAYER_WHITE ? "Blancs" : "Noirs");
-                  *game_running = false;
-                }
-            }
-          else
+  // 6. LOGIQUE DE JEU (COUPS)
+  Move player_move;
+  if (parse_coordinates (input_buffer, &player_move) == 0)
+    {
+      // VERROU DE TOUR
+      if (current_game->current_player != g_my_role)
+        {
+          printf ("[ERROR] It's not your turn! Wait for your opponent.\n");
+          return;
+        }
+
+      if (is_move_legal (current_game, player_move))
+        {
+          apply_move (current_game, player_move);
+          NetworkManager_SendMove (net_manager, player_move);
+          g_timeout_sent = false;
+          // On a joué, on reset le timer pour l'attente
+          g_turn_start_time = time (NULL);
+
+          if (is_game_over (current_game, current_game->current_player))
             {
-              // Le coup a un bon format, mais il viole les règles du jeu
-              printf ("Coup illégal selon les règles du jeu.\n");
+              cli_display_board (current_game);
+              PlayerColor winner = get_winner (current_game);
+              printf ("Player %s won !\n",
+                      (winner == PLAYER_WHITE ? "White" : "Black"));
+              *game_running = false;
             }
         }
       else
         {
-          fprintf (stderr, "Format invalide. Utilisez : a1-a3(a4)\n");
+          printf ("An illegal blow according to the rules.\n");
         }
     }
+  else
+    {
+      printf ("Invalid format. Use: a1-a3(a4) format or type 'help'.\n");
+    }
 }
+
+/* ==========================================================================
+   LINEHANDLER (Readline)
+   ==========================================================================
+ */
+
+static void
+linehandler (char *line)
+{
+  if (line == NULL)
+    return;
+
+  printf ("\n"); // Valide visuellement l'entrée
+
+  if (line[0] != '\0')
+    {
+      add_history (line);
+      rl_replace_line ("", 0);
+      handle_command (line, g_config, g_game_running, g_current_game,
+                      g_net_manager);
+    }
+  else
+    {
+      rl_replace_line ("", 0);
+    }
+  free (line);
+
+  if (*g_game_running)
+    {
+      // 1. On affiche le plateau à la fin du traitement
+      cli_display_board (g_current_game);
+
+      // 2. On met à jour le texte du prompt
+      update_prompt_string ();
+
+      // 3. On signale le saut de ligne à Readline.
+      // Le redisplay sera fait automatiquement par Readline en sortant d'ici.
+      rl_on_new_line ();
+    }
+}
+/* ==========================================================================
+   RUN_INTERACTIVE_MODE
+   ==========================================================================
+ */
 
 void
 run_interactive_mode (game_config_t *config)
@@ -170,53 +380,120 @@ run_interactive_mode (game_config_t *config)
   current_game.size = config->board_size;
   game_init (&current_game);
 
+  NetworkManager net_manager;
+  NetworkEvents net_events = { 0 };
+  net_events.OnMoveReceived = on_network_move_received;
+  net_events.OnGameStarted = on_game_started;
+  net_events.OnPlayerJoined = NULL;
+  net_events.OnPlayerDisconnected = (void (*) (const char *))refresh_prompt;
+  net_events.OnTimeoutReceived = on_network_timeout_received;
+  NetworkManager_Init (&net_manager, net_events);
+
+  bool game_running = true;
+  g_current_game = &current_game;
+  g_config = config;
+  g_game_running = &game_running;
+  g_net_manager = &net_manager;
+  g_turn_start_time = time (NULL);
+
   rl_attempted_completion_function = amazons_completion;
-
-  cli_clear_screen (); // On nettoie le terminal
-  printf ("Bienvenue dans le jeu des Amazones !\n");
-
-  // Affichage du plateau au démarrage
+  cli_clear_screen ();
+  printf ("Welcome to the Amazones' Game !\n");
   cli_display_board (&current_game);
 
-  char *input_buffer; // buffer pour contenir les commandes de l'utilisateur
-  bool game_running = true;
+  // Installation du handler Readline
+  rl_callback_handler_install ("[White] >> ", linehandler);
+
+  struct pollfd fds[1];
+  fds[0].fd = STDIN_FILENO;
+  fds[0].events = POLLIN;
+
+  if (config->ai_enabled)
+    {
+      ConfigMap empty_params = { .list = NULL, .count = 0 };
+      // On peut imaginer choisir le type via config->ai_type plus tard
+      g_ai = create_ai ("minimax", empty_params);
+      g_ai_initialized = (g_ai.vtable != NULL);
+    }
 
   while (game_running)
     {
-      char prompt[32];
-      if (current_game.current_player == PLAYER_WHITE)
+      NetworkManager_Tick (&net_manager);
+
+      if (config->ai_enabled && g_ai_initialized
+          && g_current_game->current_player == PLAYER_BLACK
+          && !is_game_over (g_current_game, PLAYER_BLACK))
         {
-          snprintf (prompt, sizeof (prompt), "[White] >> ");
+          printf ("\n[AI] Thinking...\n");
+
+          // On appelle l'IA (Attention: get_best_move prend GameState par
+          // valeur ici)
+          Move ai_move = g_ai.vtable->get_best_move (&g_ai, *g_current_game);
+
+          // On applique le coup
+          if (is_move_legal (g_current_game, ai_move))
+            {
+              apply_move (g_current_game, ai_move);
+
+              // Si on est en réseau, on prévient l'adversaire
+              if (NetworkManager_HasOpponent (&net_manager))
+                {
+                  NetworkManager_SendMove (&net_manager, ai_move);
+                }
+
+              g_turn_start_time = time (NULL); // Reset du timer pour l'humain
+              cli_display_board (g_current_game);
+              refresh_prompt ();
+            }
+        }
+
+      // --- LOGIQUE DE TIMEOUT SYNCHRONISÉE ---
+      if (g_current_game->current_player == g_my_role)
+        {
+          if (NetworkManager_HasOpponent (&net_manager))
+            {
+              time_t now = time (NULL);
+              if (difftime (now, g_turn_start_time) >= g_timeout_limit
+                  && !g_timeout_sent)
+                {
+                  printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
+                          "adversary..\n");
+
+                  // Switch de tour
+                  g_current_game->current_player
+                      = (g_current_game->current_player == PLAYER_WHITE)
+                            ? PLAYER_BLACK
+                            : PLAYER_WHITE;
+
+                  // Envoi réseau
+                  NetworkManager_SendTimeout (&net_manager);
+
+                  g_timeout_sent = true;
+                  g_turn_start_time = now;
+
+                  cli_display_board (g_current_game);
+                  refresh_prompt ();
+                }
+            }
         }
       else
         {
-          snprintf (prompt, sizeof (prompt), "[Black] >> ");
-        }
-      input_buffer = readline (prompt);
-
-      /* Si l'utilisateur fait Ctrl+D, readline renvoie NULL */
-      if (input_buffer == NULL)
-        {
-          printf ("\nSortie du programme.\n");
-          break;
+          // SI CE N'EST PAS MON TOUR :
+          // On reset g_timeout_sent pour être prêt pour notre prochain tour
+          g_timeout_sent = false;
+          // On garde turn_start_time à jour pour avoir nos 60s complètes quand
+          // le tour arrive
+          g_turn_start_time = time (NULL);
         }
 
-      /* Si la chaîne est vide, on libère et on continue */
-      if (input_buffer[0] == '\0')
-        {
-          free (input_buffer);
-          continue;
-        }
-
-      /* On ajoute la commande à l'historique*/
-      add_history (input_buffer);
-
-      handle_command (input_buffer, config, &game_running, &current_game);
-      free (input_buffer);
-
-      if (game_running)
-        {
-          cli_display_board (&current_game);
-        }
+      if (poll (fds, 1, 100) > 0 && (fds[0].revents & POLLIN))
+        rl_callback_read_char ();
     }
+
+  rl_callback_handler_remove ();
+  if (g_ai_initialized && g_ai.vtable->clean)
+    {
+      g_ai.vtable->clean (&g_ai);
+    }
+  NetworkManager_Cleanup (&net_manager);
 }
