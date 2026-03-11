@@ -37,6 +37,8 @@ typedef struct
   void (*OnInvitationReceived) (int from_player_id);
   void (*OnInvitationResult) (bool accepted);
   void (*OnGameStarted) (PlayerColor color);
+  void (*OnGameError) (const char *error_msg);
+  void (*OnTimeoutReceived) (void);
 } NetworkEvents;
 
 /* ==========================================================================
@@ -63,7 +65,11 @@ void NetworkManager_Tick (NetworkManager *manager);
 int NetworkManager_ServerStart (NetworkManager *manager, int port);
 int NetworkManager_ClientJoin (NetworkManager *manager, const char *ip,
                                int port);
+int NetworkManager_SendJoin (NetworkManager *manager, const char *username);
+int NetworkManager_SendMove (NetworkManager *manager, Move m);
 int NetworkManager_Send (NetworkManager *manager, int target_client,
                          const char *message);
+int NetworkManager_SendTimeout (NetworkManager *manager);
+int NetworkManager_HasOpponent (NetworkManager *manager);
 
 #endif // NETWORK_COMMON_H
