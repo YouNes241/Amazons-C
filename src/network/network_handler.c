@@ -75,7 +75,9 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   SerializePacket (&start_pkt, out_buf, sizeof (out_buf));
   NetworkManager_Send (manager, client_index, out_buf);
 
-    if (manager->callbacks.OnGameStarted)
+  // --- 3EME : MISE À JOUR DE L'INTERFACE LOCALE DU SERVEUR ---
+  // C'est ce callback qui appelle refresh_prompt() final.
+  if (manager->callbacks.OnGameStarted)
     manager->callbacks.OnGameStarted (PLAYER_WHITE);
 
   if (manager->callbacks.OnPlayerJoined)
