@@ -1,16 +1,21 @@
 #include "gui_application.h"
+#include "config.h"
 #include "gui_pages.h"
+#include "gui_utils.h"
 #include <gtk/gtk.h>
 
 static void initWindow (GtkApplication *app, gpointer userData);
 
 GtkApplication *
-createApplication (void)
+createApplication (game_config_t *config)
 {
-  GtkApplication *app;
+  AppContext *ctx = initAppContext (config);
+  GtkApplication *app
+      = gtk_application_new ("fr.bordeaux.amazons", G_APPLICATION_NON_UNIQUE);
 
-  app = gtk_application_new ("fr.bordeaux.amazons", G_APPLICATION_NON_UNIQUE);
-  g_signal_connect (app, "activate", G_CALLBACK (initWindow), NULL);
+  g_signal_connect (app, "activate", G_CALLBACK (initWindow), ctx);
+  g_object_set_data_full (G_OBJECT (app), "AppContext", ctx,
+                          (GDestroyNotify)freeAppContext);
 
   return app;
 }
@@ -29,7 +34,7 @@ runApplication (GtkApplication *app, int argc, char **argv)
 static void
 initWindow (GtkApplication *app, gpointer userData)
 {
-  (void)userData; // disable warning
+  AppContext *ctx = (AppContext *)userData;
 
   GtkCssProvider *cssProvider = gtk_css_provider_new ();
   gtk_css_provider_load_from_resource (cssProvider, "/amazons/ui/style.css");
@@ -50,8 +55,10 @@ initWindow (GtkApplication *app, gpointer userData)
   gtk_window_maximize (GTK_WINDOW (window));
 
   globalOverlay = gtk_overlay_new ();
-
   stack = gtk_stack_new ();
+
+  ctx->mainWindow = GTK_WINDOW (window);
+  ctx->mainStack = GTK_STACK (stack);
 
   // Page transition animation (WIP)
   gtk_stack_set_transition_type (GTK_STACK (stack),
@@ -71,12 +78,12 @@ initWindow (GtkApplication *app, gpointer userData)
   gtk_widget_set_visible (notifBox, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (globalOverlay), notifBox);
 
-  GtkWidget *mainMenuPage = createMainMenuPage ();
-  GtkWidget *singleplayerMenuPage = createSingleplayerMenuPage ();
-  GtkWidget *multiplayerMenuPage = createMultiplayerMenuPage ();
-  GtkWidget *configPage = createConfigPage ();
-  GtkWidget *infoPage = createInfoPage ();
-  GtkWidget *gamePage = createGamePage ();
+  GtkWidget *mainMenuPage = createMainMenuPage (ctx);
+  GtkWidget *singleplayerMenuPage = createSingleplayerMenuPage (ctx);
+  GtkWidget *multiplayerMenuPage = createMultiplayerMenuPage (ctx);
+  GtkWidget *configPage = createConfigPage (ctx);
+  GtkWidget *infoPage = createInfoPage (ctx);
+  GtkWidget *gamePage = createGamePage (ctx);
 
   gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "main_menu_page");
   gtk_stack_add_named (GTK_STACK (stack), singleplayerMenuPage,

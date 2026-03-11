@@ -1,58 +1,85 @@
 #include "gui_utils.h"
+#include "config.h"
+#include "game_engine.h"
+#include "game_types.h"
+#include <assert.h>
 #include <gtk/gtk.h>
 
-GtkWidget *gameBoard[GRID_WIDTH * GRID_HEIGHT];
+AppContext *
+initAppContext (game_config_t *config)
+{
+  AppContext *ctx = malloc (sizeof (AppContext));
+  assert (ctx);
+
+  ctx->gameConfig = config;
+  ctx->gameState = NULL;
+  ctx->mainWindow = NULL;
+  ctx->mainStack = NULL;
+  ctx->gameBoard
+      = malloc (ctx->gameConfig->board_size * ctx->gameConfig->board_size
+                * sizeof (GtkWidget *));
+  assert (ctx->gameBoard);
+
+  return ctx;
+}
 
 void
-drawPiece (unsigned int x, unsigned int y, PieceType pieceType)
+freeAppContext (AppContext *ctx)
 {
-  GtkWidget *cellBtn = gameBoard[x + y * GRID_WIDTH];
+  assert (ctx);
+
+  if (ctx->gameBoard)
+    free (ctx->gameBoard);
+  if (ctx->gameState)
+    game_cleanup (ctx->gameState);
+  free (ctx);
+}
+
+void
+drawPiece (AppContext *ctx, int x, int y, CellContent content)
+{
+  int size = ctx->gameConfig->board_size;
+  int index = y * size + x;
+
+  GtkWidget *cellBtn = ctx->gameBoard[index];
 
   gtk_widget_remove_css_class (cellBtn, "piece-white");
   gtk_widget_remove_css_class (cellBtn, "piece-black");
+  gtk_widget_remove_css_class (cellBtn, "piece-arrow");
+  gtk_button_set_label (GTK_BUTTON (cellBtn), "");
 
-  switch (pieceType)
+  switch (content)
     {
-    case PIECE_WHITE:
+    case CONTENT_WHITE_QUEEN:
       gtk_button_set_label (GTK_BUTTON (cellBtn), "♕");
       gtk_widget_add_css_class (cellBtn, "piece-white");
       break;
-    case PIECE_BLACK:
+
+    case CONTENT_BLACK_QUEEN:
       gtk_button_set_label (GTK_BUTTON (cellBtn), "♛");
       gtk_widget_add_css_class (cellBtn, "piece-black");
       break;
-    case PIECE_ARROW:
+
+    case CONTENT_ARROW:
       gtk_button_set_label (GTK_BUTTON (cellBtn), "🔥");
+      gtk_widget_add_css_class (cellBtn, "piece-arrow");
       break;
-    case PIECE_EMPTY:
-      gtk_button_set_label (GTK_BUTTON (cellBtn), "");
+
+    case CONTENT_EMPTY:
       break;
     }
 }
 
-PieceType
-getPiece (unsigned int x, unsigned int y)
+void
+drawBoard (AppContext *ctx)
 {
-  GtkWidget *cellBtn = gameBoard[x + y * GRID_WIDTH];
+  int size = ctx->gameConfig->board_size;
 
-  const char *label = gtk_button_get_label (GTK_BUTTON (cellBtn));
-
-  if (label == NULL || g_strcmp0 (label, "") == 0)
+  for (int y = 0; y < size; y++)
     {
-      return PIECE_EMPTY;
+      for (int x = 0; x < size; x++)
+        {
+          drawPiece (ctx, x, y, ctx->gameState->board[x][y]);
+        }
     }
-  else if (g_strcmp0 (label, "♕") == 0)
-    {
-      return PIECE_WHITE;
-    }
-  else if (g_strcmp0 (label, "♛") == 0)
-    {
-      return PIECE_BLACK;
-    }
-  else if (g_strcmp0 (label, "🔥") == 0)
-    {
-      return PIECE_ARROW;
-    }
-
-  return PIECE_EMPTY;
 }

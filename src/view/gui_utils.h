@@ -1,22 +1,22 @@
 #ifndef GUI_UTILS_H
 #define GUI_UTILS_H
 
-#define GRID_WIDTH 10
-#define GRID_HEIGHT 10
-
+#include "config.h"
+#include "game_types.h"
 #include <gtk/gtk.h>
 
-typedef enum
+typedef struct
 {
-  PIECE_EMPTY,
-  PIECE_WHITE,
-  PIECE_BLACK,
-  PIECE_ARROW
-} PieceType;
+  game_config_t *gameConfig;
+  GameState *gameState;
+  GtkWindow *mainWindow;
+  GtkStack *mainStack;
+  GtkWidget **gameBoard;
+} AppContext;
 
-extern GtkWidget *gameBoard[GRID_WIDTH * GRID_HEIGHT];
-
-void drawPiece (unsigned int x, unsigned int y, PieceType pieceType);
-PieceType getPiece (unsigned int x, unsigned int y);
+AppContext *initAppContext (game_config_t *config);
+void freeAppContext (AppContext *ctx);
+void drawPiece (AppContext *ctx, int x, int y, CellContent content);
+void drawBoard (AppContext *ctx);
 
 #endif // GUI_UTILS_H
