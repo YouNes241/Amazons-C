@@ -1,6 +1,7 @@
 #include "network_handlers.h"
 #include "network_protocol.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 
@@ -49,34 +50,49 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
       strncpy (resp.payload, "Username already taken", MAX_PAYLOAD_SIZE - 1);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
+      return; // On arrête là si le nom est pris
     }
-  else
-    {
-      // 2. Accept player
-      strncpy (ctx->clients[client_index].username, username, 31);
-      ctx->clients[client_index].username[31] = '\0'; // Security
-      ctx->clients[client_index].is_joined = true;
 
-      resp.type = S2C_WELCOME;
-      strncpy (resp.payload, "Welcome !", MAX_PAYLOAD_SIZE - 1);
-      SerializePacket (&resp, out_buffer, sizeof (out_buffer));
-      NetworkManager_Send (manager, client_index, out_buffer);
+  // 2. Accept player
+  strncpy (ctx->clients[client_index].username, username, 31);
+  ctx->clients[client_index].username[31] = '\0'; // Security
+  ctx->clients[client_index].is_joined = true;
 
-      // 3. Inform the game engine
-      if (manager->callbacks.OnPlayerJoined)
-        manager->callbacks.OnPlayerJoined (
-            ctx->clients[client_index].username);
-    }
+  // --- 1ER : LE LOG RÉSEAU (avec \n pour pousser le prompt) ---
+  printf ("\n[SERVER] Player '%s' successfully joined Slot %d!\n", username,
+          client_index);
+
+  // --- 2EME : ENVOI DES PAQUETS AU CLIENT ---
+  resp.type = S2C_WELCOME;
+  strncpy (resp.payload, "Welcome !", MAX_PAYLOAD_SIZE - 1);
+  SerializePacket (&resp, out_buffer, sizeof (out_buffer));
+  NetworkManager_Send (manager, client_index, out_buffer);
+
+  Packet start_pkt;
+  start_pkt.type = S2C_GAME_START;
+  strcpy (start_pkt.payload, "1"); // "1" pour dire au client qu'il est NOIR
+  char out_buf[256];
+  SerializePacket (&start_pkt, out_buf, sizeof (out_buf));
+  NetworkManager_Send (manager, client_index, out_buf);
+
+  // --- 3EME : MISE À JOUR DE L'INTERFACE LOCALE DU SERVEUR ---
+  // C'est ce callback qui appelle refresh_prompt() final.
+  if (manager->callbacks.OnGameStarted)
+    manager->callbacks.OnGameStarted (PLAYER_WHITE);
 }
-
 void
 handle_server_packet (NetworkManager *manager, ServerContext *ctx,
                       int client_index, Packet *pkt)
 {
+
   switch (pkt->type)
     {
     case C2S_JOIN:
       process_join_packet (manager, ctx, client_index, pkt->payload);
+      break;
+    case PKT_TIMEOUT:
+      if (manager->callbacks.OnTimeoutReceived)
+        manager->callbacks.OnTimeoutReceived ();
       break;
 
     case C2S_MOVE:
@@ -95,25 +111,57 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
   switch (pkt->type)
     {
     case S2C_WELCOME:
-      printf ("[CLIENT] Connection accepted by server: %s\n", pkt->payload);
-      break;
+      printf ("\n[CLIENT] Connection accepted by server: %s\n", pkt->payload);
+      if (manager->callbacks.OnPlayerJoined)
+        {
 
+          manager->callbacks.OnPlayerJoined ("Server");
+        }
+      break;
+    case PKT_TIMEOUT:
+      if (manager->callbacks.OnTimeoutReceived)
+        manager->callbacks.OnTimeoutReceived ();
+      break;
     case S2C_REJECT:
       printf ("[CLIENT] Connection rejected: %s\n", pkt->payload);
       NetworkManager_Cleanup (manager);
+      if (manager->callbacks.OnPlayerDisconnected)
+        {
+          manager->callbacks.OnPlayerDisconnected ("Username already taken");
+        }
       break;
 
     case S2C_ERROR:
-      printf ("[CLIENT] Server Error: %s\n", pkt->payload);
+      if (manager->callbacks.OnGameError)
+        {
+          manager->callbacks.OnGameError (pkt->payload);
+        }
+      else
+        {
+          // Sinon on fait juste un print "sale"
+          printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
+        }
       break;
-
     case S2C_GAME_START:
       printf ("[CLIENT] Game is starting!\n");
-      // TODO: F41.x - call callback OnGameStarted
+      int color_val = atoi (pkt->payload);
+      PlayerColor my_color = (color_val == 0) ? PLAYER_WHITE : PLAYER_BLACK;
+
+      if (manager->callbacks.OnGameStarted)
+        {
+          manager->callbacks.OnGameStarted (my_color);
+        }
       break;
 
     case S2C_MOVE:
       process_move_packet (manager, pkt->payload);
+      break;
+    case S2C_INVITE:
+      if (manager->callbacks.OnInvitationReceived)
+        {
+          manager->callbacks.OnInvitationReceived (atoi (pkt->payload));
+        }
+
       break;
 
     default:

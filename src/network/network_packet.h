@@ -18,7 +18,9 @@ typedef enum
   S2C_WELCOME = 5,    // Server -> Acceptance of nickname
   S2C_REJECT = 6,     // Server ->  Username rejected (already taken, etc.)
   S2C_MOVE = 7,
-  PKT_TYPE_MAX = 8,
+  S2C_INVITE = 8,
+  PKT_TIMEOUT = 9,
+  PKT_TYPE_MAX = 10,
 } PacketType;
 
 /* ==========================================================================
