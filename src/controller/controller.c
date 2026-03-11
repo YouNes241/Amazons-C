@@ -93,11 +93,31 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
     }
   else if (strncmp (input_buffer, "undo", 4) == 0)
     {
-      printf ("Annulation : %s\n", &input_buffer[4]);
+      if (undo_move (current_game))
+        {
+          printf ("Coup annulé avec succès.\n");
+          // On réaffiche le plateau pour voir le résultat immédiatement
+          cli_display_board (current_game);
+        }
+      else
+        {
+          printf ("Impossible d'annuler : vous êtes au tout début de la "
+                  "partie.\n");
+        }
     }
   else if (strncmp (input_buffer, "redo", 4) == 0)
     {
-      printf ("Action rejouée : %s\n", &input_buffer[4]);
+      if (redo_move (current_game))
+        {
+          printf ("Coup refait avec succès.\n");
+          // On réaffiche le plateau pour voir le résultat
+          cli_display_board (current_game);
+        }
+      else
+        {
+          printf ("Impossible de refaire : aucun coup n'a été annulé "
+                  "précédemment.\n");
+        }
     }
   else if (strncmp (input_buffer, "show ", 5) == 0)
     {
