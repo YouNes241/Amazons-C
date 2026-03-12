@@ -1,9 +1,7 @@
 build/*
 libs/*
 coverage/*
-!build/.gitkeep
-!libs/.gitkeep
-!coverage/.gitkeep
+docs/*
 
 CMakeCache.txt
 CMakeFiles/
