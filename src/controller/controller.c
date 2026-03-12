@@ -40,6 +40,16 @@ static char *commands_list[]
    ==========================================================================
  */
 
+static bool
+is_it_ai_turn (game_config_t *config, PlayerColor current_p)
+{
+  if (current_p == PLAYER_WHITE)
+    return config->ai_white;
+  if (current_p == PLAYER_BLACK)
+    return config->ai_black;
+  return false;
+}
+
 /**
  * @brief Constructs the prompt string and applies it to Readline (without
  * displaying it).
@@ -429,7 +439,7 @@ run_interactive_mode (game_config_t *config)
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
 
-  if (config->ai_enabled)
+  if ((config->ai_white || config->ai_black))
     {
       ConfigMap empty_params = { .list = NULL, .count = 0 };
       g_ai = create_ai ("random", empty_params);
@@ -454,8 +464,8 @@ run_interactive_mode (game_config_t *config)
         }
       NetworkManager_Tick (&net_manager);
 
-      if (config->ai_enabled && g_ai_initialized
-          && g_current_game->current_player == PLAYER_BLACK)
+      if (g_ai_initialized
+          && is_it_ai_turn (config, g_current_game->current_player))
         {
           printf ("\n[AI] Thinking...\n");
           Move ai_move = g_ai.vtable->get_best_move (&g_ai, *g_current_game);
