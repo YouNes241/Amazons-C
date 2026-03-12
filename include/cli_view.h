@@ -13,4 +13,9 @@ void cli_clear_screen ();
  * @param state Le GameState contenant la matrice 2D du plateau
  */
 void cli_display_board (const GameState *state);
+
+/**
+ * @brief Affiche le menu principal du jeu avec les commandes de base
+ */
+void cli_display_main_menu (void);
 #endif

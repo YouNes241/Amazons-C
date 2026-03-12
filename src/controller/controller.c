@@ -20,6 +20,7 @@ static bool *g_game_running = NULL;
 static NetworkManager *g_net_manager = NULL;
 static PlayerColor g_my_role = PLAYER_WHITE; // By default for the server
 static bool g_in_network_match = false;
+static bool g_in_main_menu = true;
 
 /* --- Time management --- */
 
@@ -48,7 +49,12 @@ update_prompt_string ()
   static char prompt_str[PROMPT_MAX_LEN];
   const char *turn_str
       = (g_current_game->current_player == PLAYER_WHITE) ? "White" : "Black";
-
+  if (g_in_main_menu)
+    {
+      snprintf (prompt_str, sizeof (prompt_str), "[MENU] >> ");
+      rl_set_prompt (prompt_str);
+      return; // On s'arrête là !
+    }
   // If we are on a network
   if (g_net_manager != NULL && g_net_manager->current_mode != NET_MODE_NONE)
     {
@@ -270,6 +276,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   // 3. NETWORK: SERVER START
   else if (strncmp (input_buffer, "server start", CMD_LEN_SERVER_START) == 0)
     {
+      g_in_main_menu = false;
       int port = DEFAULT_PORT;
       if (strlen (input_buffer) > CMD_LEN_SERVER_START + CMD_SPACE_OFFSET)
         sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
@@ -281,6 +288,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   // 4. NETWORK: JOIN (Full parsing)
   else if (strncmp (input_buffer, "join", CMD_LEN_JOIN) == 0)
     {
+      g_in_main_menu = false;
       char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
       int port = DEFAULT_PORT;
       char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
@@ -382,6 +390,8 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       printf ("New local game.\n");
       game_init (current_game);
       g_turn_start_time = time (NULL);
+      g_in_main_menu = false; // On quitte le menu !
+      cli_clear_screen ();    // On efface le menu ASCII
       return;
     }
   else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
@@ -424,6 +434,12 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   Move player_move;
   if (parse_coordinates (input_buffer, &player_move) == PARSE_MOVE_SUCCESS)
     {
+      if (g_in_main_menu)
+        {
+          printf ("Erreur : Commencez une partie ('new' ou 'join') avant de "
+                  "jouer.\n");
+          return;
+        }
       // --- Turn lock (Active ONLY in network mode) ---
       if (net_manager->current_mode != NET_MODE_NONE)
         {
@@ -498,7 +514,10 @@ linehandler (char *line)
   if (*g_game_running)
     {
       // 1. The plateau is displayed at the end of the processing.
-      cli_display_board (g_current_game);
+      if (!g_in_main_menu)
+        {
+          cli_display_board (g_current_game);
+        }
 
       // 2. We are updating the text of the prompt
       update_prompt_string ();
@@ -542,12 +561,9 @@ run_interactive_mode (game_config_t *config)
 
   rl_attempted_completion_function = amazons_completion;
   cli_clear_screen ();
-  printf ("Welcome to the Amazones' Game !\n");
-  cli_display_board (&current_game);
-
-  // Installing the Readline handler
-  rl_callback_handler_install ("[White] >> ", linehandler);
-
+  cli_display_main_menu ();
+  rl_callback_handler_install ("[MENU] >> ", linehandler);
+  update_prompt_string ();
   struct pollfd fds[STDIN_FD_COUNT];
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
