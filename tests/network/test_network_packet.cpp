@@ -62,7 +62,7 @@ TEST (NetworkPacketTest, Serialize_ErrorCases)
 TEST (NetworkPacketTest, Deserialize_ValidString)
 {
   Packet pkt;
-  bool success = DeserializePacket ("3|GAME_START_DATA", &pkt);
+  bool success = DeserializePacket ("7|GAME_START_DATA", &pkt);
 
   EXPECT_TRUE (success);
   EXPECT_EQ (pkt.type, S2C_GAME_START);

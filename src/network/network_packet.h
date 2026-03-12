@@ -13,14 +13,20 @@ typedef enum
   PKT_UNKNOWN = 0,
   C2S_JOIN = 1,       // Client -> Server: Connection request with a nickname
   C2S_MOVE = 2,       // Client -> Server: Sends a played move
-  S2C_GAME_START = 3, // Server -> Client: The game starts
-  S2C_ERROR = 4,      // Server -> Client: Error message (e.g., invalid move)
-  S2C_WELCOME = 5,    // Server -> Acceptance of nickname
-  S2C_REJECT = 6,     // Server ->  Username rejected (already taken, etc.)
-  S2C_MOVE = 7,
-  S2C_INVITE = 8,
-  PKT_TIMEOUT = 9,
-  PKT_TYPE_MAX = 10,
+  C2S_INVITE = 3,     // Client A wants to invite Client B
+  C2S_ACCEPT = 4,     // Client B accepts
+  C2S_DECLINE = 5,    // Client B refuses
+  C2S_LIST = 6,       // Client -> Server: Requests the list of players
+  S2C_GAME_START = 7, // Server -> Client: The game starts
+  S2C_ERROR = 8,      // Server -> Client: Error message (e.g., invalid move)
+  S2C_WELCOME = 9,    // Server -> Acceptance of nickname
+  S2C_REJECT = 10,    // Server ->  Username rejected (already taken, etc.)
+  S2C_MOVE = 11,
+  S2C_INVITE = 12,  // The server tells Client B, "A invites you."
+  S2C_DECLINE = 13, // The server tells Client A "B refused"
+  S2C_LIST = 14,    // Server -> Client: Sends the list of players
+  PKT_TIMEOUT = 15,
+  PKT_TYPE_MAX = 16,
 } PacketType;
 
 /* ==========================================================================

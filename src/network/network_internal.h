@@ -51,6 +51,7 @@
 
 // Roles and initialization
 #define ROLE_WHITE_VAL 0
+#define ROLE_WHITE_STR "0"
 #define ROLE_BLACK_STR "1"
 
 // no game assigned
