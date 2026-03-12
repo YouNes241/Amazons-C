@@ -51,6 +51,8 @@ static void handle_client_tick (NetworkManager *manager, ClientContext *ctx);
 void
 NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
 {
+  if (manager == NULL)
+    return;
   manager->current_mode = NET_MODE_NONE;
   manager->server_ctx = NULL;
   manager->client_ctx = NULL;
@@ -126,6 +128,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->num_clients = 0;
+  manager->server_ctx->next_game_id = 1;
 
   // We configure the monitoring of the main door
   manager->server_ctx->fds[LISTEN_SOCKET_INDEX].fd = sock;
@@ -367,6 +370,86 @@ NetworkManager_SendTimeout (NetworkManager *manager)
 }
 
 /**
+ * @brief Sends an invitation to a specific player ID.
+ */
+int
+NetworkManager_SendInvite (NetworkManager *manager, int target_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_INVITE;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Accepts an invitation from a specific player ID.
+ */
+int
+NetworkManager_SendAccept (NetworkManager *manager, int challenger_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_ACCEPT;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Declines an invitation from a specific player ID.
+ */
+int
+NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_DECLINE;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Requests the list of connected players from the server.
+ */
+int
+NetworkManager_SendListRequest (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_LIST;
+  pkt.payload[0] = '\0'; // No payload is needed to simply request the list.
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
 * @brief Sends a text message over the network.
 * @param manager Pointer to the manager.
 * @param target_client The client index (1 to MAX_CLIENTS) if you are the
@@ -494,6 +577,8 @@ handle_server_new_connection (ServerContext *ctx)
               tcp_buffer_init (&ctx->clients[i].buffer);
               ctx->clients[i].is_joined = false;
               memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
+              ctx->clients[i].game_id = NO_GAME_ID;
+              ctx->clients[i].status = CLIENT_STATUS_CONNECTED;
               ctx->num_clients++;
               accepted = true;
 
@@ -521,9 +606,40 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
                           int client_index)
 {
   printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
+
+  int game_id = ctx->clients[client_index].game_id;
+  if (game_id != NO_GAME_ID)
+    {
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          // if there is still another player in the game
+          if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
+              && ctx->clients[i].game_id == game_id)
+            {
+              // we send him back to the lobby
+              ctx->clients[i].status = CLIENT_STATUS_IDLE;
+              ctx->clients[i].game_id = NO_GAME_ID;
+
+              Packet pkt;
+              pkt.type = S2C_OPPONENT_LEFT;
+              strncpy (pkt.payload, "Opponent disconnected.",
+                       MAX_PAYLOAD_SIZE - 1);
+              char out_buf[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+                {
+                  NetworkManager_Send (manager, i, out_buf);
+                }
+            }
+        }
+    }
+
   close (ctx->fds[client_index].fd);
   ctx->fds[client_index].fd = INVALID_SOCKET;
+  ctx->clients[client_index].is_joined = false;
+  ctx->clients[client_index].status = CLIENT_STATUS_CONNECTED;
+  ctx->clients[client_index].game_id = NO_GAME_ID;
   ctx->num_clients--;
+
   if (manager->callbacks.OnPlayerDisconnected)
     manager->callbacks.OnPlayerDisconnected ("Network disconnection");
 }
@@ -681,4 +797,54 @@ NetworkManager_HasOpponent (NetworkManager *manager)
     }
 
   return NO_OPPONENT;
+}
+
+void
+NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
+                                    size_t max_len)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_SERVER
+      || manager->server_ctx == NULL || buffer == NULL || max_len == 0)
+    {
+      if (buffer && max_len > 0)
+        buffer[0] = '\0';
+      return;
+    }
+
+  strncpy (buffer, "Players: ", max_len - 1);
+  buffer[max_len - 1] = '\0';
+
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (manager->server_ctx->fds[i].fd != INVALID_SOCKET
+          && manager->server_ctx->clients[i].is_joined)
+        {
+          char line[64];
+          const char *status_str = "Unknown";
+
+          switch (manager->server_ctx->clients[i].status)
+            {
+            case CLIENT_STATUS_IDLE:
+              status_str = "IDLE";
+              break;
+            case CLIENT_STATUS_WAITGAME:
+              status_str = "WAITING";
+              break;
+            case CLIENT_STATUS_INGAME:
+              status_str = "INGAME";
+              break;
+            default:
+              status_str = "CONNECTED";
+              break;
+            }
+
+          snprintf (line, sizeof (line), "[ID %d: %s (%s)] ", i,
+                    manager->server_ctx->clients[i].username, status_str);
+
+          if (strlen (buffer) + strlen (line) < max_len - 1)
+            {
+              strcat (buffer, line);
+            }
+        }
+    }
 }
