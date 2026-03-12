@@ -296,3 +296,52 @@ TEST (GameEngineTest, GameOverWhenPlayerIsBlocked)
 
   game_cleanup (&state);
 }
+
+TEST (GameEngineTest, UndoMoveRestoresPreviousState)
+{
+  GameState state = {};
+  game_init (&state);
+  Move move;
+  move.queen_src = { 0, 3 };
+  move.queen_dst = { 1, 3 };
+  move.arrow_dst = { 2, 3 };
+
+  apply_move (&state, move);
+  EXPECT_EQ (state.turn_count, 1);
+  EXPECT_EQ (state.current_player, PLAYER_BLACK);
+  EXPECT_TRUE (undo_move (&state));
+  EXPECT_EQ (state.turn_count, 0);
+  EXPECT_EQ (state.current_player, PLAYER_WHITE);
+  EXPECT_EQ (state.board[0][3], CONTENT_WHITE_QUEEN);
+  EXPECT_EQ (state.board[1][3], CONTENT_EMPTY);
+  EXPECT_EQ (state.board[2][3], CONTENT_EMPTY);
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, RedoMoveRestoresMoveAfterUndo)
+{
+  GameState state = {};
+  game_init (&state);
+  Move move;
+  move.queen_src = { 0, 3 };
+  move.queen_dst = { 1, 3 };
+  move.arrow_dst = { 2, 3 };
+
+  apply_move (&state, move);
+  undo_move (&state);
+  EXPECT_TRUE (redo_move (&state));
+  EXPECT_EQ (state.turn_count, 1);
+  EXPECT_EQ (state.current_player, PLAYER_BLACK);
+  EXPECT_EQ (state.board[0][3], CONTENT_EMPTY);
+  EXPECT_EQ (state.board[1][3], CONTENT_WHITE_QUEEN);
+  EXPECT_EQ (state.board[2][3], CONTENT_ARROW);
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, UndoAtStartReturnsFalse)
+{
+  GameState state = {};
+  game_init (&state);
+  EXPECT_FALSE (undo_move (&state));
+  game_cleanup (&state);
+}

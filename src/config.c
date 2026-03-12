@@ -10,7 +10,8 @@ init_default_config (game_config_t *config)
   config->mode = MODE_INTERACTIVE;
   config->blitz_mode = false;
   config->time_per_player = DEFAULT_TIME_BLITZ;
-  config->ai_enabled = false;
+  config->ai_black = false;
+  config->ai_white = false;
   config->verbose = false;
   config->language = LANG_FR;
 }
@@ -41,7 +42,8 @@ display_config (game_config_t *config)
   printf ("Mode Blitz        : %s\n",
           config->blitz_mode ? "Activé" : "Désactivé");
   printf ("Temps par joueur  : %d s\n", config->time_per_player);
-  printf ("IA activée        : %s\n", config->ai_enabled ? "Oui" : "Non");
+  printf ("IA joueur Blanc        : %s\n", config->ai_white ? "Oui" : "Non");
+  printf ("IA joueur Noir        : %s\n", config->ai_black ? "Oui" : "Non");
   printf ("Mode Verbose      : %s\n",
           config->verbose ? "Activé" : "Désactivé");
   printf ("Langue : %s\n",
@@ -91,8 +93,10 @@ load_config_file (game_config_t *config)
           fprintf (file, "blitz = %s\n",
                    config->blitz_mode ? "true" : "false");
           fprintf (file, "timeout = %d\n", config->time_per_player);
-          fprintf (file, "ai_enabled = %s\n",
-                   config->ai_enabled ? "true" : "false");
+          fprintf (file, "ai_white = %s\n",
+                   config->ai_white ? "true" : "false");
+          fprintf (file, "ai_black = %s\n",
+                   config->ai_black ? "true" : "false");
           fprintf (file, "verbose = %s\n", config->verbose ? "true" : "false");
 
           fprintf (file, "language = %s\n",
@@ -139,9 +143,13 @@ load_config_file (game_config_t *config)
             {
               config->time_per_player = atoi (value);
             }
-          else if (strcmp (key, "ai_enabled") == 0)
+          else if (strcmp (key, "ai_white") == 0)
             {
-              config->ai_enabled = (strcmp (value, "true") == 0);
+              config->ai_white = (strcmp (value, "true") == 0);
+            }
+          else if (strcmp (key, "ai_black") == 0)
+            {
+              config->ai_black = (strcmp (value, "true") == 0);
             }
           else if (strcmp (key, "verbose") == 0)
             {
