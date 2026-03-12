@@ -132,4 +132,7 @@ PlayerColor get_winner (const GameState *state);
  */
 void game_cleanup (GameState *state);
 
+bool undo_move (GameState *state);
+bool redo_move (GameState *state);
+
 #endif

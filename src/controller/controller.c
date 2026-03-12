@@ -1,4 +1,6 @@
 #include "../../include/controller.h"
+#include "../../include/ai_factory.h"
+#include "../../include/ai_interface.h"
 #include "../../include/cli_view.h"
 #include "../../include/game_engine.h"
 #include "../../include/input.h"
@@ -18,7 +20,9 @@ static GameState *g_current_game = NULL;
 static game_config_t *g_config = NULL;
 static bool *g_game_running = NULL;
 static NetworkManager *g_net_manager = NULL;
-static PlayerColor g_my_role = PLAYER_WHITE; // By default for the server
+static PlayerColor g_my_role = PLAYER_WHITE; // Par défaut pour le serveur
+static AI_Interface g_ai;
+static bool g_ai_initialized = false;
 static bool g_in_network_match = false;
 
 /* --- Time management --- */
@@ -37,6 +41,16 @@ static char *commands_list[]
    HELPERS UI & PROMPT
    ==========================================================================
  */
+
+static bool
+is_it_ai_turn (game_config_t *config, PlayerColor current_p)
+{
+  if (current_p == PLAYER_WHITE)
+    return config->ai_white;
+  if (current_p == PLAYER_BLACK)
+    return config->ai_black;
+  return false;
+}
 
 /**
  * @brief Constructs the prompt string and applies it to Readline (without
@@ -386,12 +400,53 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
     }
   else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
     {
-      printf ("Cancellation: (logic to be implemented)\n");
+      bool vs_ai = (config->ai_white || config->ai_black);
+      bool is_local = (net_manager->current_mode == NET_MODE_NONE);
+
+      if (vs_ai && is_local)
+        {
+          if (undo_move (current_game))
+            {
+              undo_move (current_game);
+              printf ("Move(s) undone successfully.\n");
+              cli_display_board (current_game);
+            }
+          else
+            {
+              printf ("Impossible to undo.\n");
+            }
+        }
+      else
+        {
+          printf ("The 'undo' command is only available in solo mode against "
+                  "the AI.\n");
+        }
       return;
     }
   else if (strncmp (input_buffer, "redo", CMD_LEN_REDO) == 0)
     {
-      printf ("Action replayed: (logic to be implemented)\n");
+      bool vs_ai = (config->ai_white || config->ai_black);
+      bool is_local = (g_net_manager->current_mode == NET_MODE_NONE);
+
+      if (vs_ai && is_local)
+        {
+          if (redo_move (current_game))
+            {
+              redo_move (current_game);
+
+              printf ("Move(s) redone successfully.\n");
+              cli_display_board (current_game);
+            }
+          else
+            {
+              printf ("Impossible to redo : no move to redo.\n");
+            }
+        }
+      else
+        {
+          printf ("The 'redo' command is only available in solo mode against "
+                  "the AI.\n");
+        }
       return;
     }
   else if (strncmp (input_buffer, "save ", CMD_LEN_SAVE) == 0)
@@ -453,7 +508,8 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       if (is_move_legal (current_game, player_move))
         {
           apply_move (current_game, player_move);
-          NetworkManager_SendMove (net_manager, player_move);
+          NetworkManager_SendMove (
+              net_manager, player_move); // TODO condition si on est en réseaux
           g_timeout_sent = false;
           // We played, we reset the timer for the wait.
           g_turn_start_time = time (NULL);
@@ -561,37 +617,78 @@ run_interactive_mode (game_config_t *config)
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
 
+  if ((config->ai_white || config->ai_black))
+    {
+      ConfigMap empty_params = { .list = NULL, .count = 0 };
+      g_ai = create_ai ("random", empty_params);
+      g_ai_initialized = (g_ai.vtable != NULL);
+    }
+
   while (game_running)
     {
+      if (is_game_over (g_current_game, g_current_game->current_player))
+        {
+          cli_display_board (g_current_game);
+          PlayerColor winner = get_winner (g_current_game);
+          printf ("\n GAME OVER ! \n");
+          printf ("Player %s is blocked.\n",
+                  (g_current_game->current_player == PLAYER_WHITE ? "White"
+                                                                  : "Black"));
+          printf ("Victory of the %s !\n",
+                  (winner == PLAYER_WHITE ? "Whites" : "Blacks"));
+
+          game_running = false;
+          break;
+        }
       NetworkManager_Tick (&net_manager);
+
+      if (g_ai_initialized
+          && is_it_ai_turn (config, g_current_game->current_player))
+        {
+          printf ("\n[AI] Thinking...\n");
+          Move ai_move = g_ai.vtable->get_best_move (&g_ai, *g_current_game);
+
+          if (is_move_legal (g_current_game, ai_move))
+            {
+              apply_move (g_current_game, ai_move);
+              g_turn_start_time = time (NULL);
+              cli_display_board (g_current_game);
+              refresh_prompt ();
+            }
+          else
+            {
+              printf (
+                  "\n[ERROR] AI suggested an illegal move or is blocked.\n");
+              printf ("Game ended.\n");
+              game_running = false;
+            }
+        }
 
       // --- SYNCHRONIZED TIMEOUT LOGIC ---
       if (g_in_network_match && g_current_game->current_player == g_my_role)
         {
-          if (NetworkManager_HasOpponent (&net_manager))
+
+          time_t now = time (NULL);
+          if (difftime (now, g_turn_start_time) >= g_timeout_limit
+              && !g_timeout_sent)
             {
-              time_t now = time (NULL);
-              if (difftime (now, g_turn_start_time) >= g_timeout_limit
-                  && !g_timeout_sent)
-                {
-                  printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
-                          "adversary..\n");
+              printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
+                      "adversary..\n");
 
-                  // Turn switch
-                  g_current_game->current_player
-                      = (g_current_game->current_player == PLAYER_WHITE)
-                            ? PLAYER_BLACK
-                            : PLAYER_WHITE;
+              // Turn switch
+              g_current_game->current_player
+                  = (g_current_game->current_player == PLAYER_WHITE)
+                        ? PLAYER_BLACK
+                        : PLAYER_WHITE;
 
-                  // Network send
-                  NetworkManager_SendTimeout (&net_manager);
+              // Network send
+              NetworkManager_SendTimeout (&net_manager);
 
-                  g_timeout_sent = true;
-                  g_turn_start_time = now;
+              g_timeout_sent = true;
+              g_turn_start_time = now;
 
-                  cli_display_board (g_current_game);
-                  refresh_prompt ();
-                }
+              cli_display_board (g_current_game);
+              refresh_prompt ();
             }
         }
       else if (g_in_network_match) // On ne reset le temps que si on joue
@@ -606,5 +703,9 @@ run_interactive_mode (game_config_t *config)
     }
 
   rl_callback_handler_remove ();
+  if (g_ai_initialized && g_ai.vtable->clean)
+    {
+      g_ai.vtable->clean (&g_ai);
+    }
   NetworkManager_Cleanup (&net_manager);
 }

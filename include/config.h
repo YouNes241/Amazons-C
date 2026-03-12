@@ -34,8 +34,9 @@ typedef struct
   game_mode_t mode; // Le mode de jeu actuel choisi
   bool blitz_mode;  // Vrai si le mode blitz est activé
   int time_per_player;
-  bool ai_enabled; // Vrai si on joue contre l'ia
-  bool verbose;    // Pour le debug
+  bool ai_white;
+  bool ai_black;
+  bool verbose; // Pour le debug
   lang_t language;
 } game_config_t;
 

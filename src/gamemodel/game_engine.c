@@ -1,6 +1,41 @@
 #include "../../include/game_engine.h"
 #include <stddef.h>
 
+static void
+push_move (MoveStack *stack, Move m)
+{
+  if (stack->top < stack->capacity - 1)
+    {
+      stack->top++;
+      stack->data[stack->top] = m;
+    }
+}
+
+static Move
+pop_move (MoveStack *stack, bool *success)
+{
+  Move popped_move = { 0 };
+
+  if (stack->top >= 0)
+    {
+      *success = true;
+      popped_move = stack->data[stack->top];
+      stack->top--;
+    }
+  else
+    {
+      *success = false;
+    }
+
+  return popped_move;
+}
+
+static void
+clear_stack (MoveStack *stack)
+{
+  stack->top = -1;
+}
+
 uint8_t
 coords_to_index (uint8_t x, uint8_t y, uint8_t board_size)
 {
@@ -107,6 +142,15 @@ game_init (GameState *state)
   state->status = GAME_IN_PROGRESS;
   state->turn_count = 0;
 
+  int max_possible_moves = 2000; // Largement suffisant pour une partie
+
+  state->undo_stack.capacity = max_possible_moves;
+  state->undo_stack.top = -1;
+  state->undo_stack.data = malloc (max_possible_moves * sizeof (Move));
+
+  state->redo_stack.capacity = max_possible_moves;
+  state->redo_stack.top = -1;
+  state->redo_stack.data = malloc (max_possible_moves * sizeof (Move));
   place_initial_queens (state);
 }
 
@@ -130,6 +174,17 @@ game_cleanup (GameState *state)
       free (state->board);
       state->board = NULL;
       state->size = 0;
+      if (state->undo_stack.data != NULL)
+        {
+          free (state->undo_stack.data);
+          state->undo_stack.data = NULL;
+        }
+
+      if (state->redo_stack.data != NULL)
+        {
+          free (state->redo_stack.data);
+          state->redo_stack.data = NULL;
+        }
     }
 }
 
@@ -154,6 +209,8 @@ apply_move (GameState *state, Move move)
 
   // Change the turn to the next player and increment the turn count
   state->turn_count++;
+  push_move (&state->undo_stack, move);
+  clear_stack (&state->redo_stack);
 
   if (state->current_player == PLAYER_WHITE)
     {
@@ -483,4 +540,44 @@ get_winner (const GameState *state)
     {
       return PLAYER_WHITE;
     }
+}
+
+bool
+undo_move (GameState *state)
+{
+  bool success;
+  Move last_move = pop_move (&state->undo_stack, &success);
+
+  if (!success)
+    return false;
+
+  state->board[last_move.arrow_dst.row][last_move.arrow_dst.col]
+      = CONTENT_EMPTY;
+
+  CellContent queen_color
+      = state->board[last_move.queen_dst.row][last_move.queen_dst.col];
+  state->board[last_move.queen_dst.row][last_move.queen_dst.col]
+      = CONTENT_EMPTY;
+  state->board[last_move.queen_src.row][last_move.queen_src.col] = queen_color;
+
+  state->current_player
+      = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+  state->turn_count--;
+  state->status = GAME_IN_PROGRESS;
+
+  push_move (&state->redo_stack, last_move);
+  return true;
+}
+
+bool
+redo_move (GameState *state)
+{
+  bool success;
+  Move next_move = pop_move (&state->redo_stack, &success);
+
+  if (!success)
+    return false;
+  apply_move (state, next_move);
+
+  return true;
 }
