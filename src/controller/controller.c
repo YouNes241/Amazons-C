@@ -228,6 +228,18 @@ on_invitation_received (int challenger_id)
           challenger_id, challenger_id);
   refresh_prompt ();
 }
+static void
+
+on_invitation_declined (const char *message)
+
+{
+
+  printf ("\n[LOBBY] %s\n",
+
+          message); // Affichera: [LOBBY] Invitation declined.
+
+  refresh_prompt ();
+}
 
 static void
 on_list_received (const char *list_text)
@@ -612,6 +624,7 @@ run_interactive_mode (game_config_t *config)
   net_events.OnPlayerJoined = on_player_joined;
   net_events.OnGameError = on_game_error;
   net_events.OnInvitationReceived = on_invitation_received;
+  net_events.OnInvitationDeclined = on_invitation_declined;
   net_events.OnPlayerDisconnected = on_player_disconnected;
   net_events.OnTimeoutReceived = on_network_timeout_received;
   net_events.OnListReceived = on_list_received;
