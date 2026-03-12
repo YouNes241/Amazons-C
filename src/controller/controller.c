@@ -444,7 +444,8 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       if (is_move_legal (current_game, player_move))
         {
           apply_move (current_game, player_move);
-          NetworkManager_SendMove (net_manager, player_move);
+          NetworkManager_SendMove (
+              net_manager, player_move); // TODO condition si on est en réseaux
           g_timeout_sent = false;
           // We played, we reset the timer for the wait.
           g_turn_start_time = time (NULL);
@@ -559,30 +560,28 @@ run_interactive_mode (game_config_t *config)
       // --- SYNCHRONIZED TIMEOUT LOGIC ---
       if (g_in_network_match && g_current_game->current_player == g_my_role)
         {
-          if (NetworkManager_HasOpponent (&net_manager))
+
+          time_t now = time (NULL);
+          if (difftime (now, g_turn_start_time) >= g_timeout_limit
+              && !g_timeout_sent)
             {
-              time_t now = time (NULL);
-              if (difftime (now, g_turn_start_time) >= g_timeout_limit
-                  && !g_timeout_sent)
-                {
-                  printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
-                          "adversary..\n");
+              printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
+                      "adversary..\n");
 
-                  // Turn switch
-                  g_current_game->current_player
-                      = (g_current_game->current_player == PLAYER_WHITE)
-                            ? PLAYER_BLACK
-                            : PLAYER_WHITE;
+              // Turn switch
+              g_current_game->current_player
+                  = (g_current_game->current_player == PLAYER_WHITE)
+                        ? PLAYER_BLACK
+                        : PLAYER_WHITE;
 
-                  // Network send
-                  NetworkManager_SendTimeout (&net_manager);
+              // Network send
+              NetworkManager_SendTimeout (&net_manager);
 
-                  g_timeout_sent = true;
-                  g_turn_start_time = now;
+              g_timeout_sent = true;
+              g_turn_start_time = now;
 
-                  cli_display_board (g_current_game);
-                  refresh_prompt ();
-                }
+              cli_display_board (g_current_game);
+              refresh_prompt ();
             }
         }
       else if (g_in_network_match) // On ne reset le temps que si on joue
