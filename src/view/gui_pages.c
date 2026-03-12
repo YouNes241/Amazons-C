@@ -12,7 +12,13 @@ static GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,
                                    gpointer user_data);
 static gboolean onDrop (GtkDropTarget *target, const GValue *value, double x,
                         double y, gpointer user_data);
-static void fireArrow (GtkButton *button, gpointer user_data);
+static void onDragEnd (GtkDragSource *source, GdkDrag *drag,
+                       gboolean delete_data, gpointer user_data);
+static void fireArrow (GtkWidget *button, gpointer user_data);
+static void onRightClick (GtkGestureClick *gesture, int n_press, double x,
+                          double y, gpointer user_data);
+static void onCellClicked (GtkGestureClick *gesture, int n_press, double x,
+                           double y, gpointer user_data);
 
 GtkWidget *
 createMainMenuPage (AppContext *ctx)
@@ -175,40 +181,56 @@ createGamePage (AppContext *ctx)
       unsigned int x = i % size;
       unsigned int y = i / size;
 
-      GtkWidget *cellBtn = gtk_button_new ();
-      gtk_widget_set_size_request (cellBtn, 60, 60);
+      GtkWidget *cellBox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+      gtk_widget_set_size_request (cellBox, 80, 80);
+
+      GtkWidget *label = gtk_label_new ("");
+      gtk_widget_set_halign (label, GTK_ALIGN_CENTER);
+      gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
+      gtk_widget_set_hexpand (label, TRUE);
+      gtk_widget_set_vexpand (label, TRUE);
+      gtk_box_append (GTK_BOX (cellBox), label);
+
+      g_object_set_data (G_OBJECT (cellBox), "cell_label", label);
 
       if ((x + y) % 2 == 0)
-        {
-          gtk_widget_add_css_class (cellBtn, "cell-light");
-        }
+        gtk_widget_add_css_class (cellBox, "cell-light");
       else
-        {
-          gtk_widget_add_css_class (cellBtn, "cell-dark");
-        }
+        gtk_widget_add_css_class (cellBox, "cell-dark");
 
-      ctx->gameBoard[i] = cellBtn;
+      ctx->gameBoard[i] = cellBox;
 
-      g_object_set_data (G_OBJECT (cellBtn), "cell_x", GINT_TO_POINTER (x));
-      g_object_set_data (G_OBJECT (cellBtn), "cell_y", GINT_TO_POINTER (y));
-      g_object_set_data (G_OBJECT (cellBtn), "cell_index",
+      g_object_set_data (G_OBJECT (cellBox), "cell_x", GINT_TO_POINTER (x));
+      g_object_set_data (G_OBJECT (cellBox), "cell_y", GINT_TO_POINTER (y));
+      g_object_set_data (G_OBJECT (cellBox), "cell_index",
                          GINT_TO_POINTER (i));
 
-      g_signal_connect (cellBtn, "clicked", G_CALLBACK (fireArrow), ctx);
+      GtkGesture *leftClick = gtk_gesture_click_new ();
+      gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (leftClick),
+                                     GDK_BUTTON_PRIMARY);
+      g_signal_connect (leftClick, "pressed", G_CALLBACK (onCellClicked), ctx);
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (leftClick));
 
       GtkDragSource *dragSource = gtk_drag_source_new ();
       g_signal_connect (dragSource, "prepare", G_CALLBACK (onDrag), ctx);
-      gtk_widget_add_controller (cellBtn, GTK_EVENT_CONTROLLER (dragSource));
+      g_signal_connect (dragSource, "drag-end", G_CALLBACK (onDragEnd), ctx);
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dragSource));
 
       GtkDropTarget *dropTarget
           = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
       g_signal_connect (dropTarget, "drop", G_CALLBACK (onDrop), ctx);
-      gtk_widget_add_controller (cellBtn, GTK_EVENT_CONTROLLER (dropTarget));
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dropTarget));
 
-      gtk_grid_attach (GTK_GRID (boardGrid), cellBtn, x, y, 1, 1);
+      gtk_grid_attach (GTK_GRID (boardGrid), cellBox, x, size - 1 - y, 1, 1);
     }
 
   drawBoard (ctx);
+
+  GtkGesture *rightClick = gtk_gesture_click_new ();
+  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (rightClick),
+                                 GDK_BUTTON_SECONDARY);
+  g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
+  gtk_widget_add_controller (boardGrid, GTK_EVENT_CONTROLLER (rightClick));
 
   g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
   g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoButtonClick), NULL);
@@ -273,6 +295,11 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 
   AppContext *ctx = (AppContext *)user_data;
 
+  if (ctx->currentPhase != PHASE_MOVE_QUEEN)
+    {
+      return NULL;
+    }
+
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
 
@@ -281,10 +308,33 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   int srcIndex
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_index"));
 
-  CellContent piece = ctx->gameState->board[srcX][srcY];
+  CellContent piece = ctx->gameState->board[srcY][srcX];
 
   if (piece == CONTENT_EMPTY || piece == CONTENT_ARROW)
-    return NULL;
+    {
+      return NULL;
+    }
+
+  PlayerColor currentPlayer = ctx->gameState->current_player;
+  if ((currentPlayer == PLAYER_WHITE && piece != CONTENT_WHITE_QUEEN)
+      || (currentPlayer == PLAYER_BLACK && piece != CONTENT_BLACK_QUEEN))
+    {
+      return NULL;
+    }
+
+  highlightReachableSquares (ctx, srcX, srcY);
+
+  int cases_trouvees = 0;
+  for (int i = 0;
+       i < ctx->gameConfig->board_size * ctx->gameConfig->board_size; i++)
+    {
+      if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (ctx->gameBoard[i]),
+                                              "is_legal_move"))
+          == 1)
+        {
+          cases_trouvees++;
+        }
+    }
 
   char strIndex[8];
   snprintf (strIndex, sizeof (strIndex), "%d", srcIndex);
@@ -307,11 +357,24 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   (void)y;
 
   AppContext *ctx = (AppContext *)user_data;
+
+  if (ctx->currentPhase != PHASE_MOVE_QUEEN)
+    {
+      return FALSE;
+    }
+
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (target));
 
   int destX = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_x"));
   int destY = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_y"));
+
+  int isLegal
+      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "is_legal_move"));
+  if (!isLegal)
+    {
+      return FALSE;
+    }
 
   const char *srcString = g_value_get_string (value);
   int srcIndex = atoi (srcString);
@@ -320,15 +383,25 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   int srcX = srcIndex % size;
   int srcY = srcIndex / size;
 
-  if (ctx->gameState->board[destX][destY] != CONTENT_EMPTY)
-    return FALSE;
+  if (ctx->gameState->board[destY][destX] != CONTENT_EMPTY)
+    {
+      return FALSE;
+    }
 
-  CellContent currentPiece = ctx->gameState->board[srcX][srcY];
-  ctx->gameState->board[srcX][srcY] = CONTENT_EMPTY;
-  ctx->gameState->board[destX][destY] = currentPiece;
+  ctx->tmpQueenSrc.col = srcX;
+  ctx->tmpQueenSrc.row = srcY;
+  ctx->tmpQueenDst.col = destX;
+  ctx->tmpQueenDst.row = destY;
+
+  CellContent currentPiece = ctx->gameState->board[srcY][srcX];
+  ctx->gameState->board[srcY][srcX] = CONTENT_EMPTY;
+  ctx->gameState->board[destY][destX] = currentPiece;
 
   drawPiece (ctx, srcX, srcY, CONTENT_EMPTY);
   drawPiece (ctx, destX, destY, currentPiece);
+
+  ctx->currentPhase = PHASE_SHOOT_ARROW;
+  highlightReachableSquares (ctx, destX, destY);
 
   g_print ("Moved from (%d, %d) to (%d, %d)\n", srcX, srcY, destX, destY);
 
@@ -336,22 +409,119 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
 }
 
 static void
-fireArrow (GtkButton *button, gpointer user_data)
+onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
+           gpointer user_data)
+{
+  (void)source;
+  (void)drag;
+  (void)delete_data;
+  AppContext *ctx = (AppContext *)user_data;
+
+  if (ctx->currentPhase == PHASE_MOVE_QUEEN)
+    {
+      clearHighlights (ctx);
+      drawBoard (ctx);
+    }
+}
+
+static void
+fireArrow (GtkWidget *button, gpointer user_data)
 {
   AppContext *ctx = (AppContext *)user_data;
-  int x = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cell_x"));
-  int y = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cell_y"));
 
-  if (ctx->gameState->board[x][y] == CONTENT_EMPTY)
+  if (ctx->currentPhase != PHASE_SHOOT_ARROW)
+    return;
+
+  int targetX
+      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cell_x"));
+  int targetY
+      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cell_y"));
+
+  int isLegal = GPOINTER_TO_INT (
+      g_object_get_data (G_OBJECT (button), "is_legal_move"));
+  if (!isLegal)
     {
-      ctx->gameState->board[x][y] = CONTENT_ARROW;
+      g_print ("Invalid shot at (%d, %d).\n", targetX, targetY);
+      return;
+    }
 
-      drawPiece (ctx, x, y, CONTENT_ARROW);
+  CellContent piece
+      = ctx->gameState->board[ctx->tmpQueenDst.row][ctx->tmpQueenDst.col];
+  ctx->gameState->board[ctx->tmpQueenDst.row][ctx->tmpQueenDst.col]
+      = CONTENT_EMPTY;
+  ctx->gameState->board[ctx->tmpQueenSrc.row][ctx->tmpQueenSrc.col] = piece;
 
-      g_print ("Fired arrow on (%d, %d)\n", x, y);
+  Move current_move;
+  current_move.queen_src = ctx->tmpQueenSrc;
+  current_move.queen_dst = ctx->tmpQueenDst;
+  current_move.arrow_dst.col = targetX;
+  current_move.arrow_dst.row = targetY;
+
+  if (is_move_legal (ctx->gameState, current_move))
+    {
+      apply_move (ctx->gameState, current_move);
+
+      clearHighlights (ctx);
+      drawBoard (ctx);
+
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+      g_print ("Arrow fired on (%d, %d).\n", targetX, targetY);
+
+      if (is_game_over (ctx->gameState, ctx->gameState->current_player))
+        {
+          PlayerColor winner = get_winner (ctx->gameState);
+          g_print ("GAME OVER! Winner is: %d\n", winner);
+        }
     }
   else
     {
-      g_print ("Cannot fire an arrow on (%d, %d).\n", x, y);
+      clearHighlights (ctx);
+      drawBoard (ctx);
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+      g_print ("Error: Engine rejected the move.\n");
     }
+}
+
+static void
+onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
+              gpointer user_data)
+{
+  (void)gesture;
+  (void)n_press;
+  (void)x;
+  (void)y;
+  AppContext *ctx = (AppContext *)user_data;
+
+  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
+    {
+      int srcX = ctx->tmpQueenSrc.col;
+      int srcY = ctx->tmpQueenSrc.row;
+      int dstX = ctx->tmpQueenDst.col;
+      int dstY = ctx->tmpQueenDst.row;
+
+      CellContent piece = ctx->gameState->board[dstY][dstX];
+
+      ctx->gameState->board[dstY][dstX] = CONTENT_EMPTY;
+      ctx->gameState->board[srcY][srcX] = piece;
+
+      drawPiece (ctx, dstX, dstY, CONTENT_EMPTY);
+      drawPiece (ctx, srcX, srcY, piece);
+
+      clearHighlights (ctx);
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+      g_print ("Move cancelled.\n");
+    }
+}
+
+static void
+onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
+               gpointer user_data)
+{
+  (void)n_press;
+  (void)x;
+  (void)y;
+  GtkWidget *cellBox
+      = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
+  fireArrow (cellBox, user_data);
 }
