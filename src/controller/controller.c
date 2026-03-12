@@ -265,31 +265,54 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
     }
   else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
     {
-      if (undo_move (current_game))
+      bool vs_ai = (config->ai_white || config->ai_black);
+      bool is_local = (net_manager->current_mode == NET_MODE_NONE);
+
+      if (vs_ai && is_local)
         {
-          printf ("Coup annulé avec succès.\n");
-          // On réaffiche le plateau pour voir le résultat immédiatement
-          cli_display_board (current_game);
+          if (undo_move (current_game))
+            {
+              undo_move (current_game);
+              printf ("Move(s) undone successfully.\n");
+              cli_display_board (current_game);
+            }
+          else
+            {
+              printf ("Impossible to undo.\n");
+            }
         }
       else
         {
-          printf ("Impossible d'annuler : vous êtes au tout début de la "
-                  "partie.\n");
+          printf ("The 'undo' command is only available in solo mode against "
+                  "the AI.\n");
         }
+      return;
     }
   else if (strncmp (input_buffer, "redo", CMD_LEN_REDO) == 0)
     {
-      if (redo_move (current_game))
+      bool vs_ai = (config->ai_white || config->ai_black);
+      bool is_local = (g_net_manager->current_mode == NET_MODE_NONE);
+
+      if (vs_ai && is_local)
         {
-          printf ("Coup refait avec succès.\n");
-          // On réaffiche le plateau pour voir le résultat
-          cli_display_board (current_game);
+          if (redo_move (current_game))
+            {
+              redo_move (current_game);
+
+              printf ("Move(s) redone successfully.\n");
+              cli_display_board (current_game);
+            }
+          else
+            {
+              printf ("Impossible to redo : no move to redo.\n");
+            }
         }
       else
         {
-          printf ("Impossible de refaire : aucun coup n'a été annulé "
-                  "précédemment.\n");
+          printf ("The 'redo' command is only available in solo mode against "
+                  "the AI.\n");
         }
+      return;
     }
   else if (strncmp (input_buffer, "save ", CMD_LEN_SAVE) == 0)
     {
