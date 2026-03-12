@@ -59,3 +59,35 @@ cli_clear_screen ()
 {
   printf ("\033[H\033[J");
 }
+
+void
+cli_display_main_menu (void)
+{
+  cli_clear_screen ();
+
+  printf ("========================================================\n");
+  printf ("        ___                                             \n");
+  printf ("       /   |  ____ ___  ____ _____  ____  ____  ____    \n");
+  printf ("      / /| | / __ `__ \\/ __ `/_  / / __ \\/ __ \\/ ___/ \n");
+  printf ("     / ___ |/ / / / / / /_/ / / /_/ /_/ / / / (__  )    \n");
+  printf ("    /_/  |_/_/ /_/ /_/\\__,_/ /___/\\____/_/ /_/____/   \n");
+  printf ("                                                        \n");
+  printf ("========================================================\n");
+  printf ("\n");
+  printf ("  --- Local Game ---\n");
+  printf ("  new         : Start a new local game\n");
+  printf ("  load [filename]      : Load a saved game\n");
+  printf ("\n");
+  printf ("  --- Multiplayer ---\n");
+  printf ("  server start [port]        : Host a new server\n");
+  printf ("  join [IP:Port] [username]  : Connect to a server\n");
+  printf ("\n");
+  printf ("  --- Playing a Move ---\n");
+  printf ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n");
+  printf ("\n");
+  printf ("  --- Other ---\n");
+  printf ("  help    Show help\n");
+  printf ("  quit    Quit the game\n");
+  printf ("\n");
+  printf ("========================================================\n");
+}
