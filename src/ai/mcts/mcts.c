@@ -102,7 +102,7 @@ static float
 rollout (BitboardState state)
 {
   BitboardState current = state;
-  bool white_to_move_at_start = state.white_to_move;
+  bool starting_player = state.white_to_move;
 
   while (true)
     {
@@ -118,9 +118,9 @@ rollout (BitboardState state)
       current = apply_move_bitboard (current, chosen);
     }
 
-  bool white_won = !current.white_to_move;
+  bool starting_player_won = !current.white_to_move;
 
-  if (white_to_move_at_start == white_won)
+  if (starting_player == starting_player_won)
     return 1.0f;
 
   return 0.0f;
@@ -184,6 +184,19 @@ expand (MCTS_Node *parent, BitboardState state)
 {
   Move moves[get_move_limit (state)];
   int count = get_legal_moves (state, moves);
+
+  /*
+   * Shuffle the moves array so that unvisited expansions do not always
+   * follow the same ordering produced by `get_legal_moves`.  This further
+   * reduces the appearance of a "filling" pattern in the tree.
+   */
+  for (int i = count - 1; i > 0; i--)
+    {
+      int j = rand () % (i + 1);
+      Move tmp = moves[i];
+      moves[i] = moves[j];
+      moves[j] = tmp;
+    }
 
   for (int i = 0; i < count; i++)
     {
@@ -254,10 +267,7 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);
-
   MCTS_Node *root = calloc (1, sizeof (MCTS_Node));
-  if (!root)
-    return (Move){ 0 };
   root->visit_count = 1;
 
   unsigned long start_time = get_time_ms ();
@@ -267,7 +277,7 @@ mcts_get_best_move (AI_Interface *self, GameState state)
       MCTS_Node *picked = select_node (root, data->strategy_select);
 
       BitboardState current_state = derive_state (root_state, picked);
-      if (!is_game_over (current_state))
+      if (!bitboard_state_is_game_over (current_state))
         {
           picked = expand (picked, current_state);
           current_state
@@ -281,6 +291,11 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 
   MCTS_Node *best_node = get_child_with_max_visits (root);
   Move final_move = best_node->move_from_parent;
+
+  printf ("[MCTS] Best move : (%d, %d) -> (%d, %d) +-> (%d, %d)\n",
+          final_move.queen_src.row, final_move.queen_src.col,
+          final_move.queen_dst.row, final_move.queen_dst.col,
+          final_move.arrow_dst.row, final_move.arrow_dst.col);
 
   free_mcts_tree (root);
   return final_move;

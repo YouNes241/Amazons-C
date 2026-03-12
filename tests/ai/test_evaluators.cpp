@@ -6,6 +6,162 @@ extern "C"
 #include "evaluator.h"
 }
 
+typedef struct
+{
+  int winner; // 1 for AI 1, 2 for AI 2
+  int turns;
+} GameResult;
+
+GameState
+setup_standard_start (int board_size)
+{
+  CellContent **cc
+      = (CellContent **)malloc (sizeof (CellContent *) * board_size);
+  for (int i = 0; i < board_size; i++)
+    {
+      cc[i] = (CellContent *)malloc (sizeof (CellContent) * board_size);
+      for (int j = 0; j < board_size; j++)
+        {
+          cc[i][j] = CONTENT_EMPTY;
+        }
+    }
+
+  // Standard starting positions for Amazons
+  if (board_size == 10)
+    {
+      cc[0][3] = CONTENT_WHITE_QUEEN;
+      cc[0][6] = CONTENT_WHITE_QUEEN;
+      cc[3][0] = CONTENT_WHITE_QUEEN;
+      cc[3][9] = CONTENT_WHITE_QUEEN;
+
+      cc[6][0] = CONTENT_BLACK_QUEEN;
+      cc[6][9] = CONTENT_BLACK_QUEEN;
+      cc[9][3] = CONTENT_BLACK_QUEEN;
+      cc[9][6] = CONTENT_BLACK_QUEEN;
+    }
+  else if (board_size == 6)
+    {
+      cc[0][1] = CONTENT_WHITE_QUEEN;
+      cc[0][4] = CONTENT_WHITE_QUEEN;
+      cc[1][0] = CONTENT_WHITE_QUEEN;
+      cc[1][5] = CONTENT_WHITE_QUEEN;
+
+      cc[4][0] = CONTENT_BLACK_QUEEN;
+      cc[4][5] = CONTENT_BLACK_QUEEN;
+      cc[5][1] = CONTENT_BLACK_QUEEN;
+      cc[5][4] = CONTENT_BLACK_QUEEN;
+    }
+  else
+    {
+      // For other sizes, just place queens in corners
+      cc[0][0] = CONTENT_BLACK_QUEEN;
+      cc[0][board_size - 1] = CONTENT_BLACK_QUEEN;
+      cc[board_size - 1][0] = CONTENT_WHITE_QUEEN;
+      cc[board_size - 1][board_size - 1] = CONTENT_WHITE_QUEEN;
+    }
+
+  return (GameState){ .size = board_size,
+                      .board = cc,
+                      .current_player = PLAYER_WHITE,
+                      .status = GAME_IN_PROGRESS,
+                      .turn_count = 0 };
+}
+
+void
+apply_move (GameState *state, Move move)
+{
+  // Update the board content based on the move
+  CellContent moving_queen = state->current_player == PLAYER_WHITE
+                                 ? CONTENT_WHITE_QUEEN
+                                 : CONTENT_BLACK_QUEEN;
+
+  // Clear the source position
+  state->board[move.queen_src.row][move.queen_src.col] = CONTENT_EMPTY;
+
+  // Place the queen in the destination
+  state->board[move.queen_dst.row][move.queen_dst.col] = moving_queen;
+
+  // Place the arrow
+  state->board[move.arrow_dst.row][move.arrow_dst.col] = CONTENT_ARROW;
+
+  // Switch player
+  state->current_player
+      = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+
+  if (bitboard_state_is_game_over (sync_from_logic (state)))
+    {
+      state->status = (state->current_player == PLAYER_WHITE)
+                          ? GAME_OVER_BLACK_WINS
+                          : GAME_OVER_WHITE_WINS;
+    }
+}
+
+GameResult
+play_match (AI_Interface *white_ai, AI_Interface *black_ai, int board_size)
+{
+  // 1. Setup initial state (Standard starting positions for Amazons)
+  // You can use your existing logic to create a standard 10x10 or 6x6 board
+  GameState state = setup_standard_start (board_size);
+
+  BitboardState bs = sync_from_logic (&state);
+  bitboard_state_print (&bs);
+
+  int turn_limit = 500; // Prevent infinite loops
+  int current_turn = 0;
+
+  while (state.status == GAME_IN_PROGRESS && current_turn < turn_limit)
+    {
+      AI_Interface *current_ai
+          = (state.current_player == PLAYER_WHITE) ? white_ai : black_ai;
+
+      Move m = current_ai->vtable->get_best_move (current_ai, state);
+
+      // Apply move to state (Ensure you have a function to update GameState)
+      apply_move (&state, m);
+      current_turn++;
+      bs = sync_from_logic (&state);
+      bitboard_state_print (&bs);
+    }
+
+  int winner = (state.status == GAME_OVER_WHITE_WINS) ? 1 : 2;
+
+  // print board
+  printf ("The winner is this composition :\n");
+  bs = sync_from_logic (&state);
+  bitboard_state_print (&bs);
+
+  return { winner, current_turn };
+}
+
+TEST (TournamentTest, MinimaxVsMCTS)
+{
+  // Configure Minimax
+  Param p_mini[] = { { (char *)"depth", (char *)"2" },
+                     { (char *)"evaluator", (char *)"qd&kd" } };
+  ConfigMap cm_mini = { .list = p_mini, .count = 2 };
+  AI_Interface minimax = create_ai ("minimax", cm_mini);
+
+  // Configure Minimax
+  Param p_mini2[] = { { (char *)"depth", (char *)"2" },
+                      { (char *)"evaluator", (char *)"rth" } };
+  ConfigMap cm_mini2 = { .list = p_mini2, .count = 2 };
+  AI_Interface minimax2 = create_ai ("minimax", cm_mini2);
+
+  // Configure MCTS
+  Param p_mcts = { (char *)"time_limit", (char *)"1000" };
+  ConfigMap cm_mcts = { .list = &p_mcts, .count = 1 };
+  AI_Interface mcts = create_ai ("mcts", cm_mcts);
+
+  // Play two games (swap sides to ensure fairness)
+  GameResult r1 = play_match (&minimax, &minimax2, 10); // Minimax as White
+
+  printf ("Match 1 (Mini-W vs MCTS-B): Winner AI %d in %d turns\n", r1.winner,
+          r1.turns);
+  minimax2.vtable->clean (&minimax2);
+  minimax.vtable->clean (&minimax);
+  mcts.vtable->clean (&mcts);
+}
+
 // Symmetry test : a position and its mirror should have the same score
 TEST (EvaluatorTest, SymmetryAllSizes)
 {

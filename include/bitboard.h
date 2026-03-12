@@ -142,6 +142,10 @@ void bitboard_print (Bitboard bb, uint8_t width);
 Bitboard bitboard_get_reachable (uint8_t start_index, Bitboard occupied,
                                  uint8_t size);
 
+void init_board_masks ();
+
+Bitboard get_board_mask (uint8_t size);
+
 /**
  * @brief Pops the least significant bit (rightmost 1) from the bitboard
  * given and returns the removed index.

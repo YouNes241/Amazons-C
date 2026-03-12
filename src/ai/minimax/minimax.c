@@ -247,7 +247,7 @@ static float
 alpha_beta_forward_regular (Minimax_Data *data, BitboardState state, int depth,
                             float alpha, float beta, bool maximizing)
 {
-  if (depth <= 0 || is_game_over (state))
+  if (depth <= 0 || bitboard_state_is_game_over (state))
     return data->evaluate (&state);
 
   Move raw_moves[get_move_limit (state)];
@@ -298,7 +298,7 @@ static float
 alpha_beta_forward (Minimax_Data *data, BitboardState state, int depth,
                     float alpha, float beta, bool maximizing)
 {
-  if (depth <= 0 || is_game_over (state))
+  if (depth <= 0 || bitboard_state_is_game_over (state))
     return data->evaluate (&state);
 
   static int max_moves_for_queen = -1;
@@ -394,6 +394,8 @@ minimax_get_best_move (AI_Interface *self, GameState state)
 {
   Minimax_Data *data = (Minimax_Data *)self->context;
 
+  bool root_is_white = (state.current_player == PLAYER_WHITE);
+
   printf ("[Minimax] Searching a move (Depth=%d)...\n", data->max_depth);
 
   BitboardState fast_state = sync_from_logic (&state);
@@ -402,7 +404,7 @@ minimax_get_best_move (AI_Interface *self, GameState state)
   float beta = TOP_SCORE;
 
   Move best_move = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
-  float best_score = BOTTOM_SCORE;
+  float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
 
   Move available_moves[get_move_limit (fast_state)];
   int count = get_legal_moves (fast_state, available_moves);
@@ -412,18 +414,41 @@ minimax_get_best_move (AI_Interface *self, GameState state)
       BitboardState next_state
           = apply_move_bitboard (fast_state, available_moves[i]);
 
+      /*
+       * the next player to move is the opposite colour of the root.
+       * pass that information as the `maximizing` flag.
+       */
+      bool next_is_white = !root_is_white;
       float score = alpha_beta_forward (data, next_state, data->max_depth - 1,
-                                        alpha, beta, false);
+                                        alpha, beta, next_is_white);
 
-      if (score > best_score)
+      if (root_is_white)
         {
-          best_score = score;
-          best_move = available_moves[i];
+          if (score > best_score)
+            {
+              best_score = score;
+              best_move = available_moves[i];
+            }
+          alpha = MAX (alpha, best_score);
         }
-      alpha = MAX (alpha, best_score);
+      else
+        {
+          if (score < best_score)
+            {
+              best_score = score;
+              best_move = available_moves[i];
+            }
+          beta = MIN (beta, best_score);
+        }
+
+      if (beta <= alpha)
+        break; /* cut off at root as well */
     }
 
-  printf ("[Minimax] Best move found with score: %.2f\n", best_score);
+  printf ("[MINIMAX] Best move : (%d, %d) -> (%d, %d) +-> (%d, %d)\n",
+          best_move.queen_src.row, best_move.queen_src.col,
+          best_move.queen_dst.row, best_move.queen_dst.col,
+          best_move.arrow_dst.row, best_move.arrow_dst.col);
   return best_move;
 }
 

@@ -27,20 +27,39 @@ static MCTS_Node *
 uct_select_child (ISelector *self, MCTS_Node *parent)
 {
   UCT_Data *data = (UCT_Data *)self->context;
-  MCTS_Node *best_child = NULL;
-  float best_uct_score = -1.0f;
-
+  int unvisited_count = 0;
+  MCTS_Node *chosen_unvisited = NULL;
   MCTS_Node *current = parent->first_child;
+
   while (current != NULL)
     {
       if (current->visit_count == 0)
-        return current;
+        {
+          /* reservoir sampling to choose uniformly */
+          unvisited_count++;
+          if ((rand () % unvisited_count) == 0)
+            chosen_unvisited = current;
+        }
+      current = current->next_sibling;
+    }
 
+  if (chosen_unvisited != NULL)
+    return chosen_unvisited;
+
+  /*
+   * All children have been visited; compute the usual UCT value and pick the
+   * child with the highest score.
+   */
+  MCTS_Node *best_child = NULL;
+  float best_uct_score = -INFINITY;
+  current = parent->first_child;
+
+  while (current != NULL)
+    {
       float exploitation = (float)current->score / current->visit_count;
       float exploration
           = data->exploration_constant
             * sqrtf (logf ((float)parent->visit_count) / current->visit_count);
-
       float uct_score = exploitation + exploration;
 
       if (uct_score > best_uct_score)

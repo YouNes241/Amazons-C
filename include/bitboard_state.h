@@ -70,5 +70,5 @@ void bitboard_state_print (const BitboardState *state);
  * @param state The current board state to evaluate.
  * @return true if the game is over (no legal moves), false otherwise.
  */
-bool is_game_over (BitboardState state);
+bool bitboard_state_is_game_over (BitboardState state);
 #endif

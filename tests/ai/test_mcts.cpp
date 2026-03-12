@@ -4,6 +4,7 @@ extern "C"
 {
 #include "ai_factory.h"
 #include "mcts_types.h"
+#include "utils.h"
 }
 
 // Helper to free GameState board
@@ -84,12 +85,19 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
   AI_Interface ai = create_ai ("mcts", cm);
   ASSERT_NE (ai.vtable, nullptr);
 
+  double time = get_time_ms ();
   Move best = ai.vtable->get_best_move (&ai, state);
+  double time_taken = get_time_ms () - time;
 
-  // MCTS should find that moving to (9,2) is the best legal move
+  // MCTS should find that moving to (9,1) or (9,2) and placing an arrow on
+  // (9,0) is the only winning move
+  // It should also find it in less than a second. (with some margin due to
+  // latency)
+  EXPECT_TRUE (time_taken < 1100);
   EXPECT_EQ (best.queen_src.row, 9);
   EXPECT_EQ (best.queen_src.col, 0);
   EXPECT_TRUE (best.queen_dst.col == 1 || best.queen_dst.col == 2);
+  EXPECT_TRUE (best.arrow_dst.row == 9 && best.arrow_dst.col == 0);
 
   ai.vtable->clean (&ai);
   free_gs_board (&state);

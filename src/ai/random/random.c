@@ -28,15 +28,6 @@ random_get_best_move (AI_Interface *self, GameState state)
   BitboardState bs = sync_from_logic (&state);
   Move moves_array[get_move_limit (bs)];
   int count = get_legal_moves (bs, moves_array);
-  for (int i = 0; i < count; i++)
-    {
-      printf ("Legal move %d: Queen from (%d,%d) to (%d,%d) with arrow to "
-              "(%d,%d)\n",
-              i + 1, moves_array[i].queen_src.row,
-              moves_array[i].queen_src.col, moves_array[i].queen_dst.row,
-              moves_array[i].queen_dst.col, moves_array[i].arrow_dst.row,
-              moves_array[i].arrow_dst.col);
-    }
   if (count > 0)
     {
       int random_index = rand () % count;

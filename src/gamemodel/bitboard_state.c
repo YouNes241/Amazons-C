@@ -137,25 +137,15 @@ apply_move_bitboard (BitboardState state, Move move)
 /**
  * @brief Calculates the maximum number of moves possible in the current board
  * state.
- * @note It only calculates it once, as the size should not change.
- * (singleplayer)
  * @param state The current board state to evaluate.
  * @return Max number of legal moves possibles
  */
 int
 get_move_limit (BitboardState state)
 {
-  static int possible_moves = -1;
-  if (possible_moves == -1)
-    {
-      BitboardState temp_state = create_empty_state (state.size);
-      uint8_t center_idx
-          = (temp_state.size / 2) * temp_state.size + (temp_state.size / 2);
-      bitboard_set_bit (&temp_state.white_queens, center_idx);
-      possible_moves = get_legal_moves (temp_state, NULL)
-                       * bitboard_count_bits (state.white_queens);
-    }
-  return possible_moves;
+  int k = bitboard_count_bits (state.white_queens);
+  int reach = (state.size - 1) << 2;
+  return k * reach * reach;
 }
 
 /**
@@ -165,17 +155,17 @@ get_move_limit (BitboardState state)
  * @return true if the game is over (no legal moves), false otherwise.
  */
 bool
-is_game_over (BitboardState state)
+bitboard_state_is_game_over (BitboardState state)
 {
-  Bitboard my_queens = (state.white_to_move == true) ? state.white_queens
-                                                     : state.black_queens;
+  Bitboard my_queens
+      = (state.white_to_move) ? state.white_queens : state.black_queens;
 
   Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
   occupied = bitboard_or (occupied, state.arrows);
-  Bitboard empty = bitboard_not (occupied);
+  Bitboard empty
+      = bitboard_and (bitboard_not (occupied), get_board_mask (state.size));
 
   Bitboard adjacent_moves = expand_king_step (my_queens, empty, state.size);
-
   return bitboard_is_zero (adjacent_moves);
 }
 
