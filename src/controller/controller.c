@@ -303,6 +303,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   else if (strncmp (input_buffer, "server start", CMD_LEN_SERVER_START) == 0)
     {
       g_in_main_menu = false;
+      cli_clear_screen ();
       int port = DEFAULT_PORT;
       if (strlen (input_buffer) > CMD_LEN_SERVER_START + CMD_SPACE_OFFSET)
         sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
@@ -316,6 +317,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
     {
       g_in_main_menu = false;
       char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
+      cli_clear_screen ();
       int port = DEFAULT_PORT;
       char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
 
@@ -666,30 +668,67 @@ run_interactive_mode (game_config_t *config)
           printf ("Victory of the %s !\n",
                   (winner == PLAYER_WHITE ? "Whites" : "Blacks"));
 
-          game_running = false;
-          break;
+          if (net_manager.current_mode != NET_MODE_NONE)
+            {
+
+              g_in_network_match = false;
+              game_init (g_current_game);
+              printf ("\n[LOBBY] Match ended. Returning to Lobby.\n");
+              refresh_prompt ();
+            }
+          else
+            {
+              // En local : On coupe le jeu normalement
+              game_running = false;
+              break;
+            }
         }
       NetworkManager_Tick (&net_manager);
 
       if (g_ai_initialized
           && is_it_ai_turn (config, g_current_game->current_player))
         {
-          printf ("\n[AI] Thinking...\n");
-          Move ai_move = g_ai.vtable->get_best_move (&g_ai, *g_current_game);
 
-          if (is_move_legal (g_current_game, ai_move))
+          bool allowed_to_play = true;
+
+          if (net_manager.current_mode != NET_MODE_NONE)
             {
-              apply_move (g_current_game, ai_move);
-              g_turn_start_time = time (NULL);
-              cli_display_board (g_current_game);
-              refresh_prompt ();
+
+              if (!g_in_network_match)
+                allowed_to_play = false;
+
+              if (g_current_game->current_player != g_my_role)
+                allowed_to_play = false;
             }
-          else
+
+          if (allowed_to_play)
             {
-              printf (
-                  "\n[ERROR] AI suggested an illegal move or is blocked.\n");
-              printf ("Game ended.\n");
-              game_running = false;
+              printf ("\n[AI] Thinking...\n");
+              Move ai_move
+                  = g_ai.vtable->get_best_move (&g_ai, *g_current_game);
+
+              if (is_move_legal (g_current_game, ai_move))
+                {
+                  apply_move (g_current_game, ai_move);
+
+                  if (net_manager.current_mode != NET_MODE_NONE)
+                    {
+                      NetworkManager_SendMove (&net_manager, ai_move);
+                    }
+
+                  g_timeout_sent = false;
+                  g_turn_start_time = time (NULL);
+
+                  cli_display_board (g_current_game);
+                  refresh_prompt ();
+                }
+              else
+                {
+                  printf ("\n[ERROR] AI suggested an illegal move or is "
+                          "blocked.\n");
+                  printf ("Game ended.\n");
+                  game_running = false;
+                }
             }
         }
 
