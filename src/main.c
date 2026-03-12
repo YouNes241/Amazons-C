@@ -1,5 +1,6 @@
 #include "config.h"
 #include "controller.h"
+#include "gui_application.h"
 #include "input.h"
 #include <getopt.h>
 #include <stdbool.h>
@@ -78,7 +79,32 @@ parse_options (int argc, char *argv[], game_config_t *config)
           break;
 
         case 'a':
-          config->ai_enabled = true;
+          // Par défaut, si l'option est présente, on active l'IA pour les
+          // Noirs
+          config->ai_white = false;
+          config->ai_black = true;
+
+          // optarg contient l'argument si l'utilisateur a fait -aW ou --ai=W
+          if (optarg != NULL)
+            {
+              if (strcmp (optarg, "W") == 0)
+                {
+                  config->ai_white = true;
+                  config->ai_black = false;
+                }
+              else if (strcmp (optarg, "B") == 0)
+                {
+                  config->ai_white = false;
+                  config->ai_black = true;
+                }
+              else if (strcmp (optarg, "A") == 0)
+                {
+                  config->ai_white = true;
+                  config->ai_black = true;
+                }
+              // Si c'est autre chose, on reste sur le défaut (Noir) ou on
+              // affiche une erreur
+            }
           break;
 
         case 'd':
@@ -132,16 +158,19 @@ main (int argc, char *argv[])
       return result;
     }
 
+  int status = EXIT_SUCCESS;
+
   if (config->mode == MODE_INTERACTIVE)
     {
       run_interactive_mode (config);
     }
   else if (config->mode == MODE_GUI)
     {
-      printf ("Mode graphique non encore implémenté.\n");
+      GtkApplication *app = createApplication (config);
+      status = runApplication (app, 0, NULL);
     }
 
   free (config);
 
-  return EXIT_SUCCESS;
+  return status;
 }

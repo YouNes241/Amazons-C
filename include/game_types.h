@@ -66,6 +66,12 @@ typedef struct
   Position arrow_dst;
 } Move;
 
+typedef struct
+{
+  Move *data;
+  int top;
+  int capacity;
+} MoveStack;
 // Represents the public game state (what other modules are allowed to see)
 typedef struct
 {
@@ -74,6 +80,8 @@ typedef struct
   PlayerColor current_player;
   GameStatus status;
   uint32_t turn_count; // Counter of the number of turns played
+  MoveStack undo_stack;
+  MoveStack redo_stack;
 } GameState;
 
 #endif

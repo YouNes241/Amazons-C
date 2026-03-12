@@ -35,6 +35,7 @@
 // Buffer Sizes & Limits
 #define RECV_TEMP_BUFFER_SIZE 256
 #define MAX_MOVE_STR_SIZE 128
+#define PLAYER_INFO_BUFFER_SIZE 64
 #define MAX_USERNAME_LENGTH 32
 #define MAX_FORMATTED_PKT_SIZE 512
 #define NULL_TERMINATOR_OFFSET 1 // Space for '\0'
