@@ -66,7 +66,7 @@ NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
  *
  * @param manager Pointer to the NetworkManager instance.
  * @param port The port number to listen on (e.g., 8080).
- * @return int 0 on success, -1 on failure.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  * @note certain error branches (e.g., socket creation or malloc failure) are
  * defensive checks against catastrophic system exhaustion and are not intended
  * to be triggered during normal unit testing
@@ -75,21 +75,21 @@ int
 NetworkManager_ServerStart (NetworkManager *manager, int port)
 {
   if (manager == NULL)
-    return -1;
+    return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->server_ctx != NULL)
     {
       printf ("[NETWORK] Manager is already active!\n");
-      return -1;
+      return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
       perror ("Server socket creation error");
-      return -1;
+      return NET_ERROR;
     }
 
   // prevents "Address already in use" error.
-  int opt = 1;
+  int opt = ENABLE_SOCKET_OPTION;
   setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt));
 
   struct sockaddr_in addr;
@@ -102,14 +102,15 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     {
       perror ("Bind error");
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
-  // 10 = size of the backlog queue for connections in queue.
-  if (listen (sock, 10) < 0)
+  // MAX_PENDING_CONNECTIONS = size of the backlog queue for connections in
+  // queue.
+  if (listen (sock, MAX_PENDING_CONNECTIONS) < 0)
     {
       perror ("Listen error");
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
 
   set_nonblocking (sock);
@@ -120,24 +121,25 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     {
       perror ("Server memory allocation error");
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->num_clients = 0;
 
   // We configure the monitoring of the main door
-  manager->server_ctx->fds[0].fd = sock;
-  manager->server_ctx->fds[0].events = POLLIN;
+  manager->server_ctx->fds[LISTEN_SOCKET_INDEX].fd = sock;
+  manager->server_ctx->fds[LISTEN_SOCKET_INDEX].events = POLLIN;
 
-  // We put the customer "seats" empty (-1 means "poll, ignore this box")
-  for (int i = 1; i <= MAX_CLIENTS; i++)
+  // We put the customer "seats" empty (INVALID_SOCKET means "poll, ignore this
+  // box")
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
-      manager->server_ctx->fds[i].fd = -1;
+      manager->server_ctx->fds[i].fd = INVALID_SOCKET;
     }
 
   printf ("[NETWORK] Server started on port %d\n", port);
-  return 0;
+  return NET_SUCCESS;
 }
 
 /**
@@ -150,23 +152,23 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
  * @param manager Pointer to the NetworkManager instance.
  * @param ip The target IP address string (e.g., "127.0.0.1").
  * @param port The target server port.
- * @return int 0 on success, -1 on failure.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
 {
   if (manager == NULL || ip == NULL)
-    return -1;
+    return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->client_ctx != NULL)
     {
       printf ("[NETWORK] Already connected or active!\n");
-      return -1;
+      return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
       perror ("Client socket creation error");
-      return -1;
+      return NET_ERROR;
     }
 
   struct sockaddr_in addr;
@@ -179,7 +181,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     {
       printf ("[NETWORK] Invalid IP : %s\n", ip);
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
 
   //  connection to the server
@@ -188,7 +190,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     {
       perror ("Server connection error");
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
   set_nonblocking (sock);
 
@@ -198,16 +200,15 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     {
       perror ("Client memory allocation error");
       close (sock);
-      return -1;
+      return NET_ERROR;
     }
   manager->current_mode = NET_MODE_CLIENT;
   manager->client_ctx->server_socket = sock;
-
   manager->client_ctx->fd_info.fd = sock;
   manager->client_ctx->fd_info.events = POLLIN;
   tcp_buffer_init (&manager->client_ctx->buffer);
   printf ("[NETWORK] Connected to the server %s:%d\n", ip, port);
-  return 0;
+  return NET_SUCCESS;
 }
 
 /**
@@ -226,9 +227,9 @@ NetworkManager_Cleanup (NetworkManager *manager)
     return;
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
-      for (int i = 1; i <= MAX_CLIENTS; i++)
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
         {
-          if (manager->server_ctx->fds[i].fd != -1)
+          if (manager->server_ctx->fds[i].fd != INVALID_SOCKET)
             {
               close (manager->server_ctx->fds[i].fd);
             }
@@ -278,7 +279,7 @@ int
 NetworkManager_SendJoin (NetworkManager *manager, const char *username)
 {
   if (manager == NULL || username == NULL)
-    return -1;
+    return NET_ERROR;
 
   // 1. On crée le paquet réseau
   Packet pkt;
@@ -287,15 +288,15 @@ NetworkManager_SendJoin (NetworkManager *manager, const char *username)
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
   // 2. On le sérialise grâce à ton fichier network_packet.c
-  char formatted_buffer[512];
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
-      return -1;
+      return NET_ERROR;
     }
 
   // 3. On utilise le "tuyau bête" pour envoyer la chaîne finale ("1|Alice\n")
-  // Le client envoie toujours au serveur (index 0)
-  return NetworkManager_Send (manager, 0, formatted_buffer);
+  // Le client envoie toujours au serveur (index TARGET_SERVER)
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
 /**
@@ -305,10 +306,10 @@ int
 NetworkManager_SendMove (NetworkManager *manager, Move m)
 {
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return 0; // Si on joue en local, on ne fait rien !
+    return NET_SUCCESS; // Si on joue en local, on ne fait rien !
 
   // 1. Traduire la structure Move en texte (ex: "MOVE e2-e4-e6\n")
-  char move_str[128];
+  char move_str[MAX_MOVE_STR_SIZE];
   Protocol_MoveToString (m, move_str, sizeof (move_str));
 
   // Petite astuce : on enlève le '\n' ajouté par Protocol_MoveToString
@@ -322,13 +323,15 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
   // 3. Sérialiser
-  char formatted_buffer[512];
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return -1;
+    return NET_ERROR;
 
-  // 4. Envoyer ! (Si on est client, on envoie au serveur (0). Si on est
-  // serveur, on envoie au client 1)
-  int target = (manager->current_mode == NET_MODE_CLIENT) ? 0 : 1;
+  // 4. Envoyer ! (Si on est client, on envoie au serveur (TARGET_SERVER). Si
+  // on est serveur, on envoie au client TARGET_CLIENT_1)
+  int target = (manager->current_mode == NET_MODE_CLIENT)
+                   ? TARGET_SERVER
+                   : TARGET_CLIENT_1; // TODO
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
@@ -339,7 +342,7 @@ int
 NetworkManager_SendTimeout (NetworkManager *manager)
 {
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return -1;
+    return NET_ERROR;
 
   // 1. Création du paquet réseau
   Packet pkt;
@@ -352,12 +355,14 @@ NetworkManager_SendTimeout (NetworkManager *manager)
   char formatted_buffer[512];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
-      return -1;
+      return NET_ERROR;
     }
 
   // 3. Envoi à l'adversaire (0 pour le serveur si on est client, 1 pour le
   // client 1 si on est serveur)
-  int target = (manager->current_mode == NET_MODE_CLIENT) ? 0 : 1;
+  int target = (manager->current_mode == NET_MODE_CLIENT)
+                   ? TARGET_SERVER
+                   : TARGET_CLIENT_1; // TODO
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
@@ -375,9 +380,9 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
 {
   if (manager == NULL || message == NULL
       || manager->current_mode == NET_MODE_NONE)
-    return -1;
+    return NET_ERROR;
 
-  int target_socket = -1;
+  int target_socket = INVALID_SOCKET;
   const char *log_prefix = "";
 
   // 1. Determine the target socket according to the mode
@@ -388,28 +393,28 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
     }
   else if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
-      if (target_client < 1 || target_client > MAX_CLIENTS)
-        return -1;
+      if (target_client < FIRST_CLIENT_INDEX || target_client > MAX_CLIENTS)
+        return NET_ERROR;
 
       target_socket = manager->server_ctx->fds[target_client].fd;
       log_prefix = "[SERVER]";
     }
 
   // 2. Check if a valid recipient has been found
-  if (target_socket == -1)
+  if (target_socket == INVALID_SOCKET)
     {
       printf ("%s Error: Invalid target.\n", log_prefix);
-      return -1;
+      return NET_ERROR;
     }
 
   // 3. One single sending call for everyone!
   if (send (target_socket, message, strlen (message), 0) < 0)
     {
       perror (log_prefix);
-      return -1;
+      return NET_ERROR;
     }
 
-  return 0;
+  return NET_SUCCESS;
 }
 
 /* ==========================================================================
@@ -424,38 +429,41 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
  * halt the program execution if no data is immediately available.
  *
  * @param fd The file descriptor to modify.
- * @return int 0 on success, -1 on failure.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 static int
 set_nonblocking (int fd)
 {
   int flags = fcntl (fd, F_GETFL, 0);
   if (flags == -1)
-    return -1;
-  return fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+    return NET_ERROR;
+  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    return NET_ERROR;
+
+  return NET_SUCCESS;
 }
 
 /**
  * @brief Reads data from a socket and injects it into the target TCP buffer.
- * @return 1 (success), 0 (nothing to read/EAGAIN), -1 (disconnection), -2
- * (buffer full)
+ * @return NET_DATA_READ (success), NET_NO_DATA (nothing to read/EAGAIN),
+ * NET_ERROR (disconnection), NET_BUFFER_FULL (buffer full)
  */
 static int
 receive_into_buffer (int sock, tcp_buffer_t *buffer)
 {
-  char temp[256];
+  char temp[RECV_TEMP_BUFFER_SIZE];
   int bytes_received = recv (sock, temp, sizeof (temp) - 1, 0);
 
   if (bytes_received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
-    return 0; // nothing new
+    return NET_NO_DATA; // nothing new
 
   if (bytes_received <= 0)
-    return -1; // Disconnect
+    return NET_ERROR; // Disconnect
 
   if (!tcp_buffer_append (buffer, temp, bytes_received))
-    return -2; // critical error : full buffer
+    return NET_BUFFER_FULL; // critical error : full buffer
 
-  return 1; // Succes
+  return NET_DATA_READ; // Succes
 }
 
 /**
@@ -476,16 +484,16 @@ handle_server_new_connection (ServerContext *ctx)
       set_nonblocking (client_fd);
       bool accepted = false;
 
-      for (int i = 1; i <= MAX_CLIENTS; i++)
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
         {
-          if (ctx->fds[i].fd == -1)
+          if (ctx->fds[i].fd == INVALID_SOCKET)
             {
               ctx->fds[i].fd = client_fd;
               ctx->fds[i].events = POLLIN;
               ctx->clients[i].fd = client_fd;
               tcp_buffer_init (&ctx->clients[i].buffer);
               ctx->clients[i].is_joined = false;
-              memset (ctx->clients[i].username, 0, 32);
+              memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
               ctx->num_clients++;
               accepted = true;
 
@@ -514,7 +522,7 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
 {
   printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
   close (ctx->fds[client_index].fd);
-  ctx->fds[client_index].fd = -1;
+  ctx->fds[client_index].fd = INVALID_SOCKET;
   ctx->num_clients--;
   if (manager->callbacks.OnPlayerDisconnected)
     manager->callbacks.OnPlayerDisconnected ("Network disconnection");
@@ -528,16 +536,16 @@ static void
 process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
                         int client_index)
 {
-  char extracted_msg[256];
+  char extracted_msg[RECV_TEMP_BUFFER_SIZE];
   int res;
   const char *log_prefix
       = (manager->current_mode == NET_MODE_SERVER) ? "[SERVER]" : "[CLIENT]";
 
   while ((res = tcp_buffer_extract_line (buffer, extracted_msg,
                                          sizeof (extracted_msg)))
-         != 0)
+         != EXTRACT_NO_MSG)
     {
-      if (res == -1)
+      if (res == EXTRACT_MSG_OVERFLOW)
         {
           printf ("%s Warning: oversized message discarded.\n", log_prefix);
           continue;
@@ -574,14 +582,14 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
   int status = receive_into_buffer (ctx->fds[client_index].fd,
                                     &ctx->clients[client_index].buffer);
 
-  if (status == 0)
+  if (status == NET_NO_DATA)
     return;
-  if (status == -1)
+  if (status == NET_ERROR)
     {
       disconnect_server_client (manager, ctx, client_index);
       return;
     }
-  if (status == -2)
+  if (status == NET_BUFFER_FULL)
     {
       printf ("\n[SERVER] Error: Buffer full for client %d.\n", client_index);
       return;
@@ -598,18 +606,18 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
 static void
 handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 {
-  int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, 0);
+  int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, POLL_TIMEOUT_IMMEDIATE);
   if (poll_count <= 0)
     return;
 
-  if (ctx->fds[0].revents & POLLIN)
+  if (ctx->fds[LISTEN_SOCKET_INDEX].revents & POLLIN)
     {
       handle_server_new_connection (ctx);
     }
 
-  for (int i = 1; i <= MAX_CLIENTS; i++)
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
-      if (ctx->fds[i].fd != -1
+      if (ctx->fds[i].fd != INVALID_SOCKET
           && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
         {
           handle_server_client_data (manager, ctx, i);
@@ -623,14 +631,15 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 static void
 handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 {
-  int poll_count = poll (&ctx->fd_info, 1, 0);
+  int poll_count
+      = poll (&ctx->fd_info, SINGLE_FD_COUNT, POLL_TIMEOUT_IMMEDIATE);
   if (poll_count <= 0
       || !(ctx->fd_info.revents & (POLLIN | POLLHUP | POLLERR)))
     return;
 
   int status = receive_into_buffer (ctx->server_socket, &ctx->buffer);
 
-  if (status == -1)
+  if (status == NET_ERROR)
     {
       printf ("\n[CLIENT] The server has cut the connection.\n");
       NetworkManager_Cleanup (manager);
@@ -640,7 +649,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
       return;
     }
 
-  if (status == -2)
+  if (status == NET_BUFFER_FULL)
     {
       printf ("\n[CLIENT] Error: Buffer full.\n");
       return;
@@ -658,19 +667,18 @@ int
 NetworkManager_HasOpponent (NetworkManager *manager)
 {
   if (manager == NULL)
-    return 0;
+    return NO_OPPONENT;
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
-      return (manager->server_ctx->num_clients > 0);
+      return (manager->server_ctx->num_clients > 0) ? HAS_OPPONENT
+                                                    : NO_OPPONENT;
     }
 
   if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
-      // TODO changer plus tard En mode client, si on est connecté,
-      // l'adversaire c'est le serveur
-      return 1;
+      return HAS_OPPONENT;
     }
 
-  return 0;
+  return NO_OPPONENT;
 }

@@ -10,6 +10,24 @@
 #include "../include/game_types.h"
 #include <stdbool.h>
 #include <stddef.h>
+
+/* ==========================================================================
+ * CONSTANTS
+ * ==========================================================================
+ */
+
+#define MIN_COL_CHAR 'a'
+#define MAX_COL_CHAR 'z'
+
+#define MIN_ROW_VAL 1
+#define MAX_ROW_VAL 26 // Theoretical limit based on the alphabet (a-z)
+
+#define ROW_OFFSET                                                            \
+  1 // Offset between the internal index (0) and the display (1)
+
+#define EXPECTED_PARSED_FIELDS                                                \
+  6 // Number of elements expected by sscanf for a valid move
+
 /**
  * @brief Transforms a Move structure into a network message (e.g., "MOVE
  * a1-a4-b4\n")

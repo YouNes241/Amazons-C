@@ -13,6 +13,22 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* ==========================================================================
+ * CONSTANTS
+ * ==========================================================================
+ */
+
+#define EMPTY_BUFFER_LENGTH 0
+
+// Constants related to the message end character
+#define NEWLINE_CHAR '\n'
+#define NEWLINE_CHAR_LEN 1 // Space occupied by the character '\n'
+
+// Return codes for line extraction
+#define EXTRACT_SUCCESS 1
+#define EXTRACT_NO_MSG 0
+#define EXTRACT_MSG_OVERFLOW -1
+
 /**
  * @def TCP_BUFFER_SIZE
  * @brief The maximum size of the TCP buffer in bytes.

@@ -26,14 +26,14 @@ static void
 process_join_packet (NetworkManager *manager, ServerContext *ctx,
                      int client_index, const char *username)
 {
-  char out_buffer[256];
+  char out_buffer[MAX_FORMATTED_PKT_SIZE];
   Packet resp;
 
   // 1. Check if the username is already taken.
   bool name_taken = false;
-  for (int j = 1; j <= MAX_CLIENTS; j++)
+  for (int j = FIRST_CLIENT_INDEX; j <= MAX_CLIENTS; j++)
     {
-      if (j != client_index && ctx->fds[j].fd != -1
+      if (j != client_index && ctx->fds[j].fd != INVALID_SOCKET
           && ctx->clients[j].is_joined)
         {
           if (strcmp (ctx->clients[j].username, username) == 0)
@@ -47,15 +47,17 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   if (name_taken)
     {
       resp.type = S2C_REJECT;
-      strncpy (resp.payload, "Username already taken", MAX_PAYLOAD_SIZE - 1);
+      strncpy (resp.payload, "Username already taken",
+               MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
       return; // On arrête là si le nom est pris
     }
 
   // 2. Accept player
-  strncpy (ctx->clients[client_index].username, username, 31);
-  ctx->clients[client_index].username[31] = '\0'; // Security
+  strncpy (ctx->clients[client_index].username, username,
+           MAX_USERNAME_LENGTH - NULL_TERMINATOR_OFFSET);
+  ctx->clients[client_index].username[MAX_USERNAME_LENGTH] = '\0'; // Security
   ctx->clients[client_index].is_joined = true;
 
   // --- 1ER : LE LOG RÉSEAU (avec \n pour pousser le prompt) ---
@@ -64,14 +66,16 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
 
   // --- 2EME : ENVOI DES PAQUETS AU CLIENT ---
   resp.type = S2C_WELCOME;
-  strncpy (resp.payload, "Welcome !", MAX_PAYLOAD_SIZE - 1);
+  strncpy (resp.payload, "Welcome !",
+           MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
   SerializePacket (&resp, out_buffer, sizeof (out_buffer));
   NetworkManager_Send (manager, client_index, out_buffer);
 
   Packet start_pkt;
   start_pkt.type = S2C_GAME_START;
-  strcpy (start_pkt.payload, "1"); // "1" pour dire au client qu'il est NOIR
-  char out_buf[256];
+  strcpy (start_pkt.payload,
+          ROLE_BLACK_STR); // "1" pour dire au client qu'il est NOIR
+  char out_buf[MAX_FORMATTED_PKT_SIZE];
   SerializePacket (&start_pkt, out_buf, sizeof (out_buf));
   NetworkManager_Send (manager, client_index, out_buf);
 
@@ -148,7 +152,8 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
     case S2C_GAME_START:
       printf ("[CLIENT] Game is starting!\n");
       int color_val = atoi (pkt->payload);
-      PlayerColor my_color = (color_val == 0) ? PLAYER_WHITE : PLAYER_BLACK;
+      PlayerColor my_color
+          = (color_val == ROLE_WHITE_VAL) ? PLAYER_WHITE : PLAYER_BLACK;
 
       if (manager->callbacks.OnGameStarted)
         {
