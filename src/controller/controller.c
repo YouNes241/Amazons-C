@@ -61,8 +61,8 @@ update_prompt_string ()
         }
       else
         {
-          // Not in a game yet: Show Lobby prompt
-          snprintf (prompt_str, sizeof (prompt_str), "[Lobby] >> ");
+          // Not in a game yet: Show LOBBY prompt
+          snprintf (prompt_str, sizeof (prompt_str), "[LOBBY] >> ");
         }
     }
   else
@@ -127,7 +127,7 @@ on_game_started (PlayerColor color)
   g_my_role = color;
   g_in_network_match = true;
   g_turn_start_time = time (NULL); // The timer starts
-  printf ("\n[[GAME] The game begins! You play the %s.\n",
+  printf ("\n[GAME] The game begins! You play the %s.\n",
           (color == PLAYER_WHITE) ? "White" : "Black");
   refresh_prompt ();
 }
@@ -187,9 +187,9 @@ on_player_disconnected (const char *reason)
   (void)reason;
   if (g_in_network_match)
     {
-      printf ("\n[LOBBY] Your opponent disconnected. Returning to Lobby.\n");
+      printf ("\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
     }
-  g_in_network_match = false; // <--- Return to lobby mode
+  g_in_network_match = false; // return to LOBBY
   refresh_prompt ();
 }
 
@@ -246,11 +246,11 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       printf ("  hint        : Get AI assistance\n");
       printf ("  set/details : Configure game options\n");
 
-      printf ("\n--- Network & Lobby ---\n");
+      printf ("\n--- Network & LOBBY ---\n");
       printf ("  server start [port]        : Host a new server\n");
       printf ("  join [IP:Port] [username]  : Connect to a server\n");
       printf (
-          "  players                    : List all players in the lobby\n");
+          "  players                    : List all players in the LOBBY\n");
       printf ("  invite <ID>                : Invite a player to a game\n");
       printf ("  accept <ID>                : Accept an invitation\n");
       printf ("  decline <ID>               : Decline an invitation\n");
@@ -429,7 +429,7 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
         {
           if (!g_in_network_match)
             {
-              printf ("[ERROR] You are in the Lobby! Use 'invite' to start a "
+              printf ("[ERROR] You are in the LOBBY! Use 'invite' to start a "
                       "game.\n");
               return;
             }

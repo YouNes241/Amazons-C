@@ -6,6 +6,25 @@
 #include <sys/socket.h>
 
 /**
+ * @brief Helper to quickly build, serialize, and send a simple message packet.
+ */
+static void
+send_server_message (NetworkManager *manager, int target_index,
+                     PacketType type, const char *msg)
+{
+  Packet pkt;
+  pkt.type = type;
+  strncpy (pkt.payload, msg, MAX_PAYLOAD_SIZE - 1);
+  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+  char out_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, out_buffer, sizeof (out_buffer)) >= 0)
+    {
+      NetworkManager_Send (manager, target_index, out_buffer);
+    }
+}
+
+/**
  * @brief Common helper to process MOVE packets for both Server and Client.
  */
 static void
@@ -139,9 +158,8 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
   if (target_index < FIRST_CLIENT_INDEX || target_index > MAX_CLIENTS
       || target_index == sender_index)
     {
-      NetworkManager_Send (
-          manager, sender_index,
-          "8|Error: Invalid player ID.\n"); // S2C_ERROR (ID 8)
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Invalid player ID.");
       return;
     }
 
@@ -149,16 +167,16 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
   if (ctx->fds[target_index].fd == INVALID_SOCKET
       || !ctx->clients[target_index].is_joined)
     {
-      NetworkManager_Send (manager, sender_index,
-                           "8|Error: Player not found.\n");
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Player not found.");
       return;
     }
 
   // 3. Verify that the target player is indeed in the lobby (IDLE).
   if (ctx->clients[target_index].status != CLIENT_STATUS_IDLE)
     {
-      NetworkManager_Send (manager, sender_index,
-                           "8|Error: Player is not available.\n");
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Player is not available.");
       return;
     }
 
@@ -166,14 +184,9 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[sender_index].status = CLIENT_STATUS_WAITGAME;
 
   // 5. The invitation is sent to the target (Payload = the sender's ID)
-  char out_buffer[MAX_FORMATTED_PKT_SIZE];
-  Packet invite_pkt;
-  invite_pkt.type = S2C_INVITE;
-  snprintf (invite_pkt.payload, sizeof (invite_pkt.payload), "%d",
-            sender_index);
-
-  SerializePacket (&invite_pkt, out_buffer, sizeof (out_buffer));
-  NetworkManager_Send (manager, target_index, out_buffer);
+  char sender_id_str[16];
+  snprintf (sender_id_str, sizeof (sender_id_str), "%d", sender_index);
+  send_server_message (manager, target_index, S2C_INVITE, sender_id_str);
 }
 
 /**
@@ -190,7 +203,8 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
 
   if (challenger_index < FIRST_CLIENT_INDEX || challenger_index > MAX_CLIENTS)
     {
-      NetworkManager_Send (manager, sender_index, "8|Error: Invalid ID.\n");
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Invalid ID.");
       return;
     }
 
@@ -199,8 +213,8 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
       || !ctx->clients[challenger_index].is_joined
       || ctx->clients[challenger_index].status != CLIENT_STATUS_WAITGAME)
     {
-      NetworkManager_Send (manager, sender_index,
-                           "8|Error: Invite expired or player left.\n");
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Invite expired or player left.");
       ctx->clients[sender_index].status
           = CLIENT_STATUS_IDLE; // We put the client back in idle.
       return;
@@ -216,19 +230,12 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[sender_index].game_id = new_game_id;
   ctx->clients[sender_index].status = CLIENT_STATUS_INGAME;
 
-  char out_buffer[MAX_FORMATTED_PKT_SIZE];
-  Packet start_pkt;
-  start_pkt.type = S2C_GAME_START;
+  // Sending to the Challenger (He will play the WHITES)
+  send_server_message (manager, challenger_index, S2C_GAME_START,
+                       ROLE_WHITE_STR);
 
-  // Sending to the Challenger (He will play the WHITES: "0"))
-  strcpy (start_pkt.payload, ROLE_WHITE_STR);
-  SerializePacket (&start_pkt, out_buffer, sizeof (out_buffer));
-  NetworkManager_Send (manager, challenger_index, out_buffer);
-
-  // Send to the one who accepted (He will play BLACK: "1")
-  strcpy (start_pkt.payload, ROLE_BLACK_STR);
-  SerializePacket (&start_pkt, out_buffer, sizeof (out_buffer));
-  NetworkManager_Send (manager, sender_index, out_buffer);
+  // Send to the one who accepted (He will play BLACK)
+  send_server_message (manager, sender_index, S2C_GAME_START, ROLE_BLACK_STR);
 }
 
 /**
@@ -245,14 +252,14 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
   // Put the player who refused back into IDLE mode
   ctx->clients[sender_index].status = CLIENT_STATUS_IDLE;
 
-  // If the challenger is still connected, we put them back to IDLE and we
-  // warn them
+  // If the challenger is still connected, we put them back to IDLE and we warn
+  // them
   if (challenger_index >= FIRST_CLIENT_INDEX && challenger_index <= MAX_CLIENTS
       && ctx->fds[challenger_index].fd != INVALID_SOCKET)
     {
       ctx->clients[challenger_index].status = CLIENT_STATUS_IDLE;
-      NetworkManager_Send (manager, challenger_index,
-                           "13|Invitation declined.\n"); // S2C_DECLINE
+      send_server_message (manager, challenger_index, S2C_DECLINE,
+                           "Invitation declined.");
     }
 }
 
@@ -368,6 +375,13 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         {
 
           printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
+        }
+      break;
+    case S2C_OPPONENT_LEFT:
+
+      if (manager->callbacks.OnPlayerDisconnected)
+        {
+          manager->callbacks.OnPlayerDisconnected (pkt->payload);
         }
       break;
     case S2C_GAME_START:

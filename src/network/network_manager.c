@@ -606,9 +606,40 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
                           int client_index)
 {
   printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
+
+  int game_id = ctx->clients[client_index].game_id;
+  if (game_id != NO_GAME_ID)
+    {
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          // if there is still another player in the game
+          if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
+              && ctx->clients[i].game_id == game_id)
+            {
+              // we send him back to the lobby
+              ctx->clients[i].status = CLIENT_STATUS_IDLE;
+              ctx->clients[i].game_id = NO_GAME_ID;
+
+              Packet pkt;
+              pkt.type = S2C_OPPONENT_LEFT;
+              strncpy (pkt.payload, "Opponent disconnected.",
+                       MAX_PAYLOAD_SIZE - 1);
+              char out_buf[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+                {
+                  NetworkManager_Send (manager, i, out_buf);
+                }
+            }
+        }
+    }
+
   close (ctx->fds[client_index].fd);
   ctx->fds[client_index].fd = INVALID_SOCKET;
+  ctx->clients[client_index].is_joined = false;
+  ctx->clients[client_index].status = CLIENT_STATUS_CONNECTED;
+  ctx->clients[client_index].game_id = NO_GAME_ID;
   ctx->num_clients--;
+
   if (manager->callbacks.OnPlayerDisconnected)
     manager->callbacks.OnPlayerDisconnected ("Network disconnection");
 }

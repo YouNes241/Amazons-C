@@ -26,7 +26,8 @@ typedef enum
   S2C_DECLINE = 13, // The server tells Client A "B refused"
   S2C_LIST = 14,    // Server -> Client: Sends the list of players
   PKT_TIMEOUT = 15,
-  PKT_TYPE_MAX = 16,
+  S2C_OPPONENT_LEFT = 16,
+  PKT_TYPE_MAX = 17,
 } PacketType;
 
 /* ==========================================================================
