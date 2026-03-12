@@ -716,6 +716,7 @@ run_interactive_mode (game_config_t *config)
                       NetworkManager_SendMove (&net_manager, ai_move);
                     }
 
+                  // On réinitialise le timer (comme pour un humain)
                   g_timeout_sent = false;
                   g_turn_start_time = time (NULL);
 
