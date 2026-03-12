@@ -396,7 +396,16 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
     }
   else if (strncmp (input_buffer, "save ", CMD_LEN_SAVE) == 0)
     {
-      printf ("Saved in: %s\n", &input_buffer[CMD_LEN_SAVE]);
+      const char *filename = input_buffer + CMD_LEN_SAVE;
+
+      if (save_game (filename, config, current_game) == 0)
+        {
+          printf ("Game saved successfully to: %s\n", filename);
+        }
+      else
+        {
+          printf ("Failed to save the game.\n");
+        }
       return;
     }
   else if (strncmp (input_buffer, "load ", CMD_LEN_LOAD) == 0)
