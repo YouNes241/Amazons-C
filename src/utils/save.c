@@ -10,7 +10,8 @@ write_settings (FILE *file, game_config_t *config)
   fprintf (file, "time_per_player=%d\n", config->time_per_player);
 
   fprintf (file, "blitz_mode=%s\n", config->blitz_mode ? "true" : "false");
-  fprintf (file, "ai_enabled=%s\n", config->ai_enabled ? "true" : "false");
+  fprintf (file, "ai_white=%s\n", config->ai_white ? "true" : "false");
+  fprintf (file, "ai_black=%s\n", config->ai_black ? "true" : "false");
   fprintf (file, "verbose=%s\n", config->verbose ? "true" : "false");
 
   const char *lang_str = (config->language == LANG_FR) ? "fr" : "en";
@@ -70,7 +71,29 @@ static void
 write_history (FILE *file, GameState *state)
 {
   fprintf (file, "[history]\n");
-  // TODO : Boucler sur la liste des coups joués quand elle sera disponible
+
+  if (state->undo_stack.top < 0)
+    {
+      fprintf (file, "\n");
+      return;
+    }
+
+  for (int i = 0; i <= state->undo_stack.top; i++)
+    {
+      Move m = state->undo_stack.data[i];
+
+      char q_src_col = m.queen_src.col + 'a';
+      char q_dst_col = m.queen_dst.col + 'a';
+      char a_dst_col = m.arrow_dst.col + 'a';
+
+      int q_src_row = m.queen_src.row + 1;
+      int q_dst_row = m.queen_dst.row + 1;
+      int a_dst_row = m.arrow_dst.row + 1;
+
+      fprintf (file, "%c%d-%c%d(%c%d)\n", q_src_col, q_src_row, q_dst_col,
+               q_dst_row, a_dst_col, a_dst_row);
+    }
+
   fprintf (file, "\n");
 }
 
