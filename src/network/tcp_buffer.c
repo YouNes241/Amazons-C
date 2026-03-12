@@ -17,6 +17,10 @@
 void
 tcp_buffer_init (tcp_buffer_t *buf)
 {
+  if (buf == NULL)
+    {
+      return;
+    }
   buf->length = EMPTY_BUFFER_LENGTH;
   memset (buf->data, 0, TCP_BUFFER_SIZE);
 }

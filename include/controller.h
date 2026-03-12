@@ -14,6 +14,7 @@
 #define MAX_IP_LEN 63
 #define MAX_USERNAME_LEN 31
 #define PROMPT_MAX_LEN 64
+#define LOBBY_LIST_BUFFER_SIZE 1024 // Buffer size for displaying players
 
 #define POLL_STDIN_TIMEOUT_MS 100 // Timeout for poll on keyboard input
 #define STDIN_FD_COUNT 1    // Number of descriptors for poll (just STDIN)
@@ -34,6 +35,9 @@
 #define CMD_LEN_SAVE 5
 #define CMD_LEN_LOAD 5
 #define CMD_LEN_SHOW 4
+#define CMD_LEN_INVITE 7
+#define CMD_LEN_ACCEPT 7
+#define CMD_LEN_DECLINE 8
 #define CMD_SPACE_OFFSET                                                      \
   1 // Indentation to ignore the space after a command (e.g., "join")
 

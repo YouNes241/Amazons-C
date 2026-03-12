@@ -1,5 +1,6 @@
 #include "config.h"
 #include "controller.h"
+#include "gui_application.h"
 #include "input.h"
 #include <getopt.h>
 #include <stdbool.h>
@@ -157,16 +158,19 @@ main (int argc, char *argv[])
       return result;
     }
 
+  int status = EXIT_SUCCESS;
+
   if (config->mode == MODE_INTERACTIVE)
     {
       run_interactive_mode (config);
     }
   else if (config->mode == MODE_GUI)
     {
-      printf ("Mode graphique non encore implémenté.\n");
+      GtkApplication *app = createApplication (config);
+      status = runApplication (app, 0, NULL);
     }
 
   free (config);
 
-  return EXIT_SUCCESS;
+  return status;
 }

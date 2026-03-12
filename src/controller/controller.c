@@ -23,6 +23,7 @@ static NetworkManager *g_net_manager = NULL;
 static PlayerColor g_my_role = PLAYER_WHITE; // Par défaut pour le serveur
 static AI_Interface g_ai;
 static bool g_ai_initialized = false;
+static bool g_in_network_match = false;
 
 /* --- Time management --- */
 
@@ -31,9 +32,10 @@ static int g_timeout_limit = 60;
 static bool g_timeout_sent = false;
 
 static char *commands_list[]
-    = { "new",   "help",    "quit",         "load", "save",
-        "pause", "hint",    "undo",         "redo", "show",
-        "set",   "details", "start server", "join", NULL };
+    = { "new",    "help",    "quit",         "load", "save",
+        "pause",  "hint",    "undo",         "redo", "show",
+        "set",    "details", "start server", "join", "players",
+        "invite", "accept",  "decline",      NULL };
 
 /* ==========================================================================
    HELPERS UI & PROMPT
@@ -61,12 +63,21 @@ update_prompt_string ()
   const char *turn_str
       = (g_current_game->current_player == PLAYER_WHITE) ? "White" : "Black";
 
-  // If we are on a network, we display our role [W] or [B]
+  // If we are on a network
   if (g_net_manager != NULL && g_net_manager->current_mode != NET_MODE_NONE)
     {
-      const char *my_color_str = (g_my_role == PLAYER_WHITE) ? "W" : "B";
-      snprintf (prompt_str, sizeof (prompt_str), "[%s] Turn: %s >> ",
-                my_color_str, turn_str);
+      if (g_in_network_match)
+        {
+          // In a game: Show Role and Turn
+          const char *my_color_str = (g_my_role == PLAYER_WHITE) ? "W" : "B";
+          snprintf (prompt_str, sizeof (prompt_str), "[%s] Turn: %s >> ",
+                    my_color_str, turn_str);
+        }
+      else
+        {
+          // Not in a game yet: Show LOBBY prompt
+          snprintf (prompt_str, sizeof (prompt_str), "[LOBBY] >> ");
+        }
     }
   else
     {
@@ -128,8 +139,9 @@ static void
 on_game_started (PlayerColor color)
 {
   g_my_role = color;
+  g_in_network_match = true;
   g_turn_start_time = time (NULL); // The timer starts
-  printf ("\n[[GAME] The game begins! You play the %s.\n",
+  printf ("\n[GAME] The game begins! You play the %s.\n",
           (color == PLAYER_WHITE) ? "White" : "Black");
   refresh_prompt ();
 }
@@ -176,6 +188,48 @@ on_network_timeout_received ()
   refresh_prompt ();
 }
 
+static void
+on_player_joined (const char *name)
+{
+  (void)name;
+  refresh_prompt ();
+}
+
+static void
+on_player_disconnected (const char *reason)
+{
+  (void)reason;
+  if (g_in_network_match)
+    {
+      printf ("\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+    }
+  g_in_network_match = false; // return to LOBBY
+  refresh_prompt ();
+}
+
+static void
+on_game_error (const char *err)
+{
+  (void)err;
+  refresh_prompt ();
+}
+
+static void
+on_invitation_received (int challenger_id)
+{
+  printf ("\n[LOBBY] Player %d invited you to a game!\n", challenger_id);
+  printf ("Type 'accept %d' to play, or 'decline %d' to refuse.\n",
+          challenger_id, challenger_id);
+  refresh_prompt ();
+}
+
+static void
+on_list_received (const char *list_text)
+{
+  printf ("\n=== LOBBY ===\n%s\n===============\n", list_text);
+  refresh_prompt ();
+}
+
 /* ==========================================================================
    COMMAND LOGIC (handle_command)
    ==========================================================================
@@ -196,9 +250,29 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
   // 2. HELP & CONFIGURATION
   else if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
     {
-      printf ("Aide : new, help, quit, load, save, pause, hint, undo, "
-              "redo,start server,join ip port username, "
-              "show, set, details\n");
+      printf ("\n=== COMMAND LIST ===\n");
+      printf ("--- Game Management ---\n");
+      printf ("  new         : Start a new local game\n");
+      printf ("  quit        : Exit the application\n");
+      printf ("  show        : Display the board\n");
+      printf ("  undo/redo   : Cancel or replay a move\n");
+      printf ("  save/load   : Save or load a game state\n");
+      printf ("  hint        : Get AI assistance\n");
+      printf ("  set/details : Configure game options\n");
+
+      printf ("\n--- Network & LOBBY ---\n");
+      printf ("  server start [port]        : Host a new server\n");
+      printf ("  join [IP:Port] [username]  : Connect to a server\n");
+      printf (
+          "  players                    : List all players in the LOBBY\n");
+      printf ("  invite <ID>                : Invite a player to a game\n");
+      printf ("  accept <ID>                : Accept an invitation\n");
+      printf ("  decline <ID>               : Decline an invitation\n");
+
+      printf ("\n--- Playing a Move ---\n");
+      printf (
+          "  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n");
+      printf ("====================\n\n");
       return;
     }
   else if (strncmp (input_buffer, "details", CMD_LEN_DETAILS) == 0)
@@ -251,6 +325,67 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       if (NetworkManager_ClientJoin (net_manager, ip, port) == 0)
         {
           NetworkManager_SendJoin (net_manager, username);
+        }
+      return;
+    }
+
+  else if (strcmp (input_buffer, "players") == 0)
+    {
+      if (net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          NetworkManager_SendListRequest (net_manager);
+        }
+      else if (net_manager->current_mode == NET_MODE_SERVER)
+        {
+          char list_buffer[LOBBY_LIST_BUFFER_SIZE];
+          NetworkManager_GetServerPlayerList (net_manager, list_buffer,
+                                              sizeof (list_buffer));
+          printf ("\n=== SERVER LOBBY ===\n%s\n====================\n",
+                  list_buffer);
+        }
+      else
+        {
+          printf ("You must start or join a server first to see players.\n");
+        }
+      return;
+    }
+  else if (strncmp (input_buffer, "invite ", CMD_LEN_INVITE) == 0)
+    {
+      if (net_manager->current_mode != NET_MODE_CLIENT)
+        {
+          printf ("You must join a server first to invite someone.\n");
+          return;
+        }
+      int target_id;
+      if (sscanf (input_buffer + CMD_LEN_INVITE, "%d", &target_id) == 1)
+        {
+          if (NetworkManager_SendInvite (net_manager, target_id) == 0)
+            printf ("Invitation sent to player %d. Waiting for response...\n",
+                    target_id);
+        }
+      return;
+    }
+  else if (strncmp (input_buffer, "accept ", CMD_LEN_ACCEPT) == 0)
+    {
+      if (net_manager->current_mode != NET_MODE_CLIENT)
+        return;
+      int challenger_id;
+      if (sscanf (input_buffer + CMD_LEN_ACCEPT, "%d", &challenger_id) == 1)
+        {
+          if (NetworkManager_SendAccept (net_manager, challenger_id) == 0)
+            printf ("Accepted invitation from player %d.\n", challenger_id);
+        }
+      return;
+    }
+  else if (strncmp (input_buffer, "decline ", CMD_LEN_DECLINE) == 0)
+    {
+      if (net_manager->current_mode != NET_MODE_CLIENT)
+        return;
+      int challenger_id;
+      if (sscanf (input_buffer + CMD_LEN_DECLINE, "%d", &challenger_id) == 1)
+        {
+          if (NetworkManager_SendDecline (net_manager, challenger_id) == 0)
+            printf ("Declined invitation from player %d.\n", challenger_id);
         }
       return;
     }
@@ -347,6 +482,13 @@ handle_command (char *input_buffer, game_config_t *config, bool *game_running,
       // --- Turn lock (Active ONLY in network mode) ---
       if (net_manager->current_mode != NET_MODE_NONE)
         {
+          if (!g_in_network_match)
+            {
+              printf ("[ERROR] You are in the LOBBY! Use 'invite' to start a "
+                      "game.\n");
+              return;
+            }
+
           if (current_game->current_player != g_my_role)
             {
               printf ("[ERROR] It's not your turn! Wait for your opponent.\n");
@@ -438,9 +580,12 @@ run_interactive_mode (game_config_t *config)
   NetworkEvents net_events = { 0 };
   net_events.OnMoveReceived = on_network_move_received;
   net_events.OnGameStarted = on_game_started;
-  net_events.OnPlayerJoined = NULL;
-  net_events.OnPlayerDisconnected = (void (*) (const char *))refresh_prompt;
+  net_events.OnPlayerJoined = on_player_joined;
+  net_events.OnGameError = on_game_error;
+  net_events.OnInvitationReceived = on_invitation_received;
+  net_events.OnPlayerDisconnected = on_player_disconnected;
   net_events.OnTimeoutReceived = on_network_timeout_received;
+  net_events.OnListReceived = on_list_received;
   NetworkManager_Init (&net_manager, net_events);
 
   bool game_running = true;
@@ -510,7 +655,7 @@ run_interactive_mode (game_config_t *config)
         }
 
       // --- SYNCHRONIZED TIMEOUT LOGIC ---
-      if (g_current_game->current_player == g_my_role)
+      if (g_in_network_match && g_current_game->current_player == g_my_role)
         {
           if (NetworkManager_HasOpponent (&net_manager))
             {
@@ -538,13 +683,9 @@ run_interactive_mode (game_config_t *config)
                 }
             }
         }
-      else
+      else if (g_in_network_match) // On ne reset le temps que si on joue
         {
-          // IF IT'S NOT MY TURN:
-          // We reset g_timeout_sent to be ready for our next turn
           g_timeout_sent = false;
-          // We keep turn_start_time updated to have our full 60 seconds when
-          // the turn arrives
           g_turn_start_time = time (NULL);
         }
 

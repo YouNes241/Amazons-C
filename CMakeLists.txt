@@ -54,8 +54,3 @@ add_executable(test_bitboard tests/test_bitboard.c)
 target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
 target_link_libraries(test_bitboard PRIVATE amazons_core)
 add_test(NAME TestBitboard COMMAND test_bitboard)
-
-# --- TESTS GUI (TEMP) ---
-add_executable(test_gui_application tests/test_gui_application.c)
-target_include_directories(test_gui_application PRIVATE "${CMAKE_SOURCE_DIR}/include" ${GUI_INCLUDE_DIRS} ${READLINE_INCLUDE_DIRS})
-target_link_libraries(test_gui_application PRIVATE amazons_core ${GUI_LIBRARIES} ${READLINE_LIBRARIES})

@@ -51,6 +51,8 @@ static void handle_client_tick (NetworkManager *manager, ClientContext *ctx);
 void
 NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
 {
+  if (manager == NULL)
+    return;
   manager->current_mode = NET_MODE_NONE;
   manager->server_ctx = NULL;
   manager->client_ctx = NULL;
@@ -126,6 +128,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->num_clients = 0;
+  manager->server_ctx->next_game_id = 1;
 
   // We configure the monitoring of the main door
   manager->server_ctx->fds[LISTEN_SOCKET_INDEX].fd = sock;
@@ -273,7 +276,7 @@ NetworkManager_Tick (NetworkManager *manager)
     }
 }
 /**
- * @brief Construit et envoie un paquet JOIN proprement.
+ * @brief Constructs and sends a JOIN packet cleanly.
  */
 int
 NetworkManager_SendJoin (NetworkManager *manager, const char *username)
@@ -281,54 +284,42 @@ NetworkManager_SendJoin (NetworkManager *manager, const char *username)
   if (manager == NULL || username == NULL)
     return NET_ERROR;
 
-  // 1. On crée le paquet réseau
   Packet pkt;
   pkt.type = C2S_JOIN;
   strncpy (pkt.payload, username, MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 2. On le sérialise grâce à ton fichier network_packet.c
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
       return NET_ERROR;
     }
 
-  // 3. On utilise le "tuyau bête" pour envoyer la chaîne finale ("1|Alice\n")
-  // Le client envoie toujours au serveur (index TARGET_SERVER)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
 /**
- * @brief Convertit un Move en texte, l'encapsule dans un Paquet et l'envoie.
+ * @brief Converts a Move to text, encapsulates it in a Packet and sends it.
  */
 int
 NetworkManager_SendMove (NetworkManager *manager, Move m)
 {
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return NET_SUCCESS; // Si on joue en local, on ne fait rien !
+    return NET_SUCCESS;
 
-  // 1. Traduire la structure Move en texte (ex: "MOVE e2-e4-e6\n")
   char move_str[MAX_MOVE_STR_SIZE];
   Protocol_MoveToString (m, move_str, sizeof (move_str));
-
-  // Petite astuce : on enlève le '\n' ajouté par Protocol_MoveToString
-  // car SerializePacket va déjà en rajouter un !
   move_str[strcspn (move_str, "\n")] = 0;
 
-  // 2. Créer le paquet réseau
   Packet pkt;
   pkt.type = (manager->current_mode == NET_MODE_CLIENT) ? C2S_MOVE : S2C_MOVE;
   strncpy (pkt.payload, move_str, MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 3. Sérialiser
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;
 
-  // 4. Envoyer ! (Si on est client, on envoie au serveur (TARGET_SERVER). Si
-  // on est serveur, on envoie au client TARGET_CLIENT_1)
   int target = (manager->current_mode == NET_MODE_CLIENT)
                    ? TARGET_SERVER
                    : TARGET_CLIENT_1; // TODO
@@ -336,7 +327,7 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
 }
 
 /**
- * @brief Construit et envoie un paquet de TIMEOUT proprement.
+ * @brief Constructs and sends a TIMEOUT packet cleanly.
  */
 int
 NetworkManager_SendTimeout (NetworkManager *manager)
@@ -344,26 +335,101 @@ NetworkManager_SendTimeout (NetworkManager *manager)
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
     return NET_ERROR;
 
-  // 1. Création du paquet réseau
   Packet pkt;
-  pkt.type = PKT_TIMEOUT; // On utilise le type 0, le handler cherchera le mot
-                          // "TIMEOUT"
+  pkt.type = PKT_TIMEOUT;
   strncpy (pkt.payload, "TIMEOUT", MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 2. Sérialisation (ajout du TYPE| et du '\n')
   char formatted_buffer[512];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
       return NET_ERROR;
     }
 
-  // 3. Envoi à l'adversaire (0 pour le serveur si on est client, 1 pour le
-  // client 1 si on est serveur)
   int target = (manager->current_mode == NET_MODE_CLIENT)
                    ? TARGET_SERVER
                    : TARGET_CLIENT_1; // TODO
   return NetworkManager_Send (manager, target, formatted_buffer);
+}
+
+/**
+ * @brief Sends an invitation to a specific player ID.
+ */
+int
+NetworkManager_SendInvite (NetworkManager *manager, int target_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_INVITE;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Accepts an invitation from a specific player ID.
+ */
+int
+NetworkManager_SendAccept (NetworkManager *manager, int challenger_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_ACCEPT;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Declines an invitation from a specific player ID.
+ */
+int
+NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_DECLINE;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Requests the list of connected players from the server.
+ */
+int
+NetworkManager_SendListRequest (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_LIST;
+  pkt.payload[0] = '\0'; // No payload is needed to simply request the list.
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
 /**
@@ -494,6 +560,8 @@ handle_server_new_connection (ServerContext *ctx)
               tcp_buffer_init (&ctx->clients[i].buffer);
               ctx->clients[i].is_joined = false;
               memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
+              ctx->clients[i].game_id = NO_GAME_ID;
+              ctx->clients[i].status = CLIENT_STATUS_CONNECTED;
               ctx->num_clients++;
               accepted = true;
 
@@ -521,9 +589,40 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
                           int client_index)
 {
   printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
+
+  int game_id = ctx->clients[client_index].game_id;
+  if (game_id != NO_GAME_ID)
+    {
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          // if there is still another player in the game
+          if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
+              && ctx->clients[i].game_id == game_id)
+            {
+              // we send him back to the lobby
+              ctx->clients[i].status = CLIENT_STATUS_IDLE;
+              ctx->clients[i].game_id = NO_GAME_ID;
+
+              Packet pkt;
+              pkt.type = S2C_OPPONENT_LEFT;
+              strncpy (pkt.payload, "Opponent disconnected.",
+                       MAX_PAYLOAD_SIZE - 1);
+              char out_buf[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+                {
+                  NetworkManager_Send (manager, i, out_buf);
+                }
+            }
+        }
+    }
+
   close (ctx->fds[client_index].fd);
   ctx->fds[client_index].fd = INVALID_SOCKET;
+  ctx->clients[client_index].is_joined = false;
+  ctx->clients[client_index].status = CLIENT_STATUS_CONNECTED;
+  ctx->clients[client_index].game_id = NO_GAME_ID;
   ctx->num_clients--;
+
   if (manager->callbacks.OnPlayerDisconnected)
     manager->callbacks.OnPlayerDisconnected ("Network disconnection");
 }
@@ -681,4 +780,54 @@ NetworkManager_HasOpponent (NetworkManager *manager)
     }
 
   return NO_OPPONENT;
+}
+
+void
+NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
+                                    size_t max_len)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_SERVER
+      || manager->server_ctx == NULL || buffer == NULL || max_len == 0)
+    {
+      if (buffer && max_len > 0)
+        buffer[0] = '\0';
+      return;
+    }
+
+  strncpy (buffer, "Players: ", max_len - 1);
+  buffer[max_len - 1] = '\0';
+
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (manager->server_ctx->fds[i].fd != INVALID_SOCKET
+          && manager->server_ctx->clients[i].is_joined)
+        {
+          char line[PLAYER_INFO_BUFFER_SIZE];
+          const char *status_str = "Unknown";
+
+          switch (manager->server_ctx->clients[i].status)
+            {
+            case CLIENT_STATUS_IDLE:
+              status_str = "IDLE";
+              break;
+            case CLIENT_STATUS_WAITGAME:
+              status_str = "WAITING";
+              break;
+            case CLIENT_STATUS_INGAME:
+              status_str = "INGAME";
+              break;
+            default:
+              status_str = "CONNECTED";
+              break;
+            }
+
+          snprintf (line, sizeof (line), "[ID %d: %s (%s)] ", i,
+                    manager->server_ctx->clients[i].username, status_str);
+
+          if (strlen (buffer) + strlen (line) < max_len - 1)
+            {
+              strcat (buffer, line);
+            }
+        }
+    }
 }

@@ -8,6 +8,7 @@
 
 #include "game_types.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 /* ==========================================================================
  * 1. Enums & Forward Declarations
@@ -39,6 +40,7 @@ typedef struct
   void (*OnGameStarted) (PlayerColor color);
   void (*OnGameError) (const char *error_msg);
   void (*OnTimeoutReceived) (void);
+  void (*OnListReceived) (const char *list_text);
 } NetworkEvents;
 
 /* ==========================================================================
@@ -70,6 +72,17 @@ int NetworkManager_SendMove (NetworkManager *manager, Move m);
 int NetworkManager_Send (NetworkManager *manager, int target_client,
                          const char *message);
 int NetworkManager_SendTimeout (NetworkManager *manager);
+
+int NetworkManager_SendInvite (NetworkManager *manager, int target_id);
+
+int NetworkManager_SendAccept (NetworkManager *manager, int challenger_id);
+
+int NetworkManager_SendDecline (NetworkManager *manager, int challenger_id);
+
+int NetworkManager_SendListRequest (NetworkManager *manager);
+
+void NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
+                                         size_t max_len);
 int NetworkManager_HasOpponent (NetworkManager *manager);
 
 #endif // NETWORK_COMMON_H

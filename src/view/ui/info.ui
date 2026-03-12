@@ -18,7 +18,8 @@
     <child>
       <object class="GtkBox">
         <property name="orientation">vertical</property>
-        <property name="spacing">40</property> <property name="halign">center</property>
+        <property name="spacing">40</property> 
+        <property name="halign">center</property>
         <property name="valign">center</property>
         <property name="vexpand">true</property> 
         
@@ -31,46 +32,85 @@
 
         <child>
           <object class="GtkBox">
-            <property name="orientation">vertical</property>
-            <property name="spacing">10</property> <child>
-              <object class="GtkLabel" id="authors_title">
-                <property name="label">Authors</property>
-                <property name="css-classes">title-2</property> 
-              </object>
-            </child>
-            
-            <child>
-              <object class="GtkLabel" id="authors_text">
-                <property name="label">Nicolas CAMINADE&#10;Tanguy DECABRAT&#10;Anya BAZIZI&#10;Younes OUAAMMOU&#10;Thomas-Alexandre MOREAU</property>
-                <property name="justify">center</property> <property name="css-classes">dim-label</property> 
-              </object>
-            </child>
-            
-          </object>
-        </child>
+            <property name="orientation">horizontal</property>
+            <property name="spacing">80</property> <property name="homogeneous">true</property> <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">20</property>
+                
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Rules of Amazons</property>
+                    <property name="css-classes">title-2</property>
+                  </object>
+                </child>
 
-        <child>
-          <object class="GtkBox">
-            <property name="orientation">vertical</property>
-            <property name="spacing">10</property>
-            
-            <child>
-              <object class="GtkLabel" id="version_title">
-                <property name="label">Version</property>
-                <property name="css-classes">title-2</property> 
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">1. Each player has 4 amazons.
+2. An amazon moves like a chess queen.
+3. After moving, she must shoot an arrow.
+4. The arrow also moves like a queen.
+5. The square where the arrow lands is burned.
+6. The last player able to move wins!</property>
+                    <property name="justify">left</property> 
+                  </object>
+                </child>
               </object>
             </child>
-            
-            <child>
-              <object class="GtkLabel" id="version_text">
-                <property name="label">PLACEHOLDER</property>
-                <property name="css-classes">dim-label</property> 
-              </object>
-            </child>
-          </object>
-        </child>
 
-      </object>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">30</property>
+
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">10</property>
+                    
+                    <child>
+                      <object class="GtkLabel" id="authors_title">
+                        <property name="label">Authors</property>
+                        <property name="css-classes">title-2</property> 
+                      </object>
+                    </child>
+                    
+                    <child>
+                      <object class="GtkLabel" id="authors_text">
+                        <property name="label">Nicolas CAMINADE&#10;Tanguy DECABRAT&#10;Anya BAZIZI&#10;Younes OUAAMMOU&#10;Thomas-Alexandre MOREAU</property>
+                        <property name="justify">center</property> 
+                        <property name="css-classes">dim-label</property> 
+                      </object>
+                    </child>
+                    
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">10</property>
+                    
+                    <child>
+                      <object class="GtkLabel" id="version_title">
+                        <property name="label">Version</property>
+                        <property name="css-classes">title-2</property> 
+                      </object>
+                    </child>
+                    
+                    <child>
+                      <object class="GtkLabel" id="version_text">
+                        <property name="label">PLACEHOLDER</property>
+                        <property name="css-classes">dim-label</property> 
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+              </object>
+            </child> </object>
+        </child> </object>
     </child>
 
   </object>
