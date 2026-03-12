@@ -276,7 +276,7 @@ NetworkManager_Tick (NetworkManager *manager)
     }
 }
 /**
- * @brief Construit et envoie un paquet JOIN proprement.
+ * @brief Constructs and sends a JOIN packet cleanly.
  */
 int
 NetworkManager_SendJoin (NetworkManager *manager, const char *username)
@@ -284,54 +284,42 @@ NetworkManager_SendJoin (NetworkManager *manager, const char *username)
   if (manager == NULL || username == NULL)
     return NET_ERROR;
 
-  // 1. On crée le paquet réseau
   Packet pkt;
   pkt.type = C2S_JOIN;
   strncpy (pkt.payload, username, MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 2. On le sérialise grâce à ton fichier network_packet.c
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
       return NET_ERROR;
     }
 
-  // 3. On utilise le "tuyau bête" pour envoyer la chaîne finale ("1|Alice\n")
-  // Le client envoie toujours au serveur (index TARGET_SERVER)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
 /**
- * @brief Convertit un Move en texte, l'encapsule dans un Paquet et l'envoie.
+ * @brief Converts a Move to text, encapsulates it in a Packet and sends it.
  */
 int
 NetworkManager_SendMove (NetworkManager *manager, Move m)
 {
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return NET_SUCCESS; // Si on joue en local, on ne fait rien !
+    return NET_SUCCESS;
 
-  // 1. Traduire la structure Move en texte (ex: "MOVE e2-e4-e6\n")
   char move_str[MAX_MOVE_STR_SIZE];
   Protocol_MoveToString (m, move_str, sizeof (move_str));
-
-  // Petite astuce : on enlève le '\n' ajouté par Protocol_MoveToString
-  // car SerializePacket va déjà en rajouter un !
   move_str[strcspn (move_str, "\n")] = 0;
 
-  // 2. Créer le paquet réseau
   Packet pkt;
   pkt.type = (manager->current_mode == NET_MODE_CLIENT) ? C2S_MOVE : S2C_MOVE;
   strncpy (pkt.payload, move_str, MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 3. Sérialiser
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;
 
-  // 4. Envoyer ! (Si on est client, on envoie au serveur (TARGET_SERVER). Si
-  // on est serveur, on envoie au client TARGET_CLIENT_1)
   int target = (manager->current_mode == NET_MODE_CLIENT)
                    ? TARGET_SERVER
                    : TARGET_CLIENT_1; // TODO
@@ -339,7 +327,7 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
 }
 
 /**
- * @brief Construit et envoie un paquet de TIMEOUT proprement.
+ * @brief Constructs and sends a TIMEOUT packet cleanly.
  */
 int
 NetworkManager_SendTimeout (NetworkManager *manager)
@@ -347,22 +335,17 @@ NetworkManager_SendTimeout (NetworkManager *manager)
   if (manager == NULL || manager->current_mode == NET_MODE_NONE)
     return NET_ERROR;
 
-  // 1. Création du paquet réseau
   Packet pkt;
-  pkt.type = PKT_TIMEOUT; // On utilise le type 0, le handler cherchera le mot
-                          // "TIMEOUT"
+  pkt.type = PKT_TIMEOUT;
   strncpy (pkt.payload, "TIMEOUT", MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  // 2. Sérialisation (ajout du TYPE| et du '\n')
   char formatted_buffer[512];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
       return NET_ERROR;
     }
 
-  // 3. Envoi à l'adversaire (0 pour le serveur si on est client, 1 pour le
-  // client 1 si on est serveur)
   int target = (manager->current_mode == NET_MODE_CLIENT)
                    ? TARGET_SERVER
                    : TARGET_CLIENT_1; // TODO
@@ -819,7 +802,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       if (manager->server_ctx->fds[i].fd != INVALID_SOCKET
           && manager->server_ctx->clients[i].is_joined)
         {
-          char line[64];
+          char line[PLAYER_INFO_BUFFER_SIZE];
           const char *status_str = "Unknown";
 
           switch (manager->server_ctx->clients[i].status)
