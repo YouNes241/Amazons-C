@@ -551,11 +551,9 @@ undo_move (GameState *state)
   if (!success)
     return false;
 
-  // On efface la flèche
   state->board[last_move.arrow_dst.row][last_move.arrow_dst.col]
       = CONTENT_EMPTY;
 
-  // On replace la reine
   CellContent queen_color
       = state->board[last_move.queen_dst.row][last_move.queen_dst.col];
   state->board[last_move.queen_dst.row][last_move.queen_dst.col]
@@ -579,9 +577,6 @@ redo_move (GameState *state)
 
   if (!success)
     return false;
-
-  // Cette fonction s'occupe déjà de bouger les pièces, changer de joueur,
-  // et de repousser ce coup dans la undo_stack
   apply_move (state, next_move);
 
   return true;
