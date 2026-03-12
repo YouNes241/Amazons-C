@@ -36,7 +36,7 @@ typedef struct
   void (*OnPlayerJoined) (const char *player_name);
   void (*OnPlayerDisconnected) (const char *reason);
   void (*OnInvitationReceived) (int from_player_id);
-  void (*OnInvitationResult) (bool accepted);
+  void (*OnInvitationDeclined) (const char *message);
   void (*OnGameStarted) (PlayerColor color);
   void (*OnGameError) (const char *error_msg);
   void (*OnTimeoutReceived) (void);

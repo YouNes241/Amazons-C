@@ -377,6 +377,12 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
         }
       break;
+    case S2C_DECLINE:
+      if (manager->callbacks.OnInvitationDeclined)
+        {
+          manager->callbacks.OnInvitationDeclined (pkt->payload);
+        }
+      break;
     case S2C_OPPONENT_LEFT:
 
       if (manager->callbacks.OnPlayerDisconnected)
