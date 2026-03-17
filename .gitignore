@@ -2,6 +2,7 @@ build/*
 libs/*
 coverage/*
 docs/*
+!docs/Doxyfile.in
 
 CMakeCache.txt
 CMakeFiles/

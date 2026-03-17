@@ -1,0 +1,58 @@
+# Project settings
+PROJECT_NAME           = "AMAZONS-C"
+PROJECT_NUMBER         = 1.0
+PROJECT_BRIEF          = "The Amazons-C code documentation"
+
+# Input and output settings
+INPUT            = @CMAKE_CURRENT_SOURCE_DIR@/src/     \
+                   @CMAKE_CURRENT_SOURCE_DIR@/include/ \
+                   @CMAKE_CURRENT_SOURCE_DIR@/docs
+OUTPUT_DIRECTORY = @CMAKE_CURRENT_BINARY_DIR@/docs/
+
+# Doxygen settings
+DOXYFILE_ENCODING     = UTF-8
+MARKDOWN_SUPPORT      = YES
+OPTIMIZE_OUTPUT_FOR_C = YES
+FILE_PATTERNS         = *.c *.h *.md
+RECURSIVE             = YES
+
+# Path settings
+STRIP_FROM_PATH       = @CMAKE_CURRENT_SOURCE_DIR@
+STRIP_FROM_INC_PATH   = @CMAKE_CURRENT_SOURCE_DIR@
+FULL_PATH_NAMES       = NO
+
+# Code and preprocessor settings
+EXTRACT_ALL           = YES
+EXTRACT_PRIVATE       = YES
+EXTRACT_STATIC        = YES
+
+ENABLE_PREPROCESSING   = YES
+SEARCH_INCLUDES        = YES
+INCLUDE_PATH           = @CMAKE_CURRENT_SOURCE_DIR@/include
+INCLUDE_FILE_PATTERNS  = *.h
+
+# Source browser settings
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+REFERENCES_RELATION    = YES
+REFERENCES_LINK_SOURCE = YES
+SOURCE_TOOLTIPS        = YES
+
+# HTML documentation
+GENERATE_HTML = YES
+
+# Disable other formats
+GENERATE_LATEX = NO
+GENERATE_RTF = NO
+
+# Diagram settings
+HAVE_DOT               = YES
+
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+GROUP_GRAPHS           = YES
+
+GRAPHICAL_HIERARCHY    = YES
+DIRECTORY_GRAPH        = YES
