@@ -24,13 +24,13 @@ sudo apt update && sudo apt install -y \
 After successfully installing them, you can simply build the project via :
 
 ```bash
-cmake -B build -S . -DENABLE_COVERAGE=OFF && cmake --build build --parallel $(nproc) && cp build/amazons-c .
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Coverage ..
 ```
 
 And run the executable :
 
 ```bash
-./amazons-c
+./src/amazons-c
 ```
 
-You may also run ``make`` and ``make clean``, for your convenience. ``make run`` is also available to run the project once built.
+You may also run ``make`` and ``make clean``, for your convenience.
