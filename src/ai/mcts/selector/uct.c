@@ -15,9 +15,9 @@ typedef struct
  * @param parent The MCTS_Node for which to select a child node.
  * @return The selected child MCTS_Node based on the highest UCT score, or NULL
  * if there are no children.
- * @note The UCT score is calculated as:
+ * @note The UCT score is calculated as: (UCB1)
  * UCT = (score / visit_count) + (exploration_constant *
- * sqrt(log(parent_visit_count) / visit_count)),
+ * sqrt(log(parent_visit_count+1) / visit_count)),
  * where score is the total score of the child node, visit_count is the number
  * of times the child node has been visited, parent_visit_count is the number
  * of times the parent node has been visited, and exploration_constant is a
@@ -27,39 +27,22 @@ static MCTS_Node *
 uct_select_child (ISelector *self, MCTS_Node *parent)
 {
   UCT_Data *data = (UCT_Data *)self->context;
-  int unvisited_count = 0;
-  MCTS_Node *chosen_unvisited = NULL;
   MCTS_Node *current = parent->first_child;
+  MCTS_Node *best_child = NULL;
+  float best_uct_score = -INFINITY;
+  float parent_score = data->exploration_constant
+                       * sqrt (logf ((float)parent->visit_count + 1.0f));
 
   while (current != NULL)
     {
       if (current->visit_count == 0)
         {
-          /* reservoir sampling to choose uniformly */
-          unvisited_count++;
-          if ((rand () % unvisited_count) == 0)
-            chosen_unvisited = current;
+          return current;
         }
-      current = current->next_sibling;
-    }
 
-  if (chosen_unvisited != NULL)
-    return chosen_unvisited;
+      float exploitation = (float)current->score / (float)current->visit_count;
+      float exploration = (parent_score * sqrt (1 / (current->visit_count)));
 
-  /*
-   * All children have been visited; compute the usual UCT value and pick the
-   * child with the highest score.
-   */
-  MCTS_Node *best_child = NULL;
-  float best_uct_score = -INFINITY;
-  current = parent->first_child;
-
-  while (current != NULL)
-    {
-      float exploitation = (float)current->score / current->visit_count;
-      float exploration
-          = data->exploration_constant
-            * sqrtf (logf ((float)parent->visit_count) / current->visit_count);
       float uct_score = exploitation + exploration;
 
       if (uct_score > best_uct_score)

@@ -148,6 +148,27 @@ get_move_limit (BitboardState state)
   return k * reach * reach;
 }
 
+Bitboard
+bitboard_state_get_occupied_squares (BitboardState state)
+{
+  Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
+  occupied = bitboard_or (occupied, state.arrows);
+  return occupied;
+}
+
+Bitboard
+bitboard_state_get_empty_squares (BitboardState state)
+{
+  Bitboard occupied = bitboard_state_get_occupied_squares (state);
+  return bitboard_masked_not (occupied, state.size);
+}
+
+Bitboard
+bitboard_state_get_current_queens (BitboardState state)
+{
+  return (state.white_to_move) ? state.white_queens : state.black_queens;
+}
+
 /**
  * @brief Checks if the game is over by determining if there are no legal moves
  * available for the current player.
@@ -157,15 +178,16 @@ get_move_limit (BitboardState state)
 bool
 bitboard_state_is_game_over (BitboardState state)
 {
-  Bitboard my_queens
-      = (state.white_to_move) ? state.white_queens : state.black_queens;
+  // Get the current queens
+  Bitboard my_queens = bitboard_state_get_current_queens (state);
 
-  Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
-  occupied = bitboard_or (occupied, state.arrows);
-  Bitboard empty
-      = bitboard_and (bitboard_not (occupied), get_board_mask (state.size));
+  // Get the empty squares
+  Bitboard empty = bitboard_state_get_empty_squares (state);
 
+  // Move 1 movement around, from our queens and using the empty tiles
   Bitboard adjacent_moves = expand_king_step (my_queens, empty, state.size);
+
+  // Check if even a single move like this exist
   return bitboard_is_zero (adjacent_moves);
 }
 
@@ -174,10 +196,8 @@ get_legal_moves (BitboardState state, Move *moves_array)
 {
   int count = 0;
   int size = state.size;
-  Bitboard occupied = bitboard_or (
-      bitboard_or (state.white_queens, state.black_queens), state.arrows);
-  Bitboard my_queens
-      = state.white_to_move ? state.white_queens : state.black_queens;
+  Bitboard occupied = bitboard_state_get_occupied_squares (state);
+  Bitboard my_queens = bitboard_state_get_current_queens (state);
 
   for (uint8_t q_from = 0; q_from < (size * size); q_from++)
     {
@@ -215,5 +235,6 @@ get_legal_moves (BitboardState state, Move *moves_array)
             }
         }
     }
+  printf ("count : %d\n", count);
   return count;
 }

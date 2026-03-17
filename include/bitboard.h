@@ -91,6 +91,15 @@ Bitboard bitboard_xor (Bitboard a, Bitboard b);
 Bitboard bitboard_not (Bitboard a);
 
 /**
+ * @brief Applies NOT while ensuring the mask is applied
+ * to prevent leakage
+ * @param a The bitboard to invert
+ * @param size The size of the bitboard
+ * @return New bitboard with all bits inverted, while masking unused bits.
+ */
+Bitboard bitboard_masked_not (Bitboard a, uint8_t size);
+
+/**
  * @brief Shift bits left (towards higher indices).
  * @param bb The bitboard to shift.
  * @param shift Number of positions to shift left.

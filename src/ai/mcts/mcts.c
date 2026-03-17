@@ -123,7 +123,24 @@ rollout (BitboardState state)
   if (starting_player == starting_player_won)
     return 1.0f;
 
-  return 0.0f;
+  return -1.0f;
+}
+
+static MCTS_Node *
+alloc_mcts_node (MCTS_Node *parent, Move move)
+{
+  MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
+  if (!node)
+    return NULL;
+
+  node->parent = parent;
+  node->move_from_parent = move;
+  node->visit_count = 0;
+  node->score = 0.0f;
+  node->first_child = NULL;
+  node->next_sibling = NULL;
+
+  return node;
 }
 
 /**
@@ -139,16 +156,7 @@ rollout (BitboardState state)
 static MCTS_Node *
 create_mcts_node (MCTS_Node *parent, Move move)
 {
-  MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
-  if (!node)
-    return NULL;
-
-  node->parent = parent;
-  node->move_from_parent = move;
-  node->visit_count = 0;
-  node->score = 0.0f;
-  node->first_child = NULL;
-  node->next_sibling = NULL;
+  MCTS_Node *node = alloc_mcts_node (parent, move);
 
   if (parent != NULL)
     {
@@ -182,30 +190,40 @@ create_mcts_node (MCTS_Node *parent, Move move)
 static MCTS_Node *
 expand (MCTS_Node *parent, BitboardState state)
 {
+  if (bitboard_state_is_game_over (state))
+    {
+      return parent;
+    }
+
   Move moves[get_move_limit (state)];
   int count = get_legal_moves (state, moves);
 
-  /*
-   * Shuffle the moves array so that unvisited expansions do not always
-   * follow the same ordering produced by `get_legal_moves`.  This further
-   * reduces the appearance of a "filling" pattern in the tree.
-   */
-  for (int i = count - 1; i > 0; i--)
-    {
-      int j = rand () % (i + 1);
-      Move tmp = moves[i];
-      moves[i] = moves[j];
-      moves[j] = tmp;
-    }
+  if (count == 0)
+    return parent;
+
+  MCTS_Node *last_added = NULL;
 
   for (int i = 0; i < count; i++)
     {
-      if (!has_child_with_move (parent, moves[i]))
-        {
-          return create_mcts_node (parent, moves[i]);
-        }
+      MCTS_Node *node = alloc_mcts_node (parent, moves[i]);
+
+      if (parent->first_child == NULL)
+        parent->first_child = node;
+      else
+        last_added->next_sibling = node;
+
+      last_added = node;
     }
-  return parent;
+
+  int random_idx = rand () % count;
+  MCTS_Node *chosen = parent->first_child;
+
+  for (int i = 0; i < random_idx; i++)
+    {
+      chosen = chosen->next_sibling;
+    }
+
+  return chosen;
 }
 
 /**
@@ -231,11 +249,11 @@ free_mcts_tree (MCTS_Node *node)
 }
 
 /**
- * @brief Gets the child node with the highest visit count from the given root
- * node.
+ * @brief Gets the child node with the highest visit count from the given
+ * root node.
  * @param root The root node of the MCTS tree to search through.
- * @return The child node with the highest visit count, or NULL if there are no
- * children.
+ * @return The child node with the highest visit count, or NULL if there are
+ * no children.
  */
 static MCTS_Node *
 get_child_with_max_visits (MCTS_Node *root)
@@ -272,21 +290,19 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 
   unsigned long start_time = get_time_ms ();
   unsigned long time_limit = data->time_constraint;
+
   while ((get_time_ms () - start_time) < time_limit)
     {
       MCTS_Node *picked = select_node (root, data->strategy_select);
 
       BitboardState current_state = derive_state (root_state, picked);
-      if (!bitboard_state_is_game_over (current_state))
-        {
-          picked = expand (picked, current_state);
-          current_state
-              = apply_move_bitboard (current_state, picked->move_from_parent);
-        }
+      picked = expand (picked, current_state);
 
+      current_state
+          = apply_move_bitboard (current_state, picked->move_from_parent);
       float result = rollout (current_state);
 
-      backpropagate (picked, result);
+      backpropagate (picked, 1.0f - result);
     }
 
   MCTS_Node *best_node = get_child_with_max_visits (root);
@@ -304,8 +320,8 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 /**
  * @brief Cleans up the MCTS AI by freeing the selector strategy
  * and the main data context.
- * @param self The AI_Interface instance to clean, which holds the context for
- * the MCTS algorithm.
+ * @param self The AI_Interface instance to clean, which holds the context
+ * for the MCTS algorithm.
  */
 static void
 mcts_clean (AI_Interface *self)
@@ -335,7 +351,8 @@ mcts_clean (AI_Interface *self)
  * @param self The AI_Interface instance to initialize, which will hold the
  * context for the MCTS algorithm.
  * @param params A ConfigMap containing optional parameters:
- * @note time_limit: Time in milliseconds for the MCTS search (default 5000ms).
+ * @note time_limit: Time in milliseconds for the MCTS search (default
+ * 5000ms).
  * @note max_iterations: Maximum number of iterations for the MCTS search
  * (default 100000).
  * @note max_workers: Maximum number of worker threads for parallel MCTS

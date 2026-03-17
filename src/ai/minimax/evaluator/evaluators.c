@@ -218,8 +218,7 @@ bfs_bitboard (Bitboard starts, Bitboard obstacles, uint8_t width, int mode,
       dist_map[idx] = 0;
     }
 
-  Bitboard empty_squares
-      = bitboard_and (bitboard_not (obstacles), get_board_mask (width));
+  Bitboard empty_squares = bitboard_masked_not (obstacles, width);
   int dist = 0;
 
   while (!bitboard_is_zero (frontier))
@@ -295,8 +294,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
 static float
 eval_me (BitboardState *state)
 {
-  Bitboard mask = get_board_mask (state->size);
-  Bitboard empty = bitboard_and (bitboard_not (get_obstacles (state)), mask);
+  Bitboard empty = bitboard_masked_not (get_obstacles (state), state->size);
 
   int white = calculate_mobility_sum (state->white_queens, empty, state->size);
   int black = calculate_mobility_sum (state->black_queens, empty, state->size);

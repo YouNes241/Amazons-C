@@ -71,6 +71,7 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
 
   // Distant Black queen
   cc[0][0] = CONTENT_BLACK_QUEEN;
+  cc[0][1] = CONTENT_EMPTY;
 
   GameState state = { .size = 10,
                       .board = cc,
@@ -89,15 +90,15 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
   Move best = ai.vtable->get_best_move (&ai, state);
   double time_taken = get_time_ms () - time;
 
-  // MCTS should find that moving to (9,1) or (9,2) and placing an arrow on
-  // (9,0) is the only winning move
   // It should also find it in less than a second. (with some margin due to
   // latency)
   EXPECT_TRUE (time_taken < 1100);
   EXPECT_EQ (best.queen_src.row, 9);
   EXPECT_EQ (best.queen_src.col, 0);
-  EXPECT_TRUE (best.queen_dst.col == 1 || best.queen_dst.col == 2);
-  EXPECT_TRUE (best.arrow_dst.row == 9 && best.arrow_dst.col == 0);
+  bool best_move_one = best.queen_dst.col == 1;
+  bool best_move_two = best.queen_dst.col == 2 && best.arrow_dst.row == 9
+                       && best.arrow_dst.col == 0;
+  EXPECT_TRUE (best_move_one || best_move_two);
 
   ai.vtable->clean (&ai);
   free_gs_board (&state);

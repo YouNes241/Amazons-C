@@ -165,6 +165,12 @@ bitboard_not (Bitboard a)
   return res;
 }
 
+Bitboard
+bitboard_masked_not (Bitboard a, uint8_t size)
+{
+  return bitboard_and (bitboard_not (a), get_board_mask (size));
+}
+
 /**
  * @brief Check if two bitboards are equal.
  */
