@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="multiplayer_box">
+    <property name="orientation">vertical</property>
+    
+    <child>
+      <object class="GtkButton" id="return_btn">
+        <property name="icon-name">go-previous-symbolic</property>
+        <property name="halign">start</property> 
+        <property name="valign">start</property>
+        <property name="margin-top">30</property>
+        <property name="margin-start">30</property> 
+        <property name="css-classes">circular flat</property>
+        <property name="tooltip-text">Return</property>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property> 
+        
+        <child>
+          <object class="GtkLabel" id="title_label">
+            <property name="label">MULTIPLAYER</property>
+            <property name="css-classes">title-1</property>
+            <property name="margin-bottom">40</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkButton" id="host_server_btn">
+            <property name="label">Host a server</property>
+            <property name="width-request">250</property>
+            <property name="height-request">50</property>
+            <property name="css-classes">pill</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkButton" id="join_server_btn">
+            <property name="label">Join a server</property>
+            <property name="width-request">250</property>
+            <property name="height-request">50</property>
+            <property name="css-classes">pill</property>
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

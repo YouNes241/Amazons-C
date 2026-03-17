@@ -2,12 +2,13 @@
 file(GLOB_RECURSE TEST_SOURCES "*.cpp")
 
 # --- CREATE TEST EXECUTABLE ---
-add_executable(unit_tests ${TEST_SOURCES} ${GAME_SRC})
+add_executable(unit_tests ${TEST_SOURCES})
 
 # --- INCLUDES ---
 target_include_directories(unit_tests PRIVATE 
     "${CMAKE_SOURCE_DIR}/include"
     ${GUI_INCLUDE_DIRS}
+    ${READLINE_INCLUDE_DIRS}
 )
 
 # --- LINKING ---
@@ -18,9 +19,10 @@ endif()
 
 # GTest
 target_link_libraries(unit_tests PRIVATE 
-    GTest::GTest 
-    GTest::Main 
+    amazons_core
+    GTest::gtest_main 
     ${GUI_LIBRARIES} 
+    ${READLINE_LIBRARIES}
     m
 )
 include(GoogleTest)

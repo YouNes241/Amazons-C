@@ -1,14 +1,28 @@
 #ifndef GAME_TYPES_H
 #define GAME_TYPES_H
 
+#include "bitboard.h"
 #include <stdbool.h>
 #include <stdint.h>
+
+typedef struct
+{
+  const char *key;
+  const char *value;
+} Param;
+
+typedef struct
+{
+  Param *list;
+  int count;
+} ConfigMap;
 
 // Represents the two players
 typedef enum
 {
   PLAYER_WHITE = 0,
-  PLAYER_BLACK = 1
+  PLAYER_BLACK = 1,
+  NO_PLAYER = 2 // Used for error cases or when there is no winner yet
 } PlayerColor;
 
 typedef enum
@@ -43,6 +57,12 @@ typedef struct
   Position arrow_dst;
 } Move;
 
+typedef struct
+{
+  Move *data;
+  int top;
+  int capacity;
+} MoveStack;
 // Represents the public game state (what other modules are allowed to see)
 typedef struct
 {
@@ -51,6 +71,8 @@ typedef struct
   PlayerColor current_player;
   GameStatus status;
   uint32_t turn_count; // Counter of the number of turns played
+  MoveStack undo_stack;
+  MoveStack redo_stack;
 } GameState;
 
 #endif

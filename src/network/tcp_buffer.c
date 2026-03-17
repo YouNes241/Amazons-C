@@ -17,7 +17,11 @@
 void
 tcp_buffer_init (tcp_buffer_t *buf)
 {
-  buf->length = 0;
+  if (buf == NULL)
+    {
+      return;
+    }
+  buf->length = EMPTY_BUFFER_LENGTH;
   memset (buf->data, 0, TCP_BUFFER_SIZE);
 }
 
@@ -37,6 +41,12 @@ tcp_buffer_init (tcp_buffer_t *buf)
 bool
 tcp_buffer_append (tcp_buffer_t *buf, const char *new_data, size_t new_len)
 {
+
+  if (buf == NULL || new_data == NULL)
+    {
+      return false;
+    }
+
   if (buf->length + new_len >= TCP_BUFFER_SIZE)
     {
       return false;
@@ -61,37 +71,40 @@ tcp_buffer_append (tcp_buffer_t *buf, const char *new_data, size_t new_len)
  * @param buf Pointer to the TCP buffer.
  * @param out_msg Buffer where the extracted message will be stored.
  * @param max_out_len Maximum size of the output buffer.
- * @return int 1 if a message was extracted, 0 if no complete message (newline)
- * was found.
+ * @return int EXTRACT_SUCCESS (1), EXTRACT_NO_MSG (0), EXTRACT_MSG_OVERFLOW
+ * (-1)
  */
 int
 tcp_buffer_extract_line (tcp_buffer_t *buf, char *out_msg, size_t max_out_len)
 {
-  char *newline = memchr (buf->data, '\n', buf->length);
+  if (buf == NULL || out_msg == NULL)
+    return EXTRACT_NO_MSG;
 
+  char *newline = memchr (buf->data, NEWLINE_CHAR, buf->length);
   if (newline == NULL)
-    {
-      return 0;
-    }
+    return EXTRACT_NO_MSG;
 
   size_t msg_len = newline - buf->data;
-
-  if (msg_len < max_out_len)
-    {
-      memcpy (out_msg, buf->data, msg_len);
-      out_msg[msg_len] = '\0';
-    }
-
-  size_t total_consumed = msg_len + 1;
+  size_t total_consumed = msg_len + NEWLINE_CHAR_LEN;
   size_t remaining = buf->length - total_consumed;
 
-  if (remaining > 0)
+  // Message too long for output buffer: consume and discard
+  if (msg_len >= max_out_len)
     {
       memmove (buf->data, buf->data + total_consumed, remaining);
+      buf->length = remaining;
+      buf->data[buf->length] = '\0';
+      return EXTRACT_MSG_OVERFLOW;
     }
+
+  memcpy (out_msg, buf->data, msg_len);
+  out_msg[msg_len] = '\0';
+
+  if (remaining > 0)
+    memmove (buf->data, buf->data + total_consumed, remaining);
 
   buf->length = remaining;
   buf->data[buf->length] = '\0';
 
-  return 1;
+  return EXTRACT_SUCCESS;
 }
