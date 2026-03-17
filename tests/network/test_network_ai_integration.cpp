@@ -71,7 +71,9 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   // 3. AI generates a real hit
   ConfigMap empty_params = { nullptr, 0 };

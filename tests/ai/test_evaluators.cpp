@@ -60,11 +60,13 @@ setup_standard_start (int board_size)
       cc[board_size - 1][board_size - 1] = CONTENT_WHITE_QUEEN;
     }
 
-  return (GameState){ .size = board_size,
+  return (GameState){ .size = (uint8_t)board_size,
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 }
 
 void
@@ -322,7 +324,9 @@ TEST (EvaluatorTest, RandomMove)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
@@ -369,7 +373,9 @@ TEST (EvaluatorTest, MiniMaxMove)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
@@ -423,7 +429,9 @@ TEST (EvaluatorTest, MiniMaxWin)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);

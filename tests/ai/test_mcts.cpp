@@ -77,7 +77,9 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 50 };
+                      .turn_count = 50,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   // Give MCTS 1 second to explore
   Param p = { (char *)"time_limit", (char *)"1000" };
@@ -125,7 +127,9 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   Param p = { (char *)"time_limit", (char *)"500" };
   ConfigMap cm = { .list = &p, .count = 1 };
@@ -178,7 +182,9 @@ TEST (MCTSCoverageTest, TriggerChildLoop)
                       .board = cc,
                       .current_player = PLAYER_WHITE,
                       .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+                      .turn_count = 0,
+                      .undo_stack = {},
+                      .redo_stack = {} };
 
   Param p = { (char *)"time_limit", (char *)"3000" };
   ConfigMap cm = { .list = &p, .count = 1 };
