@@ -17,15 +17,6 @@ typedef struct
   int count;
 } ConfigMap;
 
-typedef struct
-{
-  Bitboard white_queens;
-  Bitboard black_queens;
-  Bitboard arrows;
-  uint8_t size;
-  bool white_to_move;
-} BitboardState;
-
 // Represents the two players
 typedef enum
 {

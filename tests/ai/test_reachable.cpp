@@ -3,7 +3,6 @@
 extern "C"
 {
 #include "bitboard.h"
-#include "utils.h"
 }
 
 class GetReachableTest : public ::testing::Test
@@ -23,7 +22,7 @@ protected:
 TEST_F (GetReachableTest, CenterEmptyBoard)
 {
   uint8_t start_idx = 55; // (5, 5) on 10x10
-  Bitboard reachable = get_reachable (start_idx, occupied, size);
+  Bitboard reachable = bitboard_get_reachable (start_idx, occupied, size);
 
   bitboard_print (reachable, size);
 
@@ -35,8 +34,6 @@ TEST_F (GetReachableTest, CenterEmptyBoard)
 
   // Diagonal check: North-West to (0,0)
   EXPECT_TRUE (bitboard_get_bit (reachable, 0));
-
-  // Print it
 }
 
 // 2. Test that obstacles correctly block the "Slide"
@@ -47,7 +44,7 @@ TEST_F (GetReachableTest, ObstacleBlocking)
   // Place an obstacle at (4, 6) which is index 46
   bitboard_set_bit (&occupied, 46);
 
-  Bitboard reachable = get_reachable (start_idx, occupied, size);
+  Bitboard reachable = bitboard_get_reachable (start_idx, occupied, size);
 
   bitboard_print (reachable, size);
 
@@ -62,7 +59,7 @@ TEST_F (GetReachableTest, ObstacleBlocking)
 TEST_F (GetReachableTest, DoesNotIncludeStart)
 {
   uint8_t start_idx = 22;
-  Bitboard reachable = get_reachable (start_idx, occupied, size);
+  Bitboard reachable = bitboard_get_reachable (start_idx, occupied, size);
 
   bitboard_print (reachable, size);
 

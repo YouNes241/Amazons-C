@@ -650,8 +650,10 @@ run_interactive_mode (game_config_t *config)
 
   if ((config->ai_white || config->ai_black))
     {
-      ConfigMap empty_params = { .list = NULL, .count = 0 };
-      g_ai = create_ai ("random", empty_params);
+      Param p_mini[] = { { (char *)"depth", (char *)"4" },
+                         { (char *)"evaluator", (char *)"qd&kd" } };
+      ConfigMap cm_mini = { .list = p_mini, .count = 2 };
+      g_ai = create_ai ("minimax", cm_mini);
       g_ai_initialized = (g_ai.vtable != NULL);
     }
 

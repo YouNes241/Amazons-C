@@ -1,9 +1,8 @@
 build/*
 libs/*
 coverage/*
-!build/.gitkeep
-!libs/.gitkeep
-!coverage/.gitkeep
+docs/*
+!docs/Doxyfile.in
 
 CMakeCache.txt
 CMakeFiles/

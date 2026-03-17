@@ -9,62 +9,6 @@
 
 #define INF_DIST 255
 
-static Bitboard BOARD_MASKS[12];
-static bool masks_initialized = false;
-
-/**
- * @brief Pre-compute masks for valid squares based on board size.
- *
- * Initializes board masks used to correct uninitialized squares.
- * The masks are pre-computed to avoid repeated calculations.
- *
- * @return void
- */
-static void
-init_board_masks ()
-{
-  for (uint8_t s = 4; s <= 11; s++)
-    {
-      int total_squares = s * s;
-      Bitboard m = { 0, 0 };
-
-      if (total_squares <= 64)
-        {
-          m.low = (total_squares == 64) ? ~0ULL : (1ULL << total_squares) - 1;
-          m.high = 0;
-        }
-      else
-        {
-          m.low = ~0ULL;
-          m.high = (1ULL << (total_squares - 64)) - 1;
-        }
-      BOARD_MASKS[s] = m;
-    }
-  masks_initialized = true;
-}
-
-/**
- * @brief Retrieves the pre-computed board mask for a given board size.
- *
- * The mask filters out-of-bounds squares for boards sized 4 to 11.
- * Automatically initializes masks on the first call if necessary.
- *
- * @param size The size of the board (4 to 11).
- * @return A Bitboard with bits set for valid squares on the board of the given
- * size.
- */
-static Bitboard
-get_board_mask (uint8_t size)
-{
-  if (!masks_initialized)
-    {
-      init_board_masks ();
-    }
-
-  uint8_t limit = (size > 11) ? 10 : (size < 4 ? 4 : size);
-  return BOARD_MASKS[limit];
-}
-
 /**
  * @brief Puts all occupied squares (queens and arrows) into a single bitboard.
  * @param state A game state with pos of queens and arrows.
@@ -274,8 +218,7 @@ bfs_bitboard (Bitboard starts, Bitboard obstacles, uint8_t width, int mode,
       dist_map[idx] = 0;
     }
 
-  Bitboard empty_squares
-      = bitboard_and (bitboard_not (obstacles), get_board_mask (width));
+  Bitboard empty_squares = bitboard_masked_not (obstacles, width);
   int dist = 0;
 
   while (!bitboard_is_zero (frontier))
@@ -351,8 +294,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
 static float
 eval_me (BitboardState *state)
 {
-  Bitboard mask = get_board_mask (state->size);
-  Bitboard empty = bitboard_and (bitboard_not (get_obstacles (state)), mask);
+  Bitboard empty = bitboard_masked_not (get_obstacles (state), state->size);
 
   int white = calculate_mobility_sum (state->white_queens, empty, state->size);
   int black = calculate_mobility_sum (state->black_queens, empty, state->size);

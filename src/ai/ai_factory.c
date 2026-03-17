@@ -11,8 +11,11 @@ typedef struct
 // Modify this table if you ever add an ai
 extern void create_random_ai (AI_Interface *ai);
 extern void create_minimax_ai (AI_Interface *ai);
+extern void create_mcts_ai (AI_Interface *ai);
 static const AI_RegistryEntry AI_REGISTRY[]
-    = { { "random", create_random_ai }, { "minimax", create_minimax_ai } };
+    = { { "random", create_random_ai },
+        { "minimax", create_minimax_ai },
+        { "mcts", create_mcts_ai } };
 
 static const size_t AI_REGISTRY_SIZE
     = sizeof (AI_REGISTRY) / sizeof (AI_REGISTRY[0]);

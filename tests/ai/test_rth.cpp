@@ -3,8 +3,6 @@ extern "C"
 {
 #include "bitboard.h"
 #include "evaluator.h"
-#include "minimax.h"
-#include "utils.h"
 }
 
 // RTH : Symmetric Initial Position

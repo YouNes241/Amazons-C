@@ -1,6 +1,9 @@
 #include "../../include/bitboard.h"
 #include <stdio.h>
 
+static Bitboard BOARD_MASKS[12];
+static bool masks_initialized = false;
+
 /**
  * @brief Initialize an empty bitboard with all bits set to 0.
  */
@@ -162,6 +165,12 @@ bitboard_not (Bitboard a)
   return res;
 }
 
+Bitboard
+bitboard_masked_not (Bitboard a, uint8_t size)
+{
+  return bitboard_and (bitboard_not (a), get_board_mask (size));
+}
+
 /**
  * @brief Check if two bitboards are equal.
  */
@@ -297,4 +306,92 @@ int
 bitboard_count_bits (Bitboard bb)
 {
   return __builtin_popcountll (bb.low) + __builtin_popcountll (bb.high);
+}
+
+Bitboard
+bitboard_get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size)
+{
+  Bitboard reachable = bitboard_create_empty ();
+  uint8_t start_r = start_index / size;
+  uint8_t start_c = start_index % size;
+
+  for (int8_t dr = -1; dr <= 1; dr++)
+    for (int8_t dc = -1; dc <= 1; dc++)
+      {
+        // origin
+        if (dr == 0 && dc == 0)
+          continue;
+
+        // any movement
+        for (int dist = 1; dist < size; dist++)
+          {
+            int8_t r = start_r + (dr * dist);
+            int8_t c = start_c + (dc * dist);
+
+            if (r < 0 || r >= size || c < 0 || c >= size)
+              break;
+
+            uint8_t current_idx = r * size + c;
+
+            // If we hit an obstacle, stop.
+            if (bitboard_get_bit (occupied, current_idx))
+              break;
+
+            bitboard_set_bit (&reachable, current_idx);
+          }
+      }
+  return reachable;
+}
+
+/**
+ * @brief Pre-compute masks for valid squares based on board size.
+ *
+ * Initializes board masks used to correct uninitialized squares.
+ * The masks are pre-computed to avoid repeated calculations.
+ *
+ * @return void
+ */
+void
+init_board_masks ()
+{
+  for (uint8_t s = 4; s <= 11; s++)
+    {
+      int total_squares = s * s;
+      Bitboard m = { 0, 0 };
+
+      if (total_squares <= 64)
+        {
+          m.low = (total_squares == 64) ? ~0ULL : (1ULL << total_squares) - 1;
+          m.high = 0;
+        }
+      else
+        {
+          m.low = ~0ULL;
+          m.high = (1ULL << (total_squares - 64)) - 1;
+        }
+      BOARD_MASKS[s] = m;
+    }
+  masks_initialized = true;
+}
+
+/**
+ * @brief Retrieves the pre-computed board mask for a given board size.
+ *
+ * The mask filters out-of-bounds squares for boards sized 4 to 11.
+ * Automatically initializes masks on the first call if necessary.
+ *
+ * @param size The size of the board (4 to 11).
+ * @return A Bitboard with bits set for valid squares on the board of the given
+ * size.
+ */
+Bitboard
+get_board_mask (uint8_t size)
+{
+  if (!masks_initialized)
+    {
+      init_board_masks ();
+    }
+
+  uint8_t limit = (size > 11) ? 10 : (size < 4 ? 4 : size);
+  return BOARD_MASKS[limit];
 }

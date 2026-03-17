@@ -49,6 +49,25 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
     )
 endif()
 
+if (DOXYGEN_FOUND)
+    # set input and output files
+    set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in)
+    set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+
+    # request to configure the file
+    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+    message("Doxygen build started")
+
+    # Option ALL allows to build the docs together with the application
+    add_custom_target( docs ALL
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating API documentation with Doxygen"
+        VERBATIM )
+else (DOXYGEN_FOUND)
+  message("Doxygen is required to generate the documentation")
+endif (DOXYGEN_FOUND)
+
 # --- TEST BITBOARD (TEMP) ---
 add_executable(test_bitboard tests/test_bitboard.c)
 target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
