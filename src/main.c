@@ -166,8 +166,7 @@ main (int argc, char *argv[])
     }
   else if (config->mode == MODE_GUI)
     {
-      GtkApplication *app = createApplication (config);
-      status = runApplication (app, 0, NULL);
+      run_gui_mode (config);
     }
 
   free (config);

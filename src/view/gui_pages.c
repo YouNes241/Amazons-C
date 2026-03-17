@@ -1,4 +1,5 @@
 #include "gui_pages.h"
+#include "controller.h"
 #include "game_engine.h"
 #include "gui_utils.h"
 #include <gtk/gtk.h>
@@ -457,29 +458,12 @@ fireArrow (GtkWidget *button, gpointer user_data)
   current_move.arrow_dst.col = targetX;
   current_move.arrow_dst.row = targetY;
 
-  if (is_move_legal (ctx->gameState, current_move))
-    {
-      apply_move (ctx->gameState, current_move);
+  int size = ctx->gameConfig->board_size;
+  gtk_widget_remove_css_class (
+      ctx->gameBoard[ctx->tmpQueenDst.row * size + ctx->tmpQueenDst.col],
+      "active-queen");
 
-      clearHighlights (ctx);
-      drawBoard (ctx);
-
-      ctx->currentPhase = PHASE_MOVE_QUEEN;
-      g_print ("Arrow fired on (%d, %d).\n", targetX, targetY);
-
-      if (is_game_over (ctx->gameState, ctx->gameState->current_player))
-        {
-          PlayerColor winner = get_winner (ctx->gameState);
-          g_print ("GAME OVER! Winner is: %d\n", winner);
-        }
-    }
-  else
-    {
-      clearHighlights (ctx);
-      drawBoard (ctx);
-      ctx->currentPhase = PHASE_MOVE_QUEEN;
-      g_print ("Error: Engine rejected the move.\n");
-    }
+  guiHandlePlayerMove (ctx, current_move);
 }
 
 static void

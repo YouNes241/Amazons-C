@@ -5,8 +5,8 @@
 extern "C"
 {
 #include "../src/view/gui_pages.h"
-#include "../src/view/gui_utils.h"
 #include "gui_application.h"
+#include "gui_utils.h"
 }
 
 class GuiApplicationTest : public ::testing::Test

@@ -5,6 +5,8 @@
 #include "../../include/game_engine.h"
 #include "../../include/input.h"
 #include "../../include/network_common.h"
+#include "gui_application.h"
+#include <gtk/gtk.h>
 #include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -607,6 +609,65 @@ linehandler (char *line)
       rl_on_new_line ();
     }
 }
+
+static gboolean
+guiAIPlayTurn (gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+
+  g_print ("\n[AI] Thinking...\n");
+  Move ai_move = g_ai.vtable->get_best_move (&g_ai, *(ctx->gameState));
+
+  guiHandlePlayerMove (ctx, ai_move);
+
+  return G_SOURCE_REMOVE;
+}
+
+void
+guiHandlePlayerMove (AppContext *ctx, Move move)
+{
+  if (is_move_legal (ctx->gameState, move))
+    {
+      apply_move (ctx->gameState, move);
+
+      clearHighlights (ctx);
+      drawBoard (ctx);
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+      if (is_game_over (ctx->gameState, ctx->gameState->current_player))
+        {
+          PlayerColor winner = get_winner (ctx->gameState);
+          const char *winnerStr = (winner == PLAYER_WHITE) ? "White" : "Black";
+
+          g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
+
+          GtkWidget *dialog = gtk_message_dialog_new (
+              ctx->mainWindow,
+              GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+              GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "GAME OVER ! \n%s won !",
+              winnerStr);
+
+          g_signal_connect_swapped (dialog, "response",
+                                    G_CALLBACK (gtk_window_destroy), dialog);
+          gtk_window_present (GTK_WINDOW (dialog));
+          return;
+        }
+
+      if (g_ai_initialized
+          && is_it_ai_turn (g_config, ctx->gameState->current_player))
+        {
+          g_timeout_add (50, guiAIPlayTurn, ctx);
+        }
+    }
+  else
+    {
+      g_print ("Error: Engine rejected the move.\n");
+      clearHighlights (ctx);
+      drawBoard (ctx);
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+    }
+}
+
 /* ==========================================================================
    RUN_INTERACTIVE_MODE
    ==========================================================================
@@ -778,4 +839,29 @@ run_interactive_mode (game_config_t *config)
       g_ai.vtable->clean (&g_ai);
     }
   NetworkManager_Cleanup (&net_manager);
+}
+
+/* ==========================================================================
+   RUN_GUI_MODE
+   ==========================================================================
+ */
+void
+run_gui_mode (game_config_t *config)
+{
+  g_config = config;
+
+  if ((config->ai_white || config->ai_black))
+    {
+      ConfigMap empty_params = { .list = NULL, .count = 0 };
+      g_ai = create_ai ("random", empty_params);
+      g_ai_initialized = (g_ai.vtable != NULL);
+    }
+
+  GtkApplication *app = createApplication (config);
+  runApplication (app, 0, NULL);
+
+  if (g_ai_initialized && g_ai.vtable->clean)
+    {
+      g_ai.vtable->clean (&g_ai);
+    }
 }
