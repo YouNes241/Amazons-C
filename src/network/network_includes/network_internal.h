@@ -6,11 +6,10 @@
 #ifndef NETWORK_INTERNAL_H
 #define NETWORK_INTERNAL_H
 
-#include "../../include/network_common.h"
+#include "../../../include/network_common.h"
 #include "tcp_buffer.h"
 #include <arpa/inet.h>
 #include <poll.h>
-#include <stdbool.h>
 #include <time.h>
 
 /* ==========================================================================

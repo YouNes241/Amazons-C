@@ -3,8 +3,7 @@
  * @brief Gestion de l'enregistrement et du chargement des scores.
  */
 
-#include "network_common.h"
-#include "network_internal.h"
+#include "network_includes/network_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

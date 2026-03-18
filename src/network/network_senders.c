@@ -4,9 +4,8 @@
  * requêtes réseau.
  */
 
-#include "network_common.h"
-#include "network_internal.h"
-#include "network_packet.h"
+#include "network_includes/network_internal.h"
+#include "network_includes/network_packet.h"
 #include "network_protocol.h"
 #include <stdio.h>
 #include <stdlib.h>

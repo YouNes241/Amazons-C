@@ -4,8 +4,8 @@
 
 extern "C"
 {
-#include "../../src/network/network_internal.h"
-#include "../../src/network/network_packet.h"
+#include "../../src/network/network_includes/network_internal.h"
+#include "../../src/network/network_includes/network_packet.h"
 #include "ai_factory.h"
 #include "network_protocol.h"
 }

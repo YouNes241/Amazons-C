@@ -4,10 +4,7 @@
  * connections.
  */
 
-#include "network_common.h"
-#include "network_handlers.h"
-#include "network_internal.h"
-#include "network_packet.h"
+#include "network_includes/network_handlers.h"
 #include "network_protocol.h"
 #include <arpa/inet.h>
 #include <errno.h>

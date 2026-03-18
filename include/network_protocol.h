@@ -8,7 +8,6 @@
 #define NETWORK_PROTOCOL_H
 
 #include "../include/game_types.h"
-#include <stdbool.h>
 #include <stddef.h>
 
 /* ==========================================================================
