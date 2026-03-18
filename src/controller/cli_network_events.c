@@ -94,11 +94,12 @@ on_player_disconnected (const char *reason)
     return;
   if (g_net_ctx->net_manager->current_mode == NET_MODE_NONE)
     {
-      printf ("\n[SYSTEM] Server closed. Returning to MAIN MENU.\n");
+
       g_net_ctx->in_network_match = false;
       g_net_ctx->in_main_menu = true;
 
       cli_display_main_menu ();
+      printf ("\n[SYSTEM] Connection lost: Server has shut down.\n");
     }
   else
     {
@@ -115,9 +116,10 @@ on_player_disconnected (const char *reason)
 static void
 on_game_error (const char *err)
 {
-  (void)err;
+
   if (!g_net_ctx)
     return;
+  printf ("\n[SERVER ERROR] %s\n", err ? err : "Unknown error");
   refresh_prompt (g_net_ctx);
 }
 

@@ -350,10 +350,10 @@ TEST_F (NetworkManagerTest, LobbyAPIHelpersCoverage)
   EXPECT_EQ (NetworkManager_SendAccept (&server_mgr, 2),
              NET_ERROR); // Server cannot accept invites
   EXPECT_EQ (NetworkManager_SendDecline (nullptr, 2), NET_ERROR);
-  EXPECT_EQ (NetworkManager_SendListRequest (nullptr), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendListRequest (nullptr, 0), NET_ERROR);
 
   // 2. Valid Client Calls
-  EXPECT_EQ (NetworkManager_SendListRequest (&client_mgr), NET_SUCCESS);
+  EXPECT_EQ (NetworkManager_SendListRequest (&client_mgr, 0), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendInvite (&client_mgr, 2, 10), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendAccept (&client_mgr, 2), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendDecline (&client_mgr, 2), NET_SUCCESS);
@@ -397,7 +397,7 @@ TEST_F (NetworkManagerTest, LobbyFullLifecycle_InviteAndAccept)
   ASSERT_TRUE (server_mgr.server_ctx->clients[2].is_joined);
 
   // 1. Alice requests the player list
-  NetworkManager_SendListRequest (&alice);
+  NetworkManager_SendListRequest (&alice, 0); // Target 0 for full list
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);

@@ -27,7 +27,19 @@ typedef enum
   S2C_LIST = 14,    // Server -> Client: Sends the list of players
   PKT_TIMEOUT = 15,
   S2C_OPPONENT_LEFT = 16,
-  PKT_TYPE_MAX = 17,
+  C2S_CANCEL = 17, // Client -> Server: Cancel an invite
+  S2C_CANCEL = 18, // Server -> Client: Inform the invitee that the challenger
+                   // canceled
+  C2S_AWAY = 19,   // Client -> Server: Set status to away
+  C2S_BACK = 20,   // Client -> Server: Set status to back
+  C2S_PING = 21,
+  S2C_PONG = 22,
+  C2S_SCOREBOARD = 23, // Client -> Server: Requests the scoreboard
+  S2C_SCOREBOARD = 24, // Server -> Client: Sends the scoreboard
+  C2S_GAME_OVER
+  = 25, // Client -> Server: Inform the server that the game is over
+  PKT_TYPE_MAX = 26 // Not a real packet, just a marker for the max value (used
+                    // in validation)
 } PacketType;
 
 /* ==========================================================================

@@ -138,6 +138,8 @@ run_interactive_mode (game_config_t *config)
           if (ctx->net_manager->current_mode != NET_MODE_NONE)
             {
 
+              bool i_won = (winner == ctx->my_role);
+              NetworkManager_SendGameOver (ctx->net_manager, i_won);
               ctx->in_network_match = false;
               game_init (ctx->current_game);
               printf ("\n[LOBBY] Match ended. Returning to Lobby.\n");

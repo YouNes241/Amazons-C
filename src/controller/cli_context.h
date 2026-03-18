@@ -26,7 +26,7 @@ typedef struct
   GameState *current_game;
   game_config_t *config;
   NetworkManager *net_manager;
-
+  bool is_away;
   bool game_running;
   bool in_network_match;
   bool in_main_menu;
@@ -37,7 +37,7 @@ typedef struct
   // IA
   AI_Interface ai;
   bool ai_initialized;
-
+  int last_invited_id; // To keep track of the last invited player in the lobby
   // Timer
   time_t turn_start_time;
   int timeout_limit;

@@ -36,6 +36,7 @@
 #define RECV_TEMP_BUFFER_SIZE 256
 #define MAX_MOVE_STR_SIZE 128
 #define PLAYER_INFO_BUFFER_SIZE 64
+#define SCOREBOARD_ENTRY_BUFFER_SIZE 128
 #define MAX_USERNAME_LENGTH 32
 #define MAX_FORMATTED_PKT_SIZE 512
 #define NULL_TERMINATOR_OFFSET 1 // Space for '\0'
@@ -66,10 +67,15 @@
 
 typedef enum
 {
-  CLIENT_STATUS_CONNECTED, // Connecté (TCP) mais pas encore de pseudo (JOIN)
-  CLIENT_STATUS_IDLE,      // Dans le lobby, prêt à jouer
-  CLIENT_STATUS_WAITGAME,  // A envoyé/reçu une invitation, en attente
-  CLIENT_STATUS_INGAME     // En train de jouer
+  CLIENT_STATUS_CONNECTED, // TCP connection established, but no username sent
+                           // yet
+  CLIENT_STATUS_IDLE,      //  Player is in the lobby, waiting for an invite
+  CLIENT_STATUS_AWAY,      // Player is in the lobby but marked as away (not
+                           // available for invites)
+  CLIENT_STATUS_WAITGAME,  // Player has sent an invite and is waiting for
+                           // acceptance
+  CLIENT_STATUS_INGAME // Player is currently in a game (either as challenger
+                       // or invitee)
 } ClientStatus;
 
 /**
@@ -84,7 +90,9 @@ typedef struct
   int game_id; // id of game playing now
   ClientStatus status;
   int board_size;
-  // TODO add later: player_id, name, status (IDLE, INGAME), etc.
+  int wins;
+  int losses;
+  int games_played;
 } ConnectedClient;
 
 /**
@@ -95,6 +103,7 @@ typedef struct
 struct ServerContext
 {
   int listen_socket;
+  int port;
   /**
    * @brief Monitoring table for poll().
    * @details Index 0 is ALWAYS the listen_socket (server entry point).

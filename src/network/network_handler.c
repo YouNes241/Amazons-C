@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
 /**
  * @brief Helper to quickly build, serialize, and send a simple message packet.
@@ -176,7 +177,13 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
     }
 
   // 3. Verify that the target player is indeed in the lobby (IDLE).
-  if (ctx->clients[target_index].status != CLIENT_STATUS_IDLE)
+  if (ctx->clients[target_index].status == CLIENT_STATUS_AWAY)
+    {
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: Player is AWAY.");
+      return;
+    }
+  else if (ctx->clients[target_index].status != CLIENT_STATUS_IDLE)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
                            "Error: Player is not available.");
@@ -280,14 +287,19 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
  */
 static void
 process_list_packet (NetworkManager *manager, ServerContext *ctx,
-                     int client_index)
+                     int client_index, const char *payload)
 {
   (void)ctx;
+  int target_id = -1;
+  if (payload && payload[0] != '\0')
+    {
+      target_id = atoi (payload);
+    }
 
   char list_buffer[MAX_PAYLOAD_SIZE];
 
   NetworkManager_GetServerPlayerList (manager, list_buffer,
-                                      sizeof (list_buffer));
+                                      sizeof (list_buffer), target_id);
 
   Packet resp;
   resp.type = S2C_LIST;
@@ -318,12 +330,115 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       process_accept_packet (manager, ctx, client_index, pkt->payload);
       break;
 
+    case C2S_PING:
+      {
+        send_server_message (manager, client_index, S2C_PONG, pkt->payload);
+      }
+      break;
+
     case C2S_DECLINE:
       process_decline_packet (manager, ctx, client_index, pkt->payload);
       break;
+    case C2S_AWAY:
+      if (ctx->clients[client_index].status == CLIENT_STATUS_IDLE)
+        {
+          ctx->clients[client_index].status = CLIENT_STATUS_AWAY;
+          printf ("[SERVER] Player %d is now AWAY.\n", client_index);
+          printf ("[LOBBY] >> ");
+          fflush (stdout);
+        }
+      break;
 
+    case C2S_BACK:
+      if (ctx->clients[client_index].status == CLIENT_STATUS_AWAY)
+        {
+          ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
+          printf ("[SERVER] Player %d is BACK.\n", client_index);
+          printf ("[LOBBY] >> ");
+          fflush (stdout);
+        }
+      break;
+    case C2S_CANCEL:
+      if (ctx->clients[client_index].status == CLIENT_STATUS_WAITGAME)
+        {
+          ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
+
+          int target_index = atoi (pkt->payload);
+          if (target_index >= FIRST_CLIENT_INDEX && target_index <= MAX_CLIENTS
+              && ctx->fds[target_index].fd != INVALID_SOCKET)
+            {
+
+              ctx->clients[target_index].status = CLIENT_STATUS_IDLE;
+
+              send_server_message (manager, target_index, S2C_CANCEL,
+                                   "Invitation canceled by challenger.");
+            }
+          printf ("[SERVER] Player %d cancelled their invitation.\n",
+                  client_index);
+          printf ("[LOBBY] >> ");
+          fflush (stdout);
+        }
+      break;
+    case C2S_SCOREBOARD:
+      {
+        // On envoie l'en-tête
+        send_server_message (manager, client_index, S2C_SCOREBOARD,
+                             "Name        | Wins | Losses | Played");
+        send_server_message (manager, client_index, S2C_SCOREBOARD,
+                             "-----------------------------------");
+
+        FILE *f = fopen ("scoreboard.txt", "r");
+        bool has_scores = false;
+
+        if (f)
+          {
+            char line[128];
+            char name[32];
+            int w, l, g;
+            // On envoie chaque joueur ligne par ligne
+            while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+              {
+                snprintf (line, sizeof (line), "%-10s | %4d | %6d | %6d", name,
+                          w, l, g);
+                send_server_message (manager, client_index, S2C_SCOREBOARD,
+                                     line);
+                has_scores = true;
+              }
+            fclose (f);
+          }
+
+        if (!has_scores)
+          {
+            send_server_message (manager, client_index, S2C_SCOREBOARD,
+                                 "No scores recorded yet.");
+          }
+
+        // Un petit message "clé" pour dire au client que l'affichage est fini
+        send_server_message (manager, client_index, S2C_SCOREBOARD,
+                             "END_OF_SCOREBOARD");
+      }
+      break;
+    case C2S_GAME_OVER:
+      {
+        // On récupère le client qui a envoyé le message
+        ConnectedClient *client = &manager->server_ctx->clients[client_index];
+
+        if (strcmp (pkt->payload, "WIN") == 0)
+          {
+            NetworkManager_UpdatePlayerStats (client->username, true);
+          }
+        else
+          {
+            NetworkManager_UpdatePlayerStats (client->username, false);
+          }
+
+        // On remet le statut du joueur à IDLE pour qu'il puisse rejouer
+        client->status = CLIENT_STATUS_IDLE;
+        client->game_id = NO_GAME_ID;
+      }
+      break;
     case C2S_LIST:
-      process_list_packet (manager, ctx, client_index);
+      process_list_packet (manager, ctx, client_index, pkt->payload);
       break;
 
     case PKT_TIMEOUT:
@@ -376,6 +491,37 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnListReceived (pkt->payload);
         }
       break;
+    case S2C_SCOREBOARD:
+      {
+        if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
+          {
+            // Fin de la liste, on redessine proprement le prompt
+            printf ("[LOBBY] >> ");
+            fflush (stdout);
+          }
+        else
+          {
+            // On affiche simplement la ligne reçue avec un retour à la ligne
+            // local
+            printf ("%s\n", pkt->payload);
+          }
+      }
+      break;
+    case S2C_PONG:
+      {
+        struct timeval tv;
+        gettimeofday (&tv, NULL);
+        long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+
+        long long sent_time = atoll (pkt->payload); // On lit l'heure de départ
+        long long rtt = now_ms - sent_time;         // Round-Trip Time
+
+        printf ("\nServer: PONG TIME=%lldms\n", rtt);
+
+        printf ("[LOBBY] >> ");
+        fflush (stdout);
+      }
+      break;
 
     case S2C_ERROR:
       if (manager->callbacks.OnGameError)
@@ -391,6 +537,14 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
     case S2C_DECLINE:
       if (manager->callbacks.OnInvitationDeclined)
         {
+          manager->callbacks.OnInvitationDeclined (pkt->payload);
+        }
+      break;
+
+    case S2C_CANCEL:
+      if (manager->callbacks.OnInvitationDeclined)
+        {
+
           manager->callbacks.OnInvitationDeclined (pkt->payload);
         }
       break;

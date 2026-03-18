@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 /* ==========================================================================
@@ -127,6 +128,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     }
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
+  manager->server_ctx->port = port;
   manager->server_ctx->num_clients = 0;
   manager->server_ctx->next_game_id = 1;
 
@@ -417,20 +419,126 @@ NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
  * @brief Requests the list of connected players from the server.
  */
 int
-NetworkManager_SendListRequest (NetworkManager *manager)
+NetworkManager_SendListRequest (NetworkManager *manager, int target_id)
 {
   if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
     return NET_ERROR;
 
   Packet pkt;
   pkt.type = C2S_LIST;
-  pkt.payload[0] = '\0'; // No payload is needed to simply request the list.
+
+  if (target_id >= 0)
+    snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
+  else
+    pkt.payload[0] = '\0';
 
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;
 
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+int
+NetworkManager_SendScoreboardRequest (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_SCOREBOARD;
+  pkt.payload[0] = '\0';
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+/**
+ * @brief Sends a simple network packet (without a payload) to the server.
+ * Used for AWAY, BACK, CANCEL, PING, etc.
+ */
+int
+NetworkManager_SendSimplePacket (NetworkManager *manager, PacketType type)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = type;
+  pkt.payload[0] = '\0'; // No payload for simple packets
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+int
+NetworkManager_SendAway (NetworkManager *manager)
+{
+  return NetworkManager_SendSimplePacket (manager, C2S_AWAY);
+}
+
+int
+NetworkManager_SendBack (NetworkManager *manager)
+{
+  return NetworkManager_SendSimplePacket (manager, C2S_BACK);
+}
+
+int
+NetworkManager_SendCancel (NetworkManager *manager, int target_id)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  Packet pkt;
+  pkt.type = C2S_CANCEL;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+int
+NetworkManager_SendPing (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
+
+  // On récupère le temps actuel en millisecondes
+  struct timeval tv;
+  gettimeofday (&tv, NULL);
+  long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+
+  Packet pkt;
+  pkt.type = C2S_PING;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%lld",
+            now_ms); // On glisse l'heure dans le message
+
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+    return NET_ERROR;
+
+  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
+}
+
+int
+NetworkManager_SendGameOver (NetworkManager *manager, bool won)
+{
+  Packet pkt;
+  pkt.type = C2S_GAME_OVER;
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, won ? "WIN" : "LOSE");
+
+  char out_buffer[MAX_FORMATTED_PKT_SIZE];
+  SerializePacket (&pkt, out_buffer, sizeof (out_buffer));
+  return NetworkManager_Send (manager, TARGET_SERVER, out_buffer);
 }
 
 /**
@@ -785,7 +893,7 @@ NetworkManager_HasOpponent (NetworkManager *manager)
 
 void
 NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
-                                    size_t max_len)
+                                    size_t max_len, int target_id)
 {
   if (manager == NULL || manager->current_mode != NET_MODE_SERVER
       || manager->server_ctx == NULL || buffer == NULL || max_len == 0)
@@ -795,35 +903,82 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       return;
     }
 
-  strncpy (buffer, "Players: ", max_len - 1);
-  buffer[max_len - 1] = '\0';
+  buffer[0] = '\0'; // we will build the string progressively, starting with an
+                    // empty buffer
 
+  // =========================================================================
+  // case 1 : "players <id>" -> Detailed info about a specific player (F40)
+  // =========================================================================
+  if (target_id >= 0)
+    {
+      // verify if the target player exists and is connected
+      if (target_id < FIRST_CLIENT_INDEX || target_id > MAX_CLIENTS
+          || manager->server_ctx->fds[target_id].fd == INVALID_SOCKET
+          || !manager->server_ctx->clients[target_id].is_joined)
+        {
+          snprintf (buffer, max_len, "Player %d not found or not connected.\n",
+                    target_id);
+          return;
+        }
+
+      // the 4 statuses are : idle, away, waitgame, ingame. We can also add
+      // "connected"
+      const char *status_str = "Unknown";
+      switch (manager->server_ctx->clients[target_id].status)
+        {
+        case CLIENT_STATUS_IDLE:
+          status_str = "idle";
+          break;
+        case CLIENT_STATUS_AWAY:
+          status_str = "away";
+          break;
+        case CLIENT_STATUS_WAITGAME:
+          status_str = "waitgame";
+          break;
+        case CLIENT_STATUS_INGAME:
+          status_str = "ingame";
+          break;
+        default:
+          status_str = "connected";
+          break;
+        }
+
+      // detailled format for a specific player, as requested in F40. Note that
+      // we don't have real score data, so we put placeholders for
+      // wins/losses/matches.
+      snprintf (buffer, max_len,
+                "--- Player Details ---\n"
+                "ID     : %d\n"
+                "Name   : %s\n"
+                "Status : %s\n"
+                "Score  : 0 Wins, 0 Losses\n"
+                "Matches: 0 Played\n"
+                "----------------------\n",
+                target_id, manager->server_ctx->clients[target_id].username,
+                status_str);
+      return; // we stop here for the specific player case, the general list is
+              // only for "players" without ID
+    }
+
+  // =========================================================================
+  // case 2 : "players" -> List of all connected players with basic status
+  // (F39)
+  // =========================================================================
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
       if (manager->server_ctx->fds[i].fd != INVALID_SOCKET
           && manager->server_ctx->clients[i].is_joined)
         {
           char line[PLAYER_INFO_BUFFER_SIZE];
-          const char *status_str = "Unknown";
 
-          switch (manager->server_ctx->clients[i].status)
+          const char *simple_status = "idle";
+          if (manager->server_ctx->clients[i].status == CLIENT_STATUS_INGAME)
             {
-            case CLIENT_STATUS_IDLE:
-              status_str = "IDLE";
-              break;
-            case CLIENT_STATUS_WAITGAME:
-              status_str = "WAITING";
-              break;
-            case CLIENT_STATUS_INGAME:
-              status_str = "INGAME";
-              break;
-            default:
-              status_str = "CONNECTED";
-              break;
+              simple_status = "ingame";
             }
 
-          snprintf (line, sizeof (line), "[ID %d: %s (%s)] ", i,
-                    manager->server_ctx->clients[i].username, status_str);
+          snprintf (line, sizeof (line), "[ID %d] %s - %s\n", i,
+                    manager->server_ctx->clients[i].username, simple_status);
 
           if (strlen (buffer) + strlen (line) < max_len - 1)
             {
@@ -831,4 +986,180 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
             }
         }
     }
+
+  // little safety check in case no players are connected or all names are too
+  // long to fit in the buffer
+  if (buffer[0] == '\0')
+    {
+      snprintf (buffer, max_len, "No players currently in the lobby.\n");
+    }
+}
+/**
+ * @brief gets the current server status, including number of clients and
+ * games.
+ * @param manager The network manager
+ * @param out_clients Pointer to retrieve the number of clients
+ * @param out_games Pointer to retrieve the number of games (1 game = 2 players
+ * INGAME)
+ * @return NET_SUCCESS if it's an active server, NET_ERROR otherwise.
+ */
+int
+NetworkManager_GetServerStatus (NetworkManager *manager, int *out_clients,
+                                int *out_games, int *out_port)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_SERVER
+      || manager->server_ctx == NULL)
+    return NET_ERROR;
+
+  if (out_clients)
+    *out_clients = manager->server_ctx->num_clients;
+
+  if (out_port)
+    *out_port = manager->server_ctx->port;
+
+  if (out_games)
+    {
+      int ingame_players = 0;
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          if (manager->server_ctx->fds[i].fd != INVALID_SOCKET
+              && manager->server_ctx->clients[i].status
+                     == CLIENT_STATUS_INGAME)
+            {
+              ingame_players++;
+            }
+        }
+      *out_games = ingame_players / 2;
+    }
+
+  return NET_SUCCESS;
+}
+
+/**
+ * @brief Shuts down the server gracefully by notifying all connected clients
+ * before cleaning up resources.
+ * @details This function sends a final message to all clients informing them
+ * of the shutdown, then proceeds to close all client connections and the
+ * listening socket, and finally frees the server context. Clients should
+ * receive the shutdown message and handle it appropriately (e.g., by showing a
+ * notification and returning to the main menu) before the connection is
+ * terminated.
+ * @param manager The network manager instance to shut down.
+ */
+void
+NetworkManager_ShutdownServer (NetworkManager *manager)
+{
+  if (manager == NULL || manager->current_mode != NET_MODE_SERVER
+      || manager->server_ctx == NULL)
+    return;
+
+  // 1. we create a shutdown packet to inform clients about the server shutdown
+  Packet pkt;
+  pkt.type = S2C_ERROR;
+  strncpy (pkt.payload, "Server is shutting down.", MAX_PAYLOAD_SIZE - 1);
+  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+  char out_buffer[MAX_FORMATTED_PKT_SIZE];
+  if (SerializePacket (&pkt, out_buffer, sizeof (out_buffer)) >= 0)
+    {
+      // 2. we send the shutdown message to all connected clients before
+      // cutting the
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          if (manager->server_ctx->fds[i].fd != INVALID_SOCKET)
+            {
+              NetworkManager_Send (manager, i, out_buffer);
+            }
+        }
+    }
+
+  // 3. now we can safely clean up all resources, knowing that clients have
+  // been informed and have had a chance to react to the shutdown message.
+  NetworkManager_Cleanup (manager);
+}
+
+void
+SaveScoreboard (NetworkManager *manager)
+{
+  FILE *f = fopen ("scoreboard.txt", "w");
+  if (!f)
+    return;
+
+  // Ici, on pourrait parcourir une liste globale,
+  // mais pour l'instant sauvegardons les clients actifs
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (manager->server_ctx->clients[i].is_joined)
+        {
+          fprintf (f, "%s %d %d %d\n",
+                   manager->server_ctx->clients[i].username,
+                   manager->server_ctx->clients[i].wins,
+                   manager->server_ctx->clients[i].losses,
+                   manager->server_ctx->clients[i].games_played);
+        }
+    }
+  fclose (f);
+}
+
+void
+LoadScoreboardForClient (ConnectedClient *client)
+{
+  FILE *f = fopen ("scoreboard.txt", "r");
+  if (!f)
+    return;
+
+  char name[MAX_USERNAME_LENGTH];
+  int w, l, g;
+  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+    {
+      if (strcmp (name, client->username) == 0)
+        {
+          client->wins = w;
+          client->losses = l;
+          client->games_played = g;
+          break;
+        }
+    }
+  fclose (f);
+}
+
+void
+NetworkManager_UpdatePlayerStats (const char *username, bool won)
+{
+  FILE *f = fopen ("scoreboard.txt", "r");
+  // On utilise un fichier temporaire pour réécrire les données
+  FILE *temp = fopen ("scoreboard.tmp", "w");
+  if (!temp)
+    return;
+
+  bool found = false;
+  char name[32];
+  int w, l, g;
+
+  if (f)
+    {
+      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+        {
+          if (strcmp (name, username) == 0)
+            {
+              found = true;
+              g++; // +1 partie jouée
+              if (won)
+                w++;
+              else
+                l++; // +1 victoire ou défaite
+            }
+          fprintf (temp, "%s %d %d %d\n", name, w, l, g);
+        }
+      fclose (f);
+    }
+
+  // Si le joueur n'existait pas encore dans le fichier
+  if (!found)
+    {
+      fprintf (temp, "%s %d %d %d\n", username, won ? 1 : 0, won ? 0 : 1, 1);
+    }
+
+  fclose (temp);
+  rename ("scoreboard.tmp", "scoreboard.txt");
 }

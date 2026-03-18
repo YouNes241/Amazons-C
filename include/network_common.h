@@ -80,10 +80,25 @@ int NetworkManager_SendAccept (NetworkManager *manager, int challenger_id);
 
 int NetworkManager_SendDecline (NetworkManager *manager, int challenger_id);
 
-int NetworkManager_SendListRequest (NetworkManager *manager);
+int NetworkManager_SendListRequest (NetworkManager *manager, int target_id);
+
+int NetworkManager_SendAway (NetworkManager *manager);
+
+int NetworkManager_SendBack (NetworkManager *manager);
+
+int NetworkManager_SendCancel (NetworkManager *manager, int target_id);
+int NetworkManager_SendPing (NetworkManager *manager);
+int NetworkManager_SendGameOver (NetworkManager *manager, bool i_won);
+int NetworkManager_SendScoreboardRequest (NetworkManager *manager);
 
 void NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
-                                         size_t max_len);
+                                         size_t max_len, int target_id);
+int NetworkManager_GetServerStatus (NetworkManager *manager, int *out_clients,
+                                    int *out_games, int *out_port);
+
+void NetworkManager_UpdatePlayerStats (const char *username, bool won);
+
+void NetworkManager_ShutdownServer (NetworkManager *manager);
 int NetworkManager_HasOpponent (NetworkManager *manager);
 
 #endif // NETWORK_COMMON_H
