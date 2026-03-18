@@ -1,6 +1,17 @@
 /**
  * @file network_internal.h
- * @brief Internal definitions for the Network Manager and Unit Tests.
+ * @brief Internal structures, constants, and definitions for the network
+ * module.
+ *
+ * This header defines the internal data structures, constants, and helper
+ * types used across the network module's implementation files. It is not
+ * intended to be included by external code or unit tests directly, but rather
+ * serves as a common internal reference for the various components of the
+ * network layer.
+ *
+ * It includes definitions for client connection management, UDP discovery
+ * contexts, and core server/client context structures that encapsulate the
+ * state and resources needed for network communication and game management.
  */
 
 #ifndef NETWORK_INTERNAL_H

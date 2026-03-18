@@ -1,3 +1,13 @@
+/**
+ * @file network_handler.c
+ * @brief Implementation of packet handlers for both Server and Client.
+ *
+ * This file contains the logic for processing incoming packets on both the
+ * Server and Client sides. It includes functions to handle various message
+ * types such as Join, Move, Invite, etc., and ensures that the game state is
+ * updated accordingly based on the received data.
+ */
+
 #include "network_includes/network_handlers.h"
 #include "network_protocol.h"
 #include <stdio.h>

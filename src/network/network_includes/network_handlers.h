@@ -1,8 +1,12 @@
 /**
  * @file network_handlers.h
- * @brief Manages the application logic (Application Layer) for the Server and
- the Client.
-
+ * @brief Handlers for processing incoming packets on both Server and Client
+ * sides.
+ *
+ * This header defines the functions responsible for interpreting and acting
+ * upon the packets received by the Server and Client. It includes logic for
+ * handling various message types such as Join, Move, etc., and ensures that
+ * the game state is updated accordingly based on the received data.
  */
 
 #ifndef NETWORK_HANDLERS_H

@@ -1,3 +1,14 @@
+/**
+ * @file cli_controller.c
+ * @brief Implementation of the main CLI controller for the Amazons game.
+ *
+ * This file contains the implementation of the main loop and logic for the
+ * command-line interface (CLI) version of the Amazons game. It manages user
+ * input, game state updates, AI moves, and network interactions when in
+ * multiplayer mode. The controller uses the readline library for input
+ * handling and supports both local and networked gameplay.
+ */
+
 #include "../../include/ai_factory.h"
 #include "../../include/ai_interface.h"
 #include "../../include/cli_view.h"

@@ -1,6 +1,12 @@
 /**
  * @file network_stats.c
- * @brief Gestion de l'enregistrement et du chargement des scores.
+ * @brief Implementation of functions to manage player statistics and the
+ * scoreboard for the Amazons game.
+ *
+ * This file contains functions to save and load player statistics to and from
+ * a file, as well as to update the scoreboard after each game. The statistics
+ * include wins, losses, and games played for each player, which are stored in
+ * a simple text file format.
  */
 
 #include "network_includes/network_internal.h"
@@ -8,6 +14,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ==========================================================================
+ * Public API Implementation
+ * ==========================================================================
+ */
+
+/**
+ * @brief Saves the current player statistics to a file named "scoreboard.txt".
+ *
+ * The function iterates through the list of connected clients and writes their
+ * username, wins, losses, and games played to the file. Each line in the file
+ * corresponds to one player and has the format: "username wins losses games".
+ *
+ * @param manager Pointer to the NetworkManager instance containing the server
+ * context with client information.
+ */
 void
 SaveScoreboard (NetworkManager *manager)
 {
@@ -31,6 +52,17 @@ SaveScoreboard (NetworkManager *manager)
   fclose (f);
 }
 
+/**
+ * @brief Loads player statistics from the "scoreboard.txt" file for a specific
+ * client.
+ *
+ * The function reads the scoreboard file line by line, looking for a matching
+ * username. If found, it populates the client's wins, losses, and games
+ * played fields with the corresponding values from the file.
+ *
+ * @param client Pointer to the ConnectedClient structure for which to load
+ * statistics.
+ */
 void
 LoadScoreboardForClient (ConnectedClient *client)
 {
@@ -53,6 +85,17 @@ LoadScoreboardForClient (ConnectedClient *client)
   fclose (f);
 }
 
+/**
+ * @brief Updates the player statistics after a game and saves the updated
+ * scoreboard.
+ *
+ * This function should be called at the end of each game to update the wins,
+ * losses, and games played for the involved players. It then calls
+ * SaveScoreboard to persist the changes to the file.
+ *
+ * @param username The username of the player whose stats are being updated.
+ * @param won True if the player won the game, false if they lost.
+ */
 void
 NetworkManager_UpdatePlayerStats (const char *username, bool won)
 {

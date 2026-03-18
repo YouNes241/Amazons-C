@@ -1,7 +1,13 @@
 /**
  * @file network_senders.c
- * @brief Contient toutes les fonctions d'aide pour formater et envoyer des
- * requêtes réseau.
+ * @brief Functions to construct and send various types of packets from the
+ * Client and Server.
+ *
+ * This file contains the implementation of functions that build specific types
+ * of packets (e.g., Join, Move, Invite) and send them using the
+ * NetworkManager's send function. Each function ensures that the packet is
+ * properly formatted according to the protocol before sending it to the
+ * intended recipient.
  */
 
 #include "network_includes/network_internal.h"
@@ -12,8 +18,19 @@
 #include <string.h>
 #include <sys/time.h>
 
+/* ==========================================================================
+ * Public API Implementation
+ * ==========================================================================
+ */
+
+/* --- Client-side senders --- */
+
 /**
- * @brief Constructs and sends a JOIN packet cleanly.
+ * @brief Sends a Join packet to the server with the specified username.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param username The username to join with.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendJoin (NetworkManager *manager, const char *username)
@@ -36,7 +53,11 @@ NetworkManager_SendJoin (NetworkManager *manager, const char *username)
 }
 
 /**
- * @brief Converts a Move to text, encapsulates it in a Packet and sends it.
+ * @brief Constructs and sends a Move packet to the server or opponent.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param m The Move structure containing the move details.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendMove (NetworkManager *manager, Move m)
@@ -64,7 +85,13 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
 }
 
 /**
- * @brief Constructs and sends a TIMEOUT packet cleanly.
+ * @brief Helper function to send a simple text message from the server to a
+ * specific client.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param target_index The index of the target client (1 to MAX_CLIENTS).
+ * @param type The PacketType to send (e.g., S2C_ERROR, S2C_WELCOME).
+ * @param msg The message content to include in the packet payload.
  */
 int
 NetworkManager_SendTimeout (NetworkManager *manager)
@@ -90,7 +117,13 @@ NetworkManager_SendTimeout (NetworkManager *manager)
 }
 
 /**
- * @brief Sends an invitation to a specific player ID.
+ * @brief Helper function to send a simple text message from the server to a
+ * specific client.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param target_index The index of the target client (1 to MAX_CLIENTS).
+ * @param type The PacketType to send (e.g., S2C_ERROR, S2C_WELCOME).
+ * @param msg The message content to include in the packet payload.
  */
 int
 NetworkManager_SendInvite (NetworkManager *manager, int target_id,
@@ -112,6 +145,10 @@ NetworkManager_SendInvite (NetworkManager *manager, int target_id,
 
 /**
  * @brief Accepts an invitation from a specific player ID.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param challenger_id The ID of the player who sent the invitation.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendAccept (NetworkManager *manager, int challenger_id)
@@ -132,6 +169,10 @@ NetworkManager_SendAccept (NetworkManager *manager, int challenger_id)
 
 /**
  * @brief Declines an invitation from a specific player ID.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param challenger_id The ID of the player who sent the invitation.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
@@ -152,6 +193,11 @@ NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
 
 /**
  * @brief Requests the list of connected players from the server.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param target_id Optional player ID to get specific info about (or -1 for
+ * all).
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendListRequest (NetworkManager *manager, int target_id)
@@ -174,6 +220,12 @@ NetworkManager_SendListRequest (NetworkManager *manager, int target_id)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
+/**
+ * @brief Requests the current scoreboard from the server.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendScoreboardRequest (NetworkManager *manager)
 {
@@ -194,6 +246,9 @@ NetworkManager_SendScoreboardRequest (NetworkManager *manager)
 /**
  * @brief Sends a simple network packet (without a payload) to the server.
  * Used for AWAY, BACK, CANCEL, PING, etc.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param type The PacketType to send (e.g., C2S_AWAY, C2S_BACK, C2S_PING).
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
 NetworkManager_SendSimplePacket (NetworkManager *manager, PacketType type)
@@ -212,18 +267,38 @@ NetworkManager_SendSimplePacket (NetworkManager *manager, PacketType type)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
+/**
+ * @brief Sends an "Away" status update to the server.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendAway (NetworkManager *manager)
 {
   return NetworkManager_SendSimplePacket (manager, C2S_AWAY);
 }
 
+/**
+ * @brief Sends a "Back" status update to the server.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendBack (NetworkManager *manager)
 {
   return NetworkManager_SendSimplePacket (manager, C2S_BACK);
 }
 
+/**
+ * @brief Sends a "Cancel" message to the server to cancel an outstanding
+ * invitation.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param target_id The ID of the player whose invitation is being canceled.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendCancel (NetworkManager *manager, int target_id)
 {
@@ -241,6 +316,13 @@ NetworkManager_SendCancel (NetworkManager *manager, int target_id)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
+/**
+ * @brief Sends a "Ping" message to the server with the current timestamp to
+ * measure latency.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendPing (NetworkManager *manager)
 {
@@ -264,6 +346,14 @@ NetworkManager_SendPing (NetworkManager *manager)
   return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
 }
 
+/**
+ * @brief Informs the server that the game is over and whether the client won
+ * or lost.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ * @param won True if the client won, false if they lost.
+ * @return int NET_SUCCESS on success, NET_ERROR on failure.
+ */
 int
 NetworkManager_SendGameOver (NetworkManager *manager, bool won)
 {

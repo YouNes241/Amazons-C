@@ -1,7 +1,14 @@
 /**
  * @file network_manager.c
- * @brief Implementation of the NetworkManager, handling TCP Server and Client
- * connections.
+ * @brief Core implementation of the NetworkManager, handling both Server and
+ * Client modes, including connection management, multiplexing with poll(), and
+ * integration with the discovery mechanism.
+ *
+ * This file implements the main logic for managing network connections in both
+ * Server and Client modes. It includes functions to start a server, join a
+ * server as a client, send messages, and perform regular ticks to handle
+ * incoming data and timeouts. The implementation uses non-blocking sockets and
+ * the poll() system call for efficient multiplexing of multiple connections.
  */
 
 #include "network_includes/network_handlers.h"

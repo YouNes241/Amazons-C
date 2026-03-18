@@ -1,3 +1,14 @@
+/**
+ * @file cli_network_events.c
+ * @brief Implementation of network event handlers for the CLI in the Amazons
+ * game.
+ *
+ * This file contains the implementation of callback functions that handle
+ * various network events such as receiving a move, game start, player
+ * disconnection, etc. These handlers are designed to update the game state and
+ * user interface accordingly when playing in network mode through the
+ * command-line interface (CLI).
+ */
 
 #include "cli_network_events.h"
 #include "../../include/game_engine.h"

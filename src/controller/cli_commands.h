@@ -1,3 +1,13 @@
+/**
+ * @file cli_commands.h
+ * @brief Header for CLI command handling in the Amazons game.
+ *
+ * This header defines the functions and constants used for processing user
+ * commands in the command-line interface (CLI) of the Amazons game. It
+ * includes the main command handler function, as well as utilities for
+ * managing the CLI prompt and command completion.
+ */
+
 #ifndef CLI_COMMANDS_H
 #define CLI_COMMANDS_H
 

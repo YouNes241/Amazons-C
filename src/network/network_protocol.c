@@ -1,8 +1,18 @@
+/**
+ * @file network_protocol.c
+ * @brief Implementation of the network protocol for the Amazons game.
+ *
+ * This file contains functions to convert between Move structures and their
+ * string representations according to the defined network protocol. It allows
+ * for easy serialization and deserialization of moves when communicating over
+ * the network.
+ */
+
 #include "network_protocol.h"
 #include <stdio.h>
 #include <string.h>
 
-// Helper to convert a column (0-9) into letters ('a'-'j')static char
+// Helper to convert a column index (0-9) into a letter (a-j)
 static char
 ColToChar (int col)
 {
@@ -16,6 +26,19 @@ CharToCol (char c)
   return (int)(c - MIN_COL_CHAR);
 }
 
+/**
+ * @brief Converts a Move struct into its string representation according to
+ * the protocol.
+ *
+ * The output format is "MOVE a1-a4-b4\n", where a1 is the source position of
+ * the queen, a4 is the destination position of the queen, and b4 is the
+ * destination position of the arrow. The function ensures that the output
+ * buffer is not overflowed and is null-terminated.
+ *
+ * @param m The Move struct to convert.
+ * @param buffer_out Output buffer to hold the resulting string.
+ * @param buf_size Size of the output buffer in bytes.
+ */
 void
 Protocol_MoveToString (Move m, char *buffer_out, size_t buf_size)
 {
@@ -30,6 +53,18 @@ Protocol_MoveToString (Move m, char *buffer_out, size_t buf_size)
             ColToChar (m.arrow_dst.col), m.arrow_dst.row + 1);
 }
 
+/**
+ * @brief Parses a move string in the format "MOVE a1-a4-b4" into a Move
+ * struct.
+ *
+ * The function validates the input format and checks that the coordinates are
+ * within the expected bounds. It returns true if parsing was successful and
+ * false otherwise.
+ *
+ * @param message Input string to parse.
+ * @param move_out Output Move struct to fill with the parsed data.
+ * @return bool true if parsing was successful, false otherwise.
+ */
 bool
 Protocol_StringToMove (const char *message, Move *move_out)
 {

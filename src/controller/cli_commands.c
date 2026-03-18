@@ -1,3 +1,14 @@
+/**
+ * @file cli_commands.c
+ * @brief Implementation of CLI command handling for the Amazons game.
+ *
+ * This file contains the implementation of the main command handler function
+ * for processing user input in the command-line interface (CLI) of the
+ * Amazons game. It includes logic for handling various commands related to
+ * game management, network interactions, and gameplay actions, as well as
+ * utilities for managing the CLI prompt and command completion.
+ */
+
 #include "cli_commands.h"
 #include "../../include/ai_factory.h"
 #include "../../include/cli_view.h"

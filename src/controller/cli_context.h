@@ -1,3 +1,13 @@
+
+/**
+ * @file cli_context.h
+ * @brief Header for the CLI context structure in the Amazons game.
+ *
+ * This header defines the CliContext structure, which holds the overall state
+ * of the application in CLI mode, including game state, network management,
+ * and user interface settings.
+ */
+
 #ifndef CLI_CONTEXT_H
 #define CLI_CONTEXT_H
 

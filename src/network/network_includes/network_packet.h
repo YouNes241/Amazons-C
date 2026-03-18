@@ -1,3 +1,20 @@
+/**
+ * @file network_packet.h
+ * @brief Defines the structure and functions for serializing and deserializing
+ * network packets used in communication between the Server and Client.
+ *
+ * This header defines the Packet structure, which encapsulates the type of
+ * message being sent and its associated payload. It also provides functions to
+ * convert between the Packet structure and a string format suitable for
+ * network transmission, as well as parsing received strings back into Packet
+ * structures.
+ *
+ * The packet format is designed to be simple and efficient, using a delimiter
+ * to separate the message type from its payload. This allows for easy parsing
+ * and construction of messages while maintaining flexibility for different
+ * types of communication (e.g., game moves, invitations, status updates).
+ */
+
 #ifndef NETWORK_PACKET_H
 #define NETWORK_PACKET_H
 
