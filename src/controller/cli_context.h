@@ -8,6 +8,16 @@
 #include <stdbool.h>
 #include <time.h>
 
+#define READLINE_NO_CLEAR 0       // Used to tell Readline not to erase
+#define POLL_STDIN_TIMEOUT_MS 100 // Timeout for poll on keyboard input
+#define STDIN_FD_COUNT 1 // Number of descriptors for poll (just STDIN)
+#define STDIN_FD_INDEX 0 // STDIN index in the fds table
+
+#define MAX_IP_LEN 63
+#define MAX_USERNAME_LEN 31
+#define PROMPT_MAX_LEN 64
+#define LOBBY_LIST_BUFFER_SIZE 1024 // Buffer size for displaying players
+
 /**
  * @brief Groups the overall state of the application in CLI mode.
  */
