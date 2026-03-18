@@ -2,7 +2,6 @@
 #define CONTROLLER_H
 
 #include "config.h"
-#include <gui_utils.h>
 
 /* ==========================================================================
  * CONSTANTS
@@ -44,6 +43,4 @@
 
 void run_interactive_mode (game_config_t *config);
 void run_gui_mode (game_config_t *config);
-void guiHandlePlayerMove (AppContext *ctx, Move move);
-
 #endif
