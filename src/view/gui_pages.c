@@ -1,6 +1,6 @@
 #include "gui_pages.h"
-#include "controller.h"
 #include "game_engine.h"
+#include "gui_controller.h"
 #include "gui_utils.h"
 #include <gtk/gtk.h>
 #include <stdio.h>

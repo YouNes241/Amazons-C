@@ -1,6 +1,6 @@
 #ifndef GUI_CONTROLLER_H
 #define GUI_CONTROLLER_H
-#include "../../include/gui_utils.h"
+#include "gui_utils.h"
 
 void guiHandlePlayerMove (AppContext *ctx, Move move);
 
