@@ -90,7 +90,7 @@ run_interactive_mode (game_config_t *config)
     }
   NetworkManager_Init (&net_manager, create_cli_network_events (ctx));
 
-   ctx->current_game = &current_game;
+  ctx->current_game = &current_game;
   ctx->config = config;
   ctx->net_manager = &net_manager;
   ctx->game_running = true;
