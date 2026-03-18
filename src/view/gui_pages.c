@@ -37,6 +37,16 @@ static void updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec,
                                  gpointer user_data);
 static void updateConfigLanguage (GtkComboBoxText *combo_box,
                                   gpointer user_data);
+static gboolean shortcutNewGame (GtkWidget *widget, GVariant *args,
+                                 gpointer user_data);
+static gboolean shortcutInfo (GtkWidget *widget, GVariant *args,
+                              gpointer user_data);
+static gboolean shortcutConfig (GtkWidget *widget, GVariant *args,
+                                gpointer user_data);
+static gboolean shortcutQuit (GtkWidget *widget, GVariant *args,
+                              gpointer user_data);
+static gboolean shortcutDummy (GtkWidget *widget, GVariant *args,
+                               gpointer user_data);
 
 GtkWidget *
 createMainMenuPage (AppContext *ctx)
@@ -73,7 +83,7 @@ createMainMenuPage (AppContext *ctx)
                     ctx);
   g_signal_connect (configBtn, "clicked", G_CALLBACK (navigationClick), ctx);
   g_signal_connect (infoBtn, "clicked", G_CALLBACK (navigationClick), ctx);
-  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
+  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), ctx);
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -274,6 +284,35 @@ createGamePage (AppContext *ctx)
   g_signal_connect (configBtn, "clicked", G_CALLBACK (configPopupButtonClick),
                     ctx);
 
+  GtkShortcutController *shortcutController
+      = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
+  gtk_shortcut_controller_set_scope (shortcutController,
+                                     GTK_SHORTCUT_SCOPE_MANAGED);
+
+  struct
+  {
+    const char *key;
+    GtkShortcutFunc func;
+  } shortcuts[] = {
+    { "<Control>n", shortcutNewGame }, { "<Control>comma", shortcutConfig },
+    { "<Control>i", shortcutInfo },    { "<Control>q", shortcutQuit },
+    { "<Control>l", shortcutDummy },   { "<Control>s", shortcutDummy },
+    { "<Control>u", shortcutDummy },   { "<Control>r", shortcutDummy },
+    { "<Control>p", shortcutDummy },   { "<Control>h", shortcutDummy }
+  };
+
+  for (int i = 0; i < 10; i++)
+    {
+      GtkShortcutTrigger *trigger
+          = gtk_shortcut_trigger_parse_string (shortcuts[i].key);
+      GtkShortcutAction *action
+          = gtk_callback_action_new (shortcuts[i].func, ctx, NULL);
+      GtkShortcut *shortcut = gtk_shortcut_new (trigger, action);
+      gtk_shortcut_controller_add_shortcut (shortcutController, shortcut);
+    }
+
+  gtk_widget_add_controller (box, GTK_EVENT_CONTROLLER (shortcutController));
+
   g_object_ref (box);
   g_object_unref (builder);
 
@@ -296,31 +335,27 @@ navigationClick (GtkButton *button, gpointer user_data)
 static void
 quitButtonClick (GtkButton *button, gpointer user_data)
 {
-  (void)user_data;
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
 
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (button));
-
-  if (GTK_IS_WINDOW (root))
+  if (ctx && ctx->mainWindow)
     {
-      gtk_window_close (GTK_WINDOW (root));
+      gtk_window_close (GTK_WINDOW (ctx->mainWindow));
     }
 }
 
 static void
 infoPopupButtonClick (GtkButton *button, gpointer user_data)
 {
-  (void)user_data;
-
-  GtkWindow *mainWindow
-      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/game_pages/info_popup.ui");
   GtkWindow *infoWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
 
-  gtk_window_set_transient_for (infoWindow, mainWindow);
-
+  gtk_window_set_transient_for (infoWindow, GTK_WINDOW (ctx->mainWindow));
   gtk_window_present (infoWindow);
 
   g_object_unref (builder);
@@ -329,17 +364,15 @@ infoPopupButtonClick (GtkButton *button, gpointer user_data)
 static void
 configPopupButtonClick (GtkButton *button, gpointer user_data)
 {
+  (void)button;
   AppContext *ctx = (AppContext *)user_data;
-
-  GtkWindow *mainWindow
-      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/game_pages/config_popup.ui");
   GtkWindow *configWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "config_window"));
 
-  gtk_window_set_transient_for (configWindow, mainWindow);
+  gtk_window_set_transient_for (configWindow, GTK_WINDOW (ctx->mainWindow));
 
   GtkWidget *verboseSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
@@ -349,6 +382,10 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
       = GTK_WIDGET (gtk_builder_get_object (builder, "timeout_field"));
   GtkWidget *boardSizeField
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_field"));
+  GtkWidget *aiWhiteSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
+  GtkWidget *aiBlackSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
   GtkWidget *langDropdown
       = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
 
@@ -362,10 +399,14 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
     gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
                                ctx->gameConfig->time_per_player);
   if (boardSizeField)
-    {
-      gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
-                                 ctx->gameConfig->board_size);
-    }
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
+                               ctx->gameConfig->board_size);
+  if (aiWhiteSwitch)
+    gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
+                           ctx->gameConfig->ai_white);
+  if (aiBlackSwitch)
+    gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
+                           ctx->gameConfig->ai_black);
   if (langDropdown)
     gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
                               ctx->gameConfig->language);
@@ -382,11 +423,18 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   if (boardSizeField)
     g_signal_connect (boardSizeField, "value-changed",
                       G_CALLBACK (updateConfigBoardSize), ctx);
+  if (aiWhiteSwitch)
+    g_signal_connect (aiWhiteSwitch, "notify::active",
+                      G_CALLBACK (updateConfigAiWhite), ctx);
+  if (aiBlackSwitch)
+    g_signal_connect (aiBlackSwitch, "notify::active",
+                      G_CALLBACK (updateConfigAiBlack), ctx);
   if (langDropdown)
     g_signal_connect (langDropdown, "changed",
                       G_CALLBACK (updateConfigLanguage), ctx);
 
   gtk_window_present (configWindow);
+
   g_object_unref (builder);
 }
 
@@ -766,4 +814,50 @@ updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
     {
       ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
     }
+}
+
+static gboolean
+shortcutNewGame (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  newGameButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
+shortcutInfo (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  infoPopupButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
+shortcutConfig (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  configPopupButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
+shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  quitButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
+shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  (void)user_data;
+  g_print ("Not implemented.\n");
+  return TRUE;
 }
