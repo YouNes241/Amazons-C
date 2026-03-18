@@ -340,7 +340,7 @@ NetworkManager_SendTimeout (NetworkManager *manager)
   strncpy (pkt.payload, "TIMEOUT", MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
-  char formatted_buffer[512];
+  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     {
       return NET_ERROR;
@@ -356,14 +356,15 @@ NetworkManager_SendTimeout (NetworkManager *manager)
  * @brief Sends an invitation to a specific player ID.
  */
 int
-NetworkManager_SendInvite (NetworkManager *manager, int target_id)
+NetworkManager_SendInvite (NetworkManager *manager, int target_id,
+                           int board_size)
 {
   if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
     return NET_ERROR;
 
   Packet pkt;
   pkt.type = C2S_INVITE;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d %d", target_id, board_size);
 
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)

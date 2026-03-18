@@ -151,8 +151,11 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
 {
   if (payload == NULL || payload[0] == '\0')
     return;
-
-  int target_index = atoi (payload);
+  int target_index = 0, board_size = 10;
+  if (sscanf (payload, "%d %d", &target_index, &board_size) < 1)
+    {
+      target_index = atoi (payload);
+    }
 
   // 1. Basic checks
   if (target_index < FIRST_CLIENT_INDEX || target_index > MAX_CLIENTS
@@ -182,10 +185,12 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
 
   // 4. Everything is good: We put the sender on hold
   ctx->clients[sender_index].status = CLIENT_STATUS_WAITGAME;
+  ctx->clients[sender_index].board_size = board_size;
 
   // 5. The invitation is sent to the target (Payload = the sender's ID)
-  char sender_id_str[16];
-  snprintf (sender_id_str, sizeof (sender_id_str), "%d", sender_index);
+  char sender_id_str[32];
+  snprintf (sender_id_str, sizeof (sender_id_str), "%d %d", sender_index,
+            board_size);
   send_server_message (manager, target_index, S2C_INVITE, sender_id_str);
 }
 
@@ -223,6 +228,8 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   //  invitation accepted : starting the game
   int new_game_id = ctx->next_game_id++; // We take a ticket and increment it.
 
+  int board_size = ctx->clients[challenger_index].board_size;
+
   // We assign the ID and change the statuses.
   ctx->clients[challenger_index].game_id = new_game_id;
   ctx->clients[challenger_index].status = CLIENT_STATUS_INGAME;
@@ -230,12 +237,17 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[sender_index].game_id = new_game_id;
   ctx->clients[sender_index].status = CLIENT_STATUS_INGAME;
 
+  char payload_white[MAX_PAYLOAD_SIZE], payload_black[MAX_PAYLOAD_SIZE];
+  snprintf (payload_white, MAX_PAYLOAD_SIZE, "%d %d", ROLE_WHITE_VAL,
+            board_size);
+  snprintf (payload_black, MAX_PAYLOAD_SIZE, "%d %d", ROLE_BLACK_VAL,
+            board_size);
   // Sending to the Challenger (He will play the WHITES)
   send_server_message (manager, challenger_index, S2C_GAME_START,
-                       ROLE_WHITE_STR);
+                       payload_white);
 
   // Send to the one who accepted (He will play BLACK)
-  send_server_message (manager, sender_index, S2C_GAME_START, ROLE_BLACK_STR);
+  send_server_message (manager, sender_index, S2C_GAME_START, payload_black);
 }
 
 /**
@@ -317,14 +329,13 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
     case PKT_TIMEOUT:
       // ROUTING : The opponent is notified that time is up.
       route_packet_to_opponent (manager, ctx, client_index, pkt);
-      if (manager->callbacks.OnTimeoutReceived)
-        manager->callbacks.OnTimeoutReceived ();
+
       break;
 
     case C2S_MOVE:
       // ROUTING: The move is relayed to the opponent
       route_packet_to_opponent (manager, ctx, client_index, pkt);
-      process_move_packet (manager, pkt->payload);
+
       break;
 
     default:
@@ -392,13 +403,14 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       break;
     case S2C_GAME_START:
       printf ("[CLIENT] Game is starting!\n");
-      int color_val = atoi (pkt->payload);
+      int color_val = 0, board_size = 10;
+      sscanf (pkt->payload, "%d %d", &color_val, &board_size);
       PlayerColor my_color
           = (color_val == ROLE_WHITE_VAL) ? PLAYER_WHITE : PLAYER_BLACK;
 
       if (manager->callbacks.OnGameStarted)
         {
-          manager->callbacks.OnGameStarted (my_color);
+          manager->callbacks.OnGameStarted (my_color, board_size);
         }
       break;
 

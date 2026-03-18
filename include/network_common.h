@@ -37,7 +37,7 @@ typedef struct
   void (*OnPlayerDisconnected) (const char *reason);
   void (*OnInvitationReceived) (int from_player_id);
   void (*OnInvitationDeclined) (const char *message);
-  void (*OnGameStarted) (PlayerColor color);
+  void (*OnGameStarted) (PlayerColor color, int board_size);
   void (*OnGameError) (const char *error_msg);
   void (*OnTimeoutReceived) (void);
   void (*OnListReceived) (const char *list_text);
@@ -73,7 +73,8 @@ int NetworkManager_Send (NetworkManager *manager, int target_client,
                          const char *message);
 int NetworkManager_SendTimeout (NetworkManager *manager);
 
-int NetworkManager_SendInvite (NetworkManager *manager, int target_id);
+int NetworkManager_SendInvite (NetworkManager *manager, int target_id,
+                               int board_size);
 
 int NetworkManager_SendAccept (NetworkManager *manager, int challenger_id);
 

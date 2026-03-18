@@ -346,7 +346,7 @@ TEST_F (NetworkManagerTest, LobbyAPIHelpersCoverage)
              NET_SUCCESS);
 
   // 1. Null/Invalid Manager Checks
-  EXPECT_EQ (NetworkManager_SendInvite (nullptr, 2), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendInvite (nullptr, 2, 10), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAccept (&server_mgr, 2),
              NET_ERROR); // Server cannot accept invites
   EXPECT_EQ (NetworkManager_SendDecline (nullptr, 2), NET_ERROR);
@@ -354,7 +354,7 @@ TEST_F (NetworkManagerTest, LobbyAPIHelpersCoverage)
 
   // 2. Valid Client Calls
   EXPECT_EQ (NetworkManager_SendListRequest (&client_mgr), NET_SUCCESS);
-  EXPECT_EQ (NetworkManager_SendInvite (&client_mgr, 2), NET_SUCCESS);
+  EXPECT_EQ (NetworkManager_SendInvite (&client_mgr, 2, 10), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendAccept (&client_mgr, 2), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendDecline (&client_mgr, 2), NET_SUCCESS);
 }
@@ -405,7 +405,7 @@ TEST_F (NetworkManagerTest, LobbyFullLifecycle_InviteAndAccept)
     }
 
   // 2. Alice invites Bob
-  NetworkManager_SendInvite (&alice, 2);
+  NetworkManager_SendInvite (&alice, 2, 10);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);
@@ -462,7 +462,7 @@ TEST_F (NetworkManagerTest, LobbyDeclineAndInvalidInvites)
     }
 
   // 1. Invalid Invite: Alice invites herself (Target 1)
-  NetworkManager_SendInvite (&alice, 1);
+  NetworkManager_SendInvite (&alice, 1, 10);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);
@@ -471,7 +471,7 @@ TEST_F (NetworkManagerTest, LobbyDeclineAndInvalidInvites)
   EXPECT_EQ (server_mgr.server_ctx->clients[1].status, CLIENT_STATUS_IDLE);
 
   // 2. Invalid Invite: Alice invites an out-of-bounds ID (99)
-  NetworkManager_SendInvite (&alice, 99);
+  NetworkManager_SendInvite (&alice, 99, 10);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);
@@ -479,7 +479,7 @@ TEST_F (NetworkManagerTest, LobbyDeclineAndInvalidInvites)
     }
 
   // 3. Alice invites Bob, but Bob declines
-  NetworkManager_SendInvite (&alice, 2);
+  NetworkManager_SendInvite (&alice, 2, 10);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);

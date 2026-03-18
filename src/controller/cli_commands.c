@@ -267,7 +267,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       return;
     }
-  else if (strncmp (input_buffer, "invite ", CMD_LEN_INVITE) == 0)
+  else if (strncmp (input_buffer, "new ", CMD_LEN_INVITE) == 0)
     {
       if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
         {
@@ -277,7 +277,9 @@ handle_command (char *input_buffer, CliContext *ctx)
       int target_id;
       if (sscanf (input_buffer + CMD_LEN_INVITE, "%d", &target_id) == 1)
         {
-          if (NetworkManager_SendInvite (ctx->net_manager, target_id) == 0)
+          if (NetworkManager_SendInvite (ctx->net_manager, target_id,
+                                         ctx->config->board_size)
+              == 0)
             printf ("Invitation sent to player %d. Waiting for response...\n",
                     target_id);
         }

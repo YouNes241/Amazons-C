@@ -52,6 +52,7 @@
 
 // Roles and initialization
 #define ROLE_WHITE_VAL 0
+#define ROLE_BLACK_VAL 1
 #define ROLE_WHITE_STR "0"
 #define ROLE_BLACK_STR "1"
 
@@ -82,6 +83,7 @@ typedef struct
   bool is_joined;
   int game_id; // id of game playing now
   ClientStatus status;
+  int board_size;
   // TODO add later: player_id, name, status (IDLE, INGAME), etc.
 } ConnectedClient;
 

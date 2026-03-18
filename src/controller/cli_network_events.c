@@ -14,13 +14,16 @@ static CliContext *g_net_ctx = NULL;
  */
 
 static void
-on_game_started (PlayerColor color)
+on_game_started (PlayerColor color, int board_size)
 {
   if (!g_net_ctx)
     return;
   g_net_ctx->my_role = color;
   g_net_ctx->in_network_match = true;
   g_net_ctx->turn_start_time = time (NULL);
+
+  g_net_ctx->current_game->size = board_size;
+  game_init (g_net_ctx->current_game);
 
   printf ("\n[GAME] The game begins! You play the %s.\n",
           (color == PLAYER_WHITE) ? "White" : "Black");
@@ -89,11 +92,23 @@ on_player_disconnected (const char *reason)
   (void)reason;
   if (!g_net_ctx)
     return;
-  if (g_net_ctx->in_network_match)
+  if (g_net_ctx->net_manager->current_mode == NET_MODE_NONE)
     {
-      printf ("\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+      printf ("\n[SYSTEM] Server closed. Returning to MAIN MENU.\n");
+      g_net_ctx->in_network_match = false;
+      g_net_ctx->in_main_menu = true;
+
+      cli_display_main_menu ();
     }
-  g_net_ctx->in_network_match = false; // return to LOBBY
+  else
+    {
+      if (g_net_ctx->in_network_match)
+        {
+          printf (
+              "\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+        }
+      g_net_ctx->in_network_match = false;
+    }
   refresh_prompt (g_net_ctx);
 }
 
