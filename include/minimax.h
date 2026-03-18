@@ -8,6 +8,8 @@ typedef struct
 {
   int max_depth;
   int time_limit;
+  bool forward_pruning_enabled;
+  bool iterative_deepening_enabled;
   Evaluator evaluate;
 } Minimax_Data;
 
