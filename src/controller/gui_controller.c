@@ -85,10 +85,33 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
     }
 }
 
-/* ==========================================================================
-   RUN_GUI_MODE
-   ==========================================================================
- */
+void
+guiStartNewGame (AppContext *ctx)
+{
+  if (ctx->gameConfig->ai_white || ctx->gameConfig->ai_black)
+    {
+      ConfigMap empty_params = { .list = NULL, .count = 0 };
+
+      if (g_gui_ai_initialized && g_gui_ai.vtable->clean)
+        {
+          g_gui_ai.vtable->clean (&g_gui_ai);
+        }
+
+      g_gui_ai = create_ai ("random", empty_params);
+      g_gui_ai_initialized = (g_gui_ai.vtable != NULL);
+    }
+  else
+    {
+      g_gui_ai_initialized = false;
+    }
+
+  if (g_gui_ai_initialized
+      && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
+    {
+      g_timeout_add (50, guiAIPlayTurn, ctx);
+    }
+}
+
 void
 run_gui_mode (game_config_t *config)
 {

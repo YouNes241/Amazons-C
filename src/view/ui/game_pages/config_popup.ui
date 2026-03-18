@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="config_window">
+    <property name="title">Configurations</property>
+    <property name="default-width">950</property> 
+    <property name="default-height">600</property>
+    <property name="modal">true</property>
+    <property name="destroy-with-parent">true</property>
+    <property name="visible">false</property> 
+
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property>
+        <property name="margin-top">30</property>
+        <property name="margin-bottom">50</property>
+        
+        <child>
+          <object class="GtkLabel" id="title_label">
+            <property name="label">CONFIGURATIONS</property>
+            <property name="css-classes">title-1</property>
+            <property name="margin-bottom">40</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property> 
+            <property name="spacing">40</property>
+            <property name="width-request">900</property> 
+            
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">15</property>
+                <property name="hexpand">true</property> 
+                
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Bindings :</property>
+                    <property name="css-classes">title-2</property>
+                    <property name="halign">center</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkListBox">
+                    <property name="css-classes">boxed-list</property>
+                    <property name="selection-mode">none</property>
+                    
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Pause the current game</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkShortcutLabel">
+                                <property name="accelerator">&lt;Control&gt;P</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Display hints</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkShortcutLabel">
+                                <property name="accelerator">&lt;Control&gt;H</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="GtkSeparator">
+                <property name="orientation">vertical</property>
+              </object>
+            </child>
+
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <property name="spacing">15</property>
+                <property name="hexpand">true</property>
+                
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Settings :</property>
+                    <property name="css-classes">title-2</property>
+                    <property name="halign">center</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkListBox">
+                    <property name="css-classes">boxed-list</property>
+                    <property name="selection-mode">none</property>
+                    
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Verbose</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSwitch" id="verbose_switch">
+                                <property name="valign">center</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Blitz mode</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSwitch" id="blitz_switch">
+                                <property name="valign">center</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Timeout (seconds)</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="timeout_field">
+                                <property name="valign">center</property>
+                                <property name="numeric">true</property> 
+                                <property name="adjustment">
+                                  <object class="GtkAdjustment">
+                                    <property name="lower">5</property>
+                                    <property name="upper">3600</property>
+                                    <property name="step-increment">1</property>
+                                    <property name="value">30</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Board size</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="board_size_field">
+                                <property name="valign">center</property>
+                                <property name="numeric">true</property>
+                                <property name="adjustment">
+                                  <object class="GtkAdjustment">
+                                    <property name="lower">4</property>
+                                    <property name="upper">11</property>
+                                    <property name="step-increment">1</property>
+                                    <property name="value">10</property>
+                                  </object>
+                                </property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Language</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="lang_dropdown">
+                                <property name="valign">center</property>
+                                <items>
+                                  <item id="0">Français</item>
+                                  <item id="1">English</item>
+                                </items>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                  </object>
+                </child>
+              </object>
+            </child>
+
+          </object>
+        </child> 
+      </object>
+    </child> 
+  </object>
+</interface>

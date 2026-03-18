@@ -8,7 +8,10 @@
 
 static void navigationClick (GtkButton *button, gpointer user_data);
 static void quitButtonClick (GtkButton *button, gpointer user_data);
-static void infoButtonClick (GtkButton *button, gpointer user_data);
+static void infoPopupButtonClick (GtkButton *button, gpointer user_data);
+static void configPopupButtonClick (GtkButton *button, gpointer user_data);
+static void setupBoard (AppContext *ctx, GtkWidget *boardGrid);
+static void newGameButtonClick (GtkButton *button, gpointer user_data);
 static GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,
                                    gpointer user_data);
 static gboolean onDrop (GtkDropTarget *target, const GValue *value, double x,
@@ -20,6 +23,20 @@ static void onRightClick (GtkGestureClick *gesture, int n_press, double x,
                           double y, gpointer user_data);
 static void onCellClicked (GtkGestureClick *gesture, int n_press, double x,
                            double y, gpointer user_data);
+static void updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec,
+                                 gpointer user_data);
+static void updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec,
+                               gpointer user_data);
+static void updateConfigTimeout (GtkSpinButton *spin_button,
+                                 gpointer user_data);
+static void updateConfigBoardSize (GtkSpinButton *spin_button,
+                                   gpointer user_data);
+static void updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec,
+                                 gpointer user_data);
+static void updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec,
+                                 gpointer user_data);
+static void updateConfigLanguage (GtkComboBoxText *combo_box,
+                                  gpointer user_data);
 
 GtkWidget *
 createMainMenuPage (AppContext *ctx)
@@ -78,10 +95,10 @@ createSingleplayerMenuPage (AppContext *ctx)
   newGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_object_set_data (G_OBJECT (newGameBtn), "target_page", "game_page");
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
 
-  g_signal_connect (newGameBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+  g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
+                    ctx);
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
   g_object_ref (box);
@@ -118,14 +135,77 @@ createConfigPage (AppContext *ctx)
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
+  GtkWidget *verboseSwitch;
+  GtkWidget *blitzSwitch;
+  GtkWidget *timeoutField;
+  GtkWidget *boardSizeField;
+  GtkWidget *aiWhiteSwitch;
+  GtkWidget *aiBlackSwitch;
+  GtkWidget *langDropdown;
 
   builder = gtk_builder_new_from_resource ("/amazons/ui/config.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "config_box"));
-
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
-  g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
+  verboseSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
+  blitzSwitch = GTK_WIDGET (gtk_builder_get_object (builder, "blitz_switch"));
+  timeoutField
+      = GTK_WIDGET (gtk_builder_get_object (builder, "timeout_field"));
+  boardSizeField
+      = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_field"));
+  aiWhiteSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
+  aiBlackSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
+  langDropdown
+      = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
 
+  if (verboseSwitch)
+    gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
+                           ctx->gameConfig->verbose);
+  if (blitzSwitch)
+    gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
+                           ctx->gameConfig->blitz_mode);
+  if (timeoutField)
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
+                               ctx->gameConfig->time_per_player);
+  if (boardSizeField)
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
+                               ctx->gameConfig->board_size);
+  if (aiWhiteSwitch)
+    gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
+                           ctx->gameConfig->ai_white);
+  if (aiBlackSwitch)
+    gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
+                           ctx->gameConfig->ai_black);
+  if (langDropdown)
+    gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
+                              ctx->gameConfig->language);
+
+  if (verboseSwitch)
+    g_signal_connect (verboseSwitch, "notify::active",
+                      G_CALLBACK (updateConfigVerbose), ctx);
+  if (blitzSwitch)
+    g_signal_connect (blitzSwitch, "notify::active",
+                      G_CALLBACK (updateConfigBlitz), ctx);
+  if (timeoutField)
+    g_signal_connect (timeoutField, "value-changed",
+                      G_CALLBACK (updateConfigTimeout), ctx);
+  if (boardSizeField)
+    g_signal_connect (boardSizeField, "value-changed",
+                      G_CALLBACK (updateConfigBoardSize), ctx);
+  if (aiWhiteSwitch)
+    g_signal_connect (aiWhiteSwitch, "notify::active",
+                      G_CALLBACK (updateConfigAiWhite), ctx);
+  if (aiBlackSwitch)
+    g_signal_connect (aiBlackSwitch, "notify::active",
+                      G_CALLBACK (updateConfigAiBlack), ctx);
+  if (langDropdown)
+    g_signal_connect (langDropdown, "changed",
+                      G_CALLBACK (updateConfigLanguage), ctx);
+
+  g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
   g_object_ref (box);
@@ -159,23 +239,188 @@ createInfoPage (AppContext *ctx)
 GtkWidget *
 createGamePage (AppContext *ctx)
 {
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *infoBtn;
-  GtkWidget *quitBtn;
-  GtkWidget *boardGrid;
+  GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
+  GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
+  GtkWidget *newGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  GtkWidget *infoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
+  GtkWidget *configBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
+  GtkWidget *quitBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  GtkWidget *boardGrid
+      = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
+  g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
+  ctx->gameState = NULL;
+  ctx->gameBoard = NULL;
 
-  infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
-  quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
-  boardGrid = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
+  setupBoard (ctx, boardGrid);
 
+  GtkGesture *rightClick = gtk_gesture_click_new ();
+  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (rightClick),
+                                 GDK_BUTTON_SECONDARY);
+  g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
+  gtk_widget_add_controller (boardGrid, GTK_EVENT_CONTROLLER (rightClick));
+
+  g_object_set_data (G_OBJECT (quitBtn), "target_page", "main_menu_page");
+
+  g_signal_connect (quitBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+  g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
+                    ctx);
+  g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoPopupButtonClick),
+                    NULL);
+  g_signal_connect (configBtn, "clicked", G_CALLBACK (configPopupButtonClick),
+                    ctx);
+
+  g_object_ref (box);
+  g_object_unref (builder);
+
+  return box;
+}
+
+static void
+navigationClick (GtkButton *button, gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+  const char *targetPage
+      = (const char *)g_object_get_data (G_OBJECT (button), "target_page");
+
+  if (ctx->mainStack != NULL && targetPage != NULL)
+    {
+      gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
+    }
+}
+
+static void
+quitButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)user_data;
+
+  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (button));
+
+  if (GTK_IS_WINDOW (root))
+    {
+      gtk_window_close (GTK_WINDOW (root));
+    }
+}
+
+static void
+infoPopupButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)user_data;
+
+  GtkWindow *mainWindow
+      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
+
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/game_pages/info_popup.ui");
+  GtkWindow *infoWindow
+      = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
+
+  gtk_window_set_transient_for (infoWindow, mainWindow);
+
+  gtk_window_present (infoWindow);
+
+  g_object_unref (builder);
+}
+
+static void
+configPopupButtonClick (GtkButton *button, gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+
+  GtkWindow *mainWindow
+      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
+
+  GtkBuilder *builder = gtk_builder_new_from_resource (
+      "/amazons/ui/game_pages/config_popup.ui");
+  GtkWindow *configWindow
+      = GTK_WINDOW (gtk_builder_get_object (builder, "config_window"));
+
+  gtk_window_set_transient_for (configWindow, mainWindow);
+
+  GtkWidget *verboseSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
+  GtkWidget *blitzSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "blitz_switch"));
+  GtkWidget *timeoutField
+      = GTK_WIDGET (gtk_builder_get_object (builder, "timeout_field"));
+  GtkWidget *boardSizeField
+      = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_field"));
+  GtkWidget *langDropdown
+      = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
+
+  if (verboseSwitch)
+    gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
+                           ctx->gameConfig->verbose);
+  if (blitzSwitch)
+    gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
+                           ctx->gameConfig->blitz_mode);
+  if (timeoutField)
+    gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
+                               ctx->gameConfig->time_per_player);
+  if (boardSizeField)
+    {
+      gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
+                                 ctx->gameConfig->board_size);
+    }
+  if (langDropdown)
+    gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
+                              ctx->gameConfig->language);
+
+  if (verboseSwitch)
+    g_signal_connect (verboseSwitch, "notify::active",
+                      G_CALLBACK (updateConfigVerbose), ctx);
+  if (blitzSwitch)
+    g_signal_connect (blitzSwitch, "notify::active",
+                      G_CALLBACK (updateConfigBlitz), ctx);
+  if (timeoutField)
+    g_signal_connect (timeoutField, "value-changed",
+                      G_CALLBACK (updateConfigTimeout), ctx);
+  if (boardSizeField)
+    g_signal_connect (boardSizeField, "value-changed",
+                      G_CALLBACK (updateConfigBoardSize), ctx);
+  if (langDropdown)
+    g_signal_connect (langDropdown, "changed",
+                      G_CALLBACK (updateConfigLanguage), ctx);
+
+  gtk_window_present (configWindow);
+  g_object_unref (builder);
+}
+
+static void
+setupBoard (AppContext *ctx, GtkWidget *boardGrid)
+{
   int size = ctx->gameConfig->board_size;
+
+  if (ctx->gameState)
+    {
+      game_cleanup (ctx->gameState);
+      free (ctx->gameState);
+      ctx->gameState = NULL;
+    }
+  if (ctx->gameBoard)
+    {
+      free (ctx->gameBoard);
+      ctx->gameBoard = NULL;
+    }
+
+  GtkWidget *child = gtk_widget_get_first_child (boardGrid);
+  while (child != NULL)
+    {
+      GtkWidget *next = gtk_widget_get_next_sibling (child);
+      gtk_grid_remove (GTK_GRID (boardGrid), child);
+      child = next;
+    }
+
   ctx->gameState = malloc (sizeof (GameState));
   ctx->gameState->size = size;
   game_init (ctx->gameState);
+
+  ctx->gameBoard = malloc (size * size * sizeof (GtkWidget *));
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
 
   for (unsigned int i = 0; i < size * size; i++)
     {
@@ -226,66 +471,24 @@ createGamePage (AppContext *ctx)
     }
 
   drawBoard (ctx);
-
-  GtkGesture *rightClick = gtk_gesture_click_new ();
-  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (rightClick),
-                                 GDK_BUTTON_SECONDARY);
-  g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
-  gtk_widget_add_controller (boardGrid, GTK_EVENT_CONTROLLER (rightClick));
-
-  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitButtonClick), NULL);
-  g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoButtonClick), NULL);
-
-  g_object_ref (box);
-  g_object_unref (builder);
-
-  return box;
 }
 
 static void
-navigationClick (GtkButton *button, gpointer user_data)
+newGameButtonClick (GtkButton *button, gpointer user_data)
 {
+  (void)button;
   AppContext *ctx = (AppContext *)user_data;
-  const char *targetPage
-      = (const char *)g_object_get_data (G_OBJECT (button), "target_page");
 
-  if (ctx->mainStack != NULL && targetPage != NULL)
+  GtkWidget *boardGrid = GTK_WIDGET (
+      g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+
+  if (boardGrid)
     {
-      gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
+      setupBoard (ctx, boardGrid);
     }
-}
 
-static void
-quitButtonClick (GtkButton *button, gpointer user_data)
-{
-  (void)user_data;
-
-  GtkRoot *root = gtk_widget_get_root (GTK_WIDGET (button));
-
-  if (GTK_IS_WINDOW (root))
-    {
-      gtk_window_close (GTK_WINDOW (root));
-    }
-}
-
-static void
-infoButtonClick (GtkButton *button, gpointer user_data)
-{
-  (void)user_data;
-
-  GtkWindow *mainWindow
-      = GTK_WINDOW (gtk_widget_get_root (GTK_WIDGET (button)));
-
-  GtkBuilder *builder
-      = gtk_builder_new_from_resource ("/amazons/ui/game_pages/info_popup.ui");
-  GtkWindow *infoWindow
-      = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
-
-  gtk_window_set_transient_for (infoWindow, mainWindow);
-
-  gtk_window_present (infoWindow);
-
-  g_object_unref (builder);
+  guiStartNewGame (ctx);
+  gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
 }
 
 static GdkContentProvider *
@@ -325,15 +528,14 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 
   highlightReachableSquares (ctx, srcX, srcY);
 
-  int cases_trouvees = 0;
-  for (int i = 0;
-       i < ctx->gameConfig->board_size * ctx->gameConfig->board_size; i++)
+  int foundCells = 0;
+  for (int i = 0; i < ctx->gameState->size * ctx->gameState->size; i++)
     {
       if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (ctx->gameBoard[i]),
                                               "is_legal_move"))
           == 1)
         {
-          cases_trouvees++;
+          foundCells++;
         }
     }
 
@@ -379,7 +581,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
 
   const char *srcString = g_value_get_string (value);
   int srcIndex = atoi (srcString);
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
 
   int srcX = srcIndex % size;
   int srcY = srcIndex / size;
@@ -458,7 +660,7 @@ fireArrow (GtkWidget *button, gpointer user_data)
   current_move.arrow_dst.col = targetX;
   current_move.arrow_dst.row = targetY;
 
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
   gtk_widget_remove_css_class (
       ctx->gameBoard[ctx->tmpQueenDst.row * size + ctx->tmpQueenDst.col],
       "active-queen");
@@ -508,4 +710,60 @@ onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
   GtkWidget *cellBox
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
   fireArrow (cellBox, user_data);
+}
+
+static void
+updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
+{
+  (void)pspec;
+  ((AppContext *)user_data)->gameConfig->verbose
+      = gtk_switch_get_active (widget);
+}
+
+static void
+updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
+{
+  (void)pspec;
+  ((AppContext *)user_data)->gameConfig->blitz_mode
+      = gtk_switch_get_active (widget);
+}
+
+static void
+updateConfigTimeout (GtkSpinButton *spin_button, gpointer user_data)
+{
+  ((AppContext *)user_data)->gameConfig->time_per_player
+      = gtk_spin_button_get_value_as_int (spin_button);
+}
+
+static void
+updateConfigBoardSize (GtkSpinButton *spin_button, gpointer user_data)
+{
+  ((AppContext *)user_data)->gameConfig->board_size
+      = gtk_spin_button_get_value_as_int (spin_button);
+}
+
+static void
+updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
+{
+  (void)pspec;
+  ((AppContext *)user_data)->gameConfig->ai_white
+      = gtk_switch_get_active (widget);
+}
+
+static void
+updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
+{
+  (void)pspec;
+  ((AppContext *)user_data)->gameConfig->ai_black
+      = gtk_switch_get_active (widget);
+}
+
+static void
+updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
+{
+  int active = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
+  if (active == 0 || active == 1)
+    {
+      ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
+    }
 }
