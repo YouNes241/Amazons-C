@@ -58,6 +58,28 @@ NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
   manager->server_ctx = NULL;
   manager->client_ctx = NULL;
   manager->callbacks = callbacks;
+
+  manager->discovery_ctx = calloc (1, sizeof (struct ClientDiscoveryContext));
+  if (manager->discovery_ctx)
+    {
+      manager->discovery_ctx->udp_listen_socket
+          = socket (AF_INET, SOCK_DGRAM, 0);
+      if (manager->discovery_ctx->udp_listen_socket >= 0)
+        {
+          int opt = 1;
+          setsockopt (manager->discovery_ctx->udp_listen_socket, SOL_SOCKET,
+                      SO_REUSEADDR, &opt, sizeof (opt));
+
+          struct sockaddr_in local_addr;
+          memset (&local_addr, 0, sizeof (local_addr));
+          local_addr.sin_family = AF_INET;
+          local_addr.sin_port = htons (UDP_DISCOVERY_PORT);
+          local_addr.sin_addr.s_addr = INADDR_ANY;
+
+          bind (manager->discovery_ctx->udp_listen_socket,
+                (struct sockaddr *)&local_addr, sizeof (local_addr));
+        }
+    }
 }
 
 /**
@@ -129,6 +151,8 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   manager->current_mode = NET_MODE_SERVER;
   manager->server_ctx->listen_socket = sock;
   manager->server_ctx->port = port;
+  snprintf (manager->server_ctx->server_name, MAX_SERVER_NAME_LEN,
+            "Amazons_%d", port);
   manager->server_ctx->num_clients = 0;
   manager->server_ctx->next_game_id = 1;
 
@@ -141,6 +165,33 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
       manager->server_ctx->fds[i].fd = INVALID_SOCKET;
+    }
+
+  // =========================================================
+  // initialization of the UDP socket for discovery broadcasts (non-blocking,
+  // but we won't monitor it with poll() since we only use it for sending)
+  // =========================================================
+  manager->server_ctx->discovery.udp_socket_fd
+      = socket (AF_INET, SOCK_DGRAM, 0);
+  if (manager->server_ctx->discovery.udp_socket_fd >= 0)
+    {
+      int broadcast_enable = 1;
+      setsockopt (manager->server_ctx->discovery.udp_socket_fd, SOL_SOCKET,
+                  SO_BROADCAST, &broadcast_enable, sizeof (broadcast_enable));
+
+      memset (&manager->server_ctx->discovery.broadcast_addr, 0,
+              sizeof (struct sockaddr_in));
+      manager->server_ctx->discovery.broadcast_addr.sin_family = AF_INET;
+      manager->server_ctx->discovery.broadcast_addr.sin_port
+          = htons (UDP_DISCOVERY_PORT);
+      manager->server_ctx->discovery.broadcast_addr.sin_addr.s_addr
+          = inet_addr ("255.255.255.255");
+
+      manager->server_ctx->discovery.last_broadcast_time = time (NULL);
+    }
+  else
+    {
+      printf ("[WARNING] Could not create UDP discovery socket.\n");
     }
 
   printf ("[NETWORK] Server started on port %d\n", port);
@@ -217,19 +268,17 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
 }
 
 /**
- * @brief Cleans up network resources and frees memory.
- *
- * @details Closes the listening socket (if server) or the connection socket
- * (if client), frees the allocated context structures, and resets the mode to
- * NET_MODE_NONE.
- *
- * @param manager Pointer to the NetworkManager instance.
+ * @brief Processes all pending network events without blocking the main
+ * thread.
+ * * @details Delegates the actual multiplexing logic to internal helper
+ * functions depending on the current network mode (SERVER or CLIENT).
  */
 void
 NetworkManager_Cleanup (NetworkManager *manager)
 {
   if (manager == NULL)
     return;
+
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
       for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
@@ -238,6 +287,10 @@ NetworkManager_Cleanup (NetworkManager *manager)
             {
               close (manager->server_ctx->fds[i].fd);
             }
+        }
+      if (manager->server_ctx->discovery.udp_socket_fd >= 0)
+        {
+          close (manager->server_ctx->discovery.udp_socket_fd);
         }
       close (manager->server_ctx->listen_socket);
       free (manager->server_ctx);
@@ -251,294 +304,142 @@ NetworkManager_Cleanup (NetworkManager *manager)
       manager->client_ctx = NULL;
       printf ("\n[NETWORK] Disconnected from the server.\n");
     }
+
+  // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
+  // Car on l'a alloué dans NetworkManager_Init, peu importe le mode !
+  if (manager->discovery_ctx)
+    {
+      if (manager->discovery_ctx->udp_listen_socket != INVALID_SOCKET)
+        {
+          close (manager->discovery_ctx->udp_listen_socket);
+        }
+      free (manager->discovery_ctx);
+      manager->discovery_ctx = NULL;
+    }
+
   manager->current_mode = NET_MODE_NONE;
 }
 
-/**
- * @brief Processes all pending network events without blocking the main
- * thread.
- * * @details Delegates the actual multiplexing logic to internal helper
- * functions depending on the current network mode (SERVER or CLIENT).
- */
 void
 NetworkManager_Tick (NetworkManager *manager)
 {
-  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
+  if (manager == NULL)
     {
       return;
+      // ATTENTION: On a enlevé le "|| manager->current_mode == NET_MODE_NONE"
+      // Car on VEUT que le tick s'exécute dans le menu pour l'écoute UDP !
     }
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
       handle_server_tick (manager, manager->server_ctx);
+      if (manager->server_ctx->discovery.udp_socket_fd >= 0)
+        {
+          time_t now = time (NULL);
+          if (difftime (now,
+                        manager->server_ctx->discovery.last_broadcast_time)
+              >= BROADCAST_INTERVAL_SEC)
+            {
+              char msg[UDP_DISCOVERY_BUFFER_SIZE];
+              snprintf (msg, sizeof (msg), "%s;%d",
+                        manager->server_ctx->server_name,
+                        manager->server_ctx->port);
+
+              sendto (manager->server_ctx->discovery.udp_socket_fd, msg,
+                      strlen (msg), 0,
+                      (struct sockaddr *)&manager->server_ctx->discovery
+                          .broadcast_addr,
+                      sizeof (manager->server_ctx->discovery.broadcast_addr));
+
+              manager->server_ctx->discovery.last_broadcast_time = now;
+            }
+        }
     }
   else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
       handle_client_tick (manager, manager->client_ctx);
     }
-}
-/**
- * @brief Constructs and sends a JOIN packet cleanly.
- */
-int
-NetworkManager_SendJoin (NetworkManager *manager, const char *username)
-{
-  if (manager == NULL || username == NULL)
-    return NET_ERROR;
 
-  Packet pkt;
-  pkt.type = C2S_JOIN;
-  strncpy (pkt.payload, username, MAX_PAYLOAD_SIZE - 1);
-  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
+  if (manager->discovery_ctx
+      && manager->discovery_ctx->udp_listen_socket != INVALID_SOCKET)
     {
-      return NET_ERROR;
+      struct pollfd pfd;
+      pfd.fd = manager->discovery_ctx->udp_listen_socket;
+      pfd.events = POLLIN;
+
+      if (poll (&pfd, 1, 0) > 0)
+        {
+          char buffer[256];
+          struct sockaddr_in sender_addr;
+          socklen_t addr_len = sizeof (sender_addr);
+
+          int bytes = recvfrom (manager->discovery_ctx->udp_listen_socket,
+                                buffer, sizeof (buffer) - 1, 0,
+                                (struct sockaddr *)&sender_addr, &addr_len);
+
+          if (bytes > 0)
+            {
+              buffer[bytes] = '\0';
+              char *port_start = strchr (buffer, ';');
+
+              if (port_start)
+                {
+                  *port_start = '\0'; // Coupe la string
+                  port_start++;       // Avance sur le port
+
+                  int port = atoi (port_start);
+                  char *name_start = buffer;
+                  char *ip = inet_ntoa (sender_addr.sin_addr);
+                  time_t now = time (NULL);
+
+                  bool found = false;
+
+                  for (int i = 0; i < manager->discovery_ctx->server_count;
+                       i++)
+                    {
+                      if (strcmp (manager->discovery_ctx->servers[i].ip, ip)
+                              == 0
+                          && manager->discovery_ctx->servers[i].port == port)
+                        {
+                          manager->discovery_ctx->servers[i].last_seen = now;
+                          // Petit fix de sécurité : strncpy ne met pas
+                          // toujours le \0 à la fin si ça dépasse
+                          strncpy (manager->discovery_ctx->servers[i].name,
+                                   name_start, MAX_SERVER_NAME_LEN - 1);
+                          manager->discovery_ctx->servers[i]
+                              .name[MAX_SERVER_NAME_LEN - 1]
+                              = '\0';
+                          found = true;
+                          break;
+                        }
+                    }
+
+                  if (!found
+                      && manager->discovery_ctx->server_count
+                             < MAX_DISCOVERED_SERVERS)
+                    {
+                      int idx = manager->discovery_ctx->server_count;
+                      strncpy (manager->discovery_ctx->servers[idx].ip, ip,
+                               INET_ADDRSTRLEN - 1);
+                      manager->discovery_ctx->servers[idx]
+                          .ip[INET_ADDRSTRLEN - 1]
+                          = '\0';
+
+                      strncpy (manager->discovery_ctx->servers[idx].name,
+                               name_start, MAX_SERVER_NAME_LEN - 1);
+                      manager->discovery_ctx->servers[idx]
+                          .name[MAX_SERVER_NAME_LEN - 1]
+                          = '\0';
+
+                      manager->discovery_ctx->servers[idx].port = port;
+                      manager->discovery_ctx->servers[idx].last_seen = now;
+
+                      manager->discovery_ctx->server_count++;
+                    }
+                }
+            }
+        }
     }
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-/**
- * @brief Converts a Move to text, encapsulates it in a Packet and sends it.
- */
-int
-NetworkManager_SendMove (NetworkManager *manager, Move m)
-{
-  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return NET_SUCCESS;
-
-  char move_str[MAX_MOVE_STR_SIZE];
-  Protocol_MoveToString (m, move_str, sizeof (move_str));
-  move_str[strcspn (move_str, "\n")] = 0;
-
-  Packet pkt;
-  pkt.type = (manager->current_mode == NET_MODE_CLIENT) ? C2S_MOVE : S2C_MOVE;
-  strncpy (pkt.payload, move_str, MAX_PAYLOAD_SIZE - 1);
-  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  int target = (manager->current_mode == NET_MODE_CLIENT)
-                   ? TARGET_SERVER
-                   : TARGET_CLIENT_1; // TODO
-  return NetworkManager_Send (manager, target, formatted_buffer);
-}
-
-/**
- * @brief Constructs and sends a TIMEOUT packet cleanly.
- */
-int
-NetworkManager_SendTimeout (NetworkManager *manager)
-{
-  if (manager == NULL || manager->current_mode == NET_MODE_NONE)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = PKT_TIMEOUT;
-  strncpy (pkt.payload, "TIMEOUT", MAX_PAYLOAD_SIZE - 1);
-  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    {
-      return NET_ERROR;
-    }
-
-  int target = (manager->current_mode == NET_MODE_CLIENT)
-                   ? TARGET_SERVER
-                   : TARGET_CLIENT_1; // TODO
-  return NetworkManager_Send (manager, target, formatted_buffer);
-}
-
-/**
- * @brief Sends an invitation to a specific player ID.
- */
-int
-NetworkManager_SendInvite (NetworkManager *manager, int target_id,
-                           int board_size)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_INVITE;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d %d", target_id, board_size);
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-/**
- * @brief Accepts an invitation from a specific player ID.
- */
-int
-NetworkManager_SendAccept (NetworkManager *manager, int challenger_id)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_ACCEPT;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-/**
- * @brief Declines an invitation from a specific player ID.
- */
-int
-NetworkManager_SendDecline (NetworkManager *manager, int challenger_id)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_DECLINE;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", challenger_id);
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-/**
- * @brief Requests the list of connected players from the server.
- */
-int
-NetworkManager_SendListRequest (NetworkManager *manager, int target_id)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_LIST;
-
-  if (target_id >= 0)
-    snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
-  else
-    pkt.payload[0] = '\0';
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-int
-NetworkManager_SendScoreboardRequest (NetworkManager *manager)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_SCOREBOARD;
-  pkt.payload[0] = '\0';
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-/**
- * @brief Sends a simple network packet (without a payload) to the server.
- * Used for AWAY, BACK, CANCEL, PING, etc.
- */
-int
-NetworkManager_SendSimplePacket (NetworkManager *manager, PacketType type)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = type;
-  pkt.payload[0] = '\0'; // No payload for simple packets
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-int
-NetworkManager_SendAway (NetworkManager *manager)
-{
-  return NetworkManager_SendSimplePacket (manager, C2S_AWAY);
-}
-
-int
-NetworkManager_SendBack (NetworkManager *manager)
-{
-  return NetworkManager_SendSimplePacket (manager, C2S_BACK);
-}
-
-int
-NetworkManager_SendCancel (NetworkManager *manager, int target_id)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  Packet pkt;
-  pkt.type = C2S_CANCEL;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-int
-NetworkManager_SendPing (NetworkManager *manager)
-{
-  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
-    return NET_ERROR;
-
-  // On récupère le temps actuel en millisecondes
-  struct timeval tv;
-  gettimeofday (&tv, NULL);
-  long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
-
-  Packet pkt;
-  pkt.type = C2S_PING;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%lld",
-            now_ms); // On glisse l'heure dans le message
-
-  char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
-  if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
-    return NET_ERROR;
-
-  return NetworkManager_Send (manager, TARGET_SERVER, formatted_buffer);
-}
-
-int
-NetworkManager_SendGameOver (NetworkManager *manager, bool won)
-{
-  Packet pkt;
-  pkt.type = C2S_GAME_OVER;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, won ? "WIN" : "LOSE");
-
-  char out_buffer[MAX_FORMATTED_PKT_SIZE];
-  SerializePacket (&pkt, out_buffer, sizeof (out_buffer));
-  return NetworkManager_Send (manager, TARGET_SERVER, out_buffer);
 }
 
 /**
@@ -671,6 +572,7 @@ handle_server_new_connection (ServerContext *ctx)
               memset (ctx->clients[i].username, 0, MAX_USERNAME_LENGTH);
               ctx->clients[i].game_id = NO_GAME_ID;
               ctx->clients[i].status = CLIENT_STATUS_CONNECTED;
+              ctx->clients[i].last_activity = time (NULL);
               ctx->num_clients++;
               accepted = true;
 
@@ -797,6 +699,7 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
       disconnect_server_client (manager, ctx, client_index);
       return;
     }
+  ctx->clients[client_index].last_activity = time (NULL);
   if (status == NET_BUFFER_FULL)
     {
       printf ("\n[SERVER] Error: Buffer full for client %d.\n", client_index);
@@ -815,20 +718,36 @@ static void
 handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 {
   int poll_count = poll (ctx->fds, MAX_CLIENTS + 1, POLL_TIMEOUT_IMMEDIATE);
-  if (poll_count <= 0)
-    return;
+  time_t now = time (NULL);
 
-  if (ctx->fds[LISTEN_SOCKET_INDEX].revents & POLLIN)
+  if (poll_count > 0)
     {
-      handle_server_new_connection (ctx);
-    }
+      if (ctx->fds[LISTEN_SOCKET_INDEX].revents & POLLIN)
+        {
+          handle_server_new_connection (ctx);
+        }
 
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          if (ctx->fds[i].fd != INVALID_SOCKET
+              && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+            {
+              handle_server_client_data (manager, ctx, i);
+            }
+        }
+    }
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
-      if (ctx->fds[i].fd != INVALID_SOCKET
-          && (ctx->fds[i].revents & (POLLIN | POLLHUP | POLLERR)))
+      if (ctx->fds[i].fd != INVALID_SOCKET)
         {
-          handle_server_client_data (manager, ctx, i);
+          if (difftime (now, ctx->clients[i].last_activity)
+              >= CLIENT_TIMEOUT_SEC)
+            {
+              printf (
+                  "\n[SERVER] Client %d timed out (no activity for %d sec).\n",
+                  i, CLIENT_TIMEOUT_SEC);
+              disconnect_server_client (manager, ctx, i);
+            }
         }
     }
 }
@@ -1078,88 +997,41 @@ NetworkManager_ShutdownServer (NetworkManager *manager)
   NetworkManager_Cleanup (manager);
 }
 
-void
-SaveScoreboard (NetworkManager *manager)
+int
+NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
+                              size_t max_len)
 {
-  FILE *f = fopen ("scoreboard.txt", "w");
-  if (!f)
-    return;
+  if (!manager || !manager->discovery_ctx || !buffer || max_len == 0)
+    return -1;
 
-  // Ici, on pourrait parcourir une liste globale,
-  // mais pour l'instant sauvegardons les clients actifs
-  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+  buffer[0] = '\0';
+  int count = 0;
+  time_t now = time (NULL);
+
+  for (int i = 0; i < manager->discovery_ctx->server_count; i++)
     {
-      if (manager->server_ctx->clients[i].is_joined)
+      // On vérifie le timeout de 30 secondes ici !
+      if (difftime (now, manager->discovery_ctx->servers[i].last_seen)
+          <= SERVER_TIMEOUT_SEC)
         {
-          fprintf (f, "%s %d %d %d\n",
-                   manager->server_ctx->clients[i].username,
-                   manager->server_ctx->clients[i].wins,
-                   manager->server_ctx->clients[i].losses,
-                   manager->server_ctx->clients[i].games_played);
-        }
-    }
-  fclose (f);
-}
+          char line[128];
+          snprintf (line, sizeof (line), "[%d] %s (IP: %s, Port: %d)\n",
+                    count + 1, manager->discovery_ctx->servers[i].name,
+                    manager->discovery_ctx->servers[i].ip,
+                    manager->discovery_ctx->servers[i].port);
 
-void
-LoadScoreboardForClient (ConnectedClient *client)
-{
-  FILE *f = fopen ("scoreboard.txt", "r");
-  if (!f)
-    return;
-
-  char name[MAX_USERNAME_LENGTH];
-  int w, l, g;
-  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
-    {
-      if (strcmp (name, client->username) == 0)
-        {
-          client->wins = w;
-          client->losses = l;
-          client->games_played = g;
-          break;
-        }
-    }
-  fclose (f);
-}
-
-void
-NetworkManager_UpdatePlayerStats (const char *username, bool won)
-{
-  FILE *f = fopen ("scoreboard.txt", "r");
-  // On utilise un fichier temporaire pour réécrire les données
-  FILE *temp = fopen ("scoreboard.tmp", "w");
-  if (!temp)
-    return;
-
-  bool found = false;
-  char name[32];
-  int w, l, g;
-
-  if (f)
-    {
-      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
-        {
-          if (strcmp (name, username) == 0)
+          if (strlen (buffer) + strlen (line) < max_len - 1)
             {
-              found = true;
-              g++; // +1 partie jouée
-              if (won)
-                w++;
-              else
-                l++; // +1 victoire ou défaite
+              strcat (buffer, line);
+              count++;
             }
-          fprintf (temp, "%s %d %d %d\n", name, w, l, g);
         }
-      fclose (f);
     }
 
-  // Si le joueur n'existait pas encore dans le fichier
-  if (!found)
+  if (count == 0)
     {
-      fprintf (temp, "%s %d %d %d\n", username, won ? 1 : 0, won ? 0 : 1, 1);
+      snprintf (buffer, max_len, "No servers found on the local network.\n");
     }
 
-  fclose (temp);
-  rename ("scoreboard.tmp", "scoreboard.txt");
+  return count;
 }

@@ -13,12 +13,11 @@
 
 // --- Autocomplete ---
 static char *commands_list[]
-    = { "new",          "help",          "quit",        "load",
-        "save",         "pause",         "hint",        "undo",
-        "redo",         "show",          "set",         "details",
-        "start server", "server status", "server stop", "join",
-        "players",      "accept",        "decline",     "away",
-        "back",         "cancel",        "ping",        NULL };
+    = { "new",   "help",    "quit",         "load",          "save",
+        "pause", "hint",    "undo",         "redo",          "show",
+        "set",   "details", "start server", "server status", "server stop",
+        "join",  "players", "accept",       "decline",       "away",
+        "back",  "cancel",  "ping",         "scoreboard",    NULL };
 
 static char *
 command_generator (const char *text, int state)
@@ -184,6 +183,15 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf ("  new <ID>                : Invite a player to a game\n");
       printf ("  accept <ID>                : Accept an invitation\n");
       printf ("  decline <ID>               : Decline an invitation\n");
+      printf ("  away                       : Mark yourself as AWAY in the "
+              "lobby\n");
+      printf ("  back                       : Mark yourself as BACK/IDLE in "
+              "the lobby\n");
+      printf ("  cancel <ID>               : Cancel a pending invitation\n");
+      printf ("  server stop                : Stop hosting the server\n");
+      printf (
+          "  quit                       : Leave the server or exit the app\n");
+      printf ("\n====================\n");
 
       printf ("\n--- Playing a Move ---\n");
       printf (
@@ -207,6 +215,24 @@ handle_command (char *input_buffer, CliContext *ctx)
         sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
                 &port);
       NetworkManager_ServerStart (ctx->net_manager, port);
+      return;
+    }
+
+  else if (strcmp (input_buffer, "server list") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_NONE)
+        {
+          char list_buffer[512];
+          printf ("\n=== Local Amazons Servers ===\n");
+          NetworkManager_GetServerList (ctx->net_manager, list_buffer,
+                                        sizeof (list_buffer));
+          printf ("%s", list_buffer);
+          printf ("=============================\n");
+        }
+      else
+        {
+          printf ("You are already connected to a network.\n");
+        }
       return;
     }
 

@@ -24,6 +24,7 @@ typedef enum
 
 typedef struct ServerContext ServerContext;
 typedef struct ClientContext ClientContext;
+typedef struct ClientDiscoveryContext ClientDiscoveryContext;
 
 /* ==========================================================================
  * 2. Callback Interface
@@ -54,6 +55,7 @@ typedef struct
   ServerContext *server_ctx;
   ClientContext *client_ctx;
   NetworkEvents callbacks;
+  ClientDiscoveryContext *discovery_ctx;
 } NetworkManager;
 
 /* ==========================================================================
@@ -93,11 +95,13 @@ int NetworkManager_SendScoreboardRequest (NetworkManager *manager);
 
 void NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
                                          size_t max_len, int target_id);
+int NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
+                                  size_t max_len);
 int NetworkManager_GetServerStatus (NetworkManager *manager, int *out_clients,
                                     int *out_games, int *out_port);
 
 void NetworkManager_UpdatePlayerStats (const char *username, bool won);
-
+void NetworkManager_DiscoverServers ();
 void NetworkManager_ShutdownServer (NetworkManager *manager);
 int NetworkManager_HasOpponent (NetworkManager *manager);
 

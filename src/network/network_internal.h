@@ -8,8 +8,10 @@
 
 #include "../../include/network_common.h"
 #include "tcp_buffer.h"
+#include <arpa/inet.h>
 #include <poll.h>
 #include <stdbool.h>
+#include <time.h>
 
 /* ==========================================================================
  * 1. Constants
@@ -32,6 +34,12 @@
 #define POLL_TIMEOUT_IMMEDIATE 0
 #define SINGLE_FD_COUNT 1
 
+#define UDP_DISCOVERY_PORT 12346
+#define BROADCAST_INTERVAL_SEC 10
+#define SERVER_TIMEOUT_SEC 30
+
+#define CLIENT_TIMEOUT_SEC 60
+
 // Buffer Sizes & Limits
 #define RECV_TEMP_BUFFER_SIZE 256
 #define MAX_MOVE_STR_SIZE 128
@@ -39,7 +47,10 @@
 #define SCOREBOARD_ENTRY_BUFFER_SIZE 128
 #define MAX_USERNAME_LENGTH 32
 #define MAX_FORMATTED_PKT_SIZE 512
+#define UDP_DISCOVERY_BUFFER_SIZE 128
 #define NULL_TERMINATOR_OFFSET 1 // Space for '\0'
+#define MAX_SERVER_NAME_LEN 32
+#define MAX_DISCOVERED_SERVERS 10
 // Client & Target Indexing
 #define MAX_CLIENTS 64
 #define FIRST_CLIENT_INDEX 1
@@ -90,10 +101,39 @@ typedef struct
   int game_id; // id of game playing now
   ClientStatus status;
   int board_size;
+
+  // Stats for the scoreboard
   int wins;
   int losses;
   int games_played;
+  time_t last_activity;
 } ConnectedClient;
+
+// --- UDP Discovery Structures ---
+
+typedef struct
+{
+  int udp_socket_fd;
+  struct sockaddr_in broadcast_addr;
+  time_t last_broadcast_time;
+} ServerDiscoveryContext;
+
+typedef struct
+{
+  char ip[INET_ADDRSTRLEN];
+  char name[MAX_SERVER_NAME_LEN];
+  int port;
+  time_t last_seen;
+} DiscoveredServer;
+
+struct ClientDiscoveryContext // Définition de la structure opaque du client
+{
+  int udp_listen_socket;
+  DiscoveredServer servers[MAX_DISCOVERED_SERVERS];
+  int server_count;
+};
+
+// --- Core Context Structures ---
 
 /**
  * @brief Internal structure of the Server Context.
@@ -104,6 +144,7 @@ struct ServerContext
 {
   int listen_socket;
   int port;
+  char server_name[MAX_SERVER_NAME_LEN];
   /**
    * @brief Monitoring table for poll().
    * @details Index 0 is ALWAYS the listen_socket (server entry point).
@@ -111,6 +152,7 @@ struct ServerContext
    */
   struct pollfd fds[MAX_CLIENTS + 1];
 
+  ServerDiscoveryContext discovery;
   /**
    * @brief Array of connected client data.
    * @details Index matches the fds array (e.g., clients[1] corresponds to
