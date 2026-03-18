@@ -1,0 +1,159 @@
+
+#include "cli_network_events.h"
+#include "../../include/game_engine.h"
+#include "cli_commands.h"
+#include "cli_view.h"
+#include <stdio.h>
+
+// A local global pointer to this module so that callbacks can access it.
+static CliContext *g_net_ctx = NULL;
+
+/* ==========================================================================
+   network callback
+   ==========================================================================
+ */
+
+static void
+on_game_started (PlayerColor color)
+{
+  if (!g_net_ctx)
+    return;
+  g_net_ctx->my_role = color;
+  g_net_ctx->in_network_match = true;
+  g_net_ctx->turn_start_time = time (NULL);
+
+  printf ("\n[GAME] The game begins! You play the %s.\n",
+          (color == PLAYER_WHITE) ? "White" : "Black");
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_network_move_received (Move m)
+{
+  if (!g_net_ctx)
+    return;
+  if (is_move_legal (g_net_ctx->current_game, m))
+    {
+      printf ("\n");
+      apply_move (g_net_ctx->current_game, m);
+      printf ("[NETWORK] The opponent played !\n");
+
+      // Reset the timer because it's our turn now
+
+      g_net_ctx->timeout_sent = false;
+      g_net_ctx->turn_start_time = time (NULL);
+
+      cli_display_board (g_net_ctx->current_game);
+      refresh_prompt (g_net_ctx);
+    }
+}
+
+/**
+ * @brief Called when the network informs us that the opponent has timed out
+ */
+static void
+on_network_timeout_received ()
+{
+  if (!g_net_ctx)
+    return;
+  printf ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
+          "turn to play!.\n");
+
+  // 1. We are changing the current player locally
+  g_net_ctx->current_game->current_player
+      = (g_net_ctx->current_game->current_player == PLAYER_WHITE)
+            ? PLAYER_BLACK
+            : PLAYER_WHITE;
+
+  // 2. MOST IMPORTANTLY: We reset our timer to begin our own 60 seconds !
+
+  g_net_ctx->timeout_sent = false;
+  g_net_ctx->turn_start_time = time (NULL);
+  // 3. We refresh the display
+  cli_display_board (g_net_ctx->current_game);
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_player_joined (const char *name)
+{
+  (void)name;
+  if (!g_net_ctx)
+    return;
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_player_disconnected (const char *reason)
+{
+  (void)reason;
+  if (!g_net_ctx)
+    return;
+  if (g_net_ctx->in_network_match)
+    {
+      printf ("\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+    }
+  g_net_ctx->in_network_match = false; // return to LOBBY
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_game_error (const char *err)
+{
+  (void)err;
+  if (!g_net_ctx)
+    return;
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_invitation_received (int challenger_id)
+{
+  if (!g_net_ctx)
+    return;
+  printf ("\n[LOBBY] Player %d invited you to a game!\n", challenger_id);
+  printf ("Type 'accept %d' to play, or 'decline %d' to refuse.\n",
+          challenger_id, challenger_id);
+  refresh_prompt (g_net_ctx);
+}
+static void
+
+on_invitation_declined (const char *message)
+
+{
+  if (!g_net_ctx)
+    return;
+
+  printf ("\n[LOBBY] %s\n",
+
+          message); // Affichera: [LOBBY] Invitation declined.
+
+  refresh_prompt (g_net_ctx);
+}
+
+static void
+on_list_received (const char *list_text)
+{
+  if (!g_net_ctx)
+    return;
+  printf ("\n=== LOBBY ===\n%s\n===============\n", list_text);
+  refresh_prompt (g_net_ctx);
+}
+
+NetworkEvents
+create_cli_network_events (CliContext *ctx)
+{
+  g_net_ctx = ctx; // On relie le contexte
+
+  NetworkEvents events = { 0 };
+  events.OnMoveReceived = on_network_move_received;
+  events.OnGameStarted = on_game_started;
+  events.OnPlayerJoined = on_player_joined;
+  events.OnGameError = on_game_error;
+  events.OnInvitationReceived = on_invitation_received;
+  events.OnInvitationDeclined = on_invitation_declined;
+  events.OnPlayerDisconnected = on_player_disconnected;
+  events.OnTimeoutReceived = on_network_timeout_received;
+  events.OnListReceived = on_list_received;
+  return events;
+}
