@@ -13,5 +13,6 @@
  * permissions).
  */
 int save_game (const char *filepath, game_config_t *config, GameState *state);
+int load_game (const char *filepath, game_config_t *config, GameState *state);
 
 #endif // SAVE_H
