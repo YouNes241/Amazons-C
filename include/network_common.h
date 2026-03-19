@@ -12,7 +12,6 @@
 #define NETWORK_COMMON_H
 
 #include "game_types.h"
-#include <stdbool.h>
 #include <stddef.h>
 
 /* ==========================================================================
