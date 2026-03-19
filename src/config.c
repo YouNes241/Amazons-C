@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PATH_SIZE 512
+#define LINE_SIZE 128
+#define KEY_SIZE 64
+#define VAL_SIZE 64
+
 void
 init_default_config (game_config_t *config)
 {
@@ -70,7 +75,7 @@ get_config_path (char *path, size_t size)
 void
 load_config_file (game_config_t *config)
 {
-  char path[512];
+  char path[PATH_SIZE];
   get_config_path (path, sizeof (path));
 
   FILE *file = fopen (path, "r");
@@ -109,11 +114,11 @@ load_config_file (game_config_t *config)
       return;
     }
 
-  char line[128];
+  char line[LINE_SIZE];
 
   while (fgets (line, sizeof (line), file))
     {
-      char key[64], value[64];
+      char key[KEY_SIZE], value[VAL_SIZE];
 
       if (line[0] == '[' || line[0] == '\n' || line[0] == '#')
         continue;

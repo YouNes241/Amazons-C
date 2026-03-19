@@ -598,7 +598,18 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else if (strncmp (input_buffer, "load ", CMD_LEN_LOAD) == 0)
     {
-      printf ("Loading of : %s\n", &input_buffer[CMD_LEN_LOAD]);
+      // 1. On récupère le nom du fichier tapé par le joueur
+      const char *filename = input_buffer + CMD_LEN_LOAD;
+
+      // 2. On appelle notre nouvelle fonction de lecture
+      if (load_game (filename, ctx->config, ctx->current_game) == 0)
+        {
+          printf ("Game loaded successfully from: %s\n", filename);
+        }
+      else
+        {
+          printf ("Failed to load the game.\n");
+        }
       return;
     }
   else if (strcmp (input_buffer, "pause") == 0)
