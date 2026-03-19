@@ -107,19 +107,33 @@ typedef enum
 /** @brief Structure representing a connected client. */
 typedef struct
 {
-  int fd;                             // Client socket file descriptor
-  tcp_buffer_t buffer;                // Dedicated TCP buffer for this client
-  char username[MAX_USERNAME_LENGTH]; // The username sent via C2S_JOIN
+  /** @brief The client's socket file descriptor. */
+  int fd;
+  /** @brief Dedicated TCP buffer for this client to handle partial reads and
+   * message assembly. */
+  tcp_buffer_t buffer;
+  /** @brief Flag indicating whether the client has completed the JOIN process
+   * and is fully recognized by the server. */
   bool is_joined;
-  int game_id; // id of game playing now
+  /** @brief The username provided by the client during the JOIN process. */
+  char username[MAX_USERNAME_LENGTH];
+  /** @brief The ID of the game the client is currently playing, or NO_GAME_ID
+   * if not in a game. */
+  int game_id;
+  /** @brief The client's current status in the server (e.g., idle, away,
+   * ingame). */
   ClientStatus status;
+  /** @brief The board size for the game the client is waiting to start (used
+   * when status is WAITGAME). */
   int board_size;
 
-  // Stats for the scoreboard
+  /** @brief Timestamp of the client's last activity, used for timeout
+   * management. */
+  time_t last_activity;
+  /** @brief Player's statistics (can be used for a scoreboard feature). */
   int wins;
   int losses;
   int games_played;
-  time_t last_activity;
 } ConnectedClient;
 
 // --- UDP Discovery Structures ---
@@ -127,25 +141,36 @@ typedef struct
 /** @brief Structure for managing UDP discovery context on the server side. */
 typedef struct
 {
+  /** @brief The UDP socket file descriptor for discovery. */
   int udp_socket_fd;
+  /** @brief The broadcast address for sending discovery messages. */
   struct sockaddr_in broadcast_addr;
+  /** @brief Timestamp of the last broadcast message sent. */
   time_t last_broadcast_time;
 } ServerDiscoveryContext;
 
 /** @brief Structure for representing a discovered server. */
 typedef struct
 {
+  /** @brief The IP address of the discovered server. */
   char ip[INET_ADDRSTRLEN];
+  /** @brief The name of the discovered server. */
   char name[MAX_SERVER_NAME_LEN];
+  /** @brief The port on which the discovered server is listening. */
   int port;
+  /** @brief Timestamp of when the server was last seen. */
   time_t last_seen;
 } DiscoveredServer;
 
 /** @brief Structure for managing UDP discovery context on the client side. */
 struct ClientDiscoveryContext
 {
+  /** @brief The UDP socket file descriptor for listening to discovery
+   * messages. */
   int udp_listen_socket;
+  /** @brief Array of discovered servers. */
   DiscoveredServer servers[MAX_DISCOVERED_SERVERS];
+  /** @brief The number of discovered servers. */
   int server_count;
 };
 
@@ -154,8 +179,12 @@ struct ClientDiscoveryContext
 /** @brief Internal structure of the Server Context. */
 struct ServerContext
 {
+  /** @brief The main TCP socket file descriptor for accepting new client
+   * connections. */
   int listen_socket;
+  /** @brief The port on which the server is listening. */
   int port;
+  /** @brief The name of the server. */
   char server_name[MAX_SERVER_NAME_LEN];
   /**
    * @brief Monitoring table for poll().
@@ -164,6 +193,7 @@ struct ServerContext
    */
   struct pollfd fds[MAX_CLIENTS + 1];
 
+  /** @brief Context for managing UDP discovery. */
   ServerDiscoveryContext discovery;
   /**
    * @brief Array of connected client data.
@@ -171,10 +201,10 @@ struct ServerContext
    * fds[1]).
    */
   ConnectedClient clients[MAX_CLIENTS + 1];
-
-  int num_clients; // Current number of active connections
-
-  int next_game_id; // To generate unique game IDs (1, 2, 3...)
+  /** @brief The number of currently connected clients. */
+  int num_clients;
+  /** @brief The ID of the next game to be created. */
+  int next_game_id;
 };
 
 /**
@@ -182,9 +212,13 @@ struct ServerContext
  */
 struct ClientContext
 {
+  /** @brief The TCP socket file descriptor for the connection to the server.
+   */
   int server_socket;
+  /** @brief The pollfd structure for monitoring the server socket. */
   struct pollfd fd_info; // The client only monitors one thing: its connection
                          // to the server
+  /** @brief The TCP buffer for receiving messages from the server. */
   tcp_buffer_t
       buffer; // Personal buffer used by the client to receive server messages
 };

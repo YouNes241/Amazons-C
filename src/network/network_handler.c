@@ -16,8 +16,11 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-/**
- * @brief Helper to quickly build, serialize, and send a simple message packet.
+/** @brief Sends a message to a specific client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param target_index Index of the target client.
+ * @param type Type of the packet to send.
+ * @param msg Message to send.
  */
 static void
 send_server_message (NetworkManager *manager, int target_index,
@@ -35,8 +38,9 @@ send_server_message (NetworkManager *manager, int target_index,
     }
 }
 
-/**
- * @brief Common helper to process MOVE packets for both Server and Client.
+/** @brief Processes a MOVE packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param payload The payload of the MOVE packet.
  */
 static void
 process_move_packet (NetworkManager *manager, const char *payload)
@@ -51,8 +55,11 @@ process_move_packet (NetworkManager *manager, const char *payload)
     }
 }
 
-/**
- * @brief Handles the complex logic of a player joining the server.
+/** @brief Processes a JOIN packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client sending the packet.
+ * @param username The username of the player attempting to join.
  */
 static void
 process_join_packet (NetworkManager *manager, ServerContext *ctx,
@@ -153,8 +160,11 @@ route_packet_to_opponent (NetworkManager *manager, ServerContext *ctx,
     }
 }
 
-/**
- * @brief Manages the receipt of an invitation request (C2S_INVITE)
+/** @brief Processes an invitation packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param sender_index Index of the client sending the packet.
+ * @param payload The payload of the invitation packet.
  */
 static void
 process_invite_packet (NetworkManager *manager, ServerContext *ctx,
@@ -211,8 +221,11 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
   send_server_message (manager, target_index, S2C_INVITE, sender_id_str);
 }
 
-/**
- * @brief Handles the acceptance of an invitation (C2S_ACCEPT)
+/** @brief Processes an acceptance packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param sender_index Index of the client sending the packet.
+ * @param payload The payload of the acceptance packet.
  */
 static void
 process_accept_packet (NetworkManager *manager, ServerContext *ctx,
@@ -267,8 +280,11 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   send_server_message (manager, sender_index, S2C_GAME_START, payload_black);
 }
 
-/**
- * @brief Handles the rejection of an invitation (C2S_DECLINE)
+/** @brief Processes a decline packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param sender_index Index of the client sending the packet.
+ * @param payload The payload of the decline packet.
  */
 static void
 process_decline_packet (NetworkManager *manager, ServerContext *ctx,
@@ -292,8 +308,11 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
     }
 }
 
-/**
- * @brief Compiles and sends the list of active players to the requester.
+/** @brief Processes a list packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client sending the packet.
+ * @param payload The payload of the list packet.
  */
 static void
 process_list_packet (NetworkManager *manager, ServerContext *ctx,
@@ -321,6 +340,12 @@ process_list_packet (NetworkManager *manager, ServerContext *ctx,
   NetworkManager_Send (manager, client_index, out_buffer);
 }
 
+/** @brief Handles incoming packets for the server.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client sending the packet.
+ * @param pkt Pointer to the received packet.
+ */
 void
 handle_server_packet (NetworkManager *manager, ServerContext *ctx,
                       int client_index, Packet *pkt)
@@ -328,27 +353,29 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
 
   switch (pkt->type)
     {
+      /** @brief Processes a JOIN packet received from a client. */
     case C2S_JOIN:
       process_join_packet (manager, ctx, client_index, pkt->payload);
       break;
-
+      /** @brief Processes an invitation packet received from a client. */
     case C2S_INVITE:
       process_invite_packet (manager, ctx, client_index, pkt->payload);
       break;
-
+      /** @brief Processes an acceptance packet received from a client. */
     case C2S_ACCEPT:
       process_accept_packet (manager, ctx, client_index, pkt->payload);
       break;
-
+      /** @brief Processes a PING packet received from a client. */
     case C2S_PING:
       {
         send_server_message (manager, client_index, S2C_PONG, pkt->payload);
       }
       break;
-
+      /** @brief Processes a decline packet received from a client. */
     case C2S_DECLINE:
       process_decline_packet (manager, ctx, client_index, pkt->payload);
       break;
+      /** @brief Processes an AWAY packet received from a client. */
     case C2S_AWAY:
       if (ctx->clients[client_index].status == CLIENT_STATUS_IDLE)
         {
@@ -358,7 +385,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
           fflush (stdout);
         }
       break;
-
+      /** @brief Processes a BACK packet received from a client. */
     case C2S_BACK:
       if (ctx->clients[client_index].status == CLIENT_STATUS_AWAY)
         {
@@ -368,6 +395,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
           fflush (stdout);
         }
       break;
+      /** @brief Processes a CANCEL packet received from a client. */
     case C2S_CANCEL:
       if (ctx->clients[client_index].status == CLIENT_STATUS_WAITGAME)
         {
@@ -389,6 +417,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
           fflush (stdout);
         }
       break;
+      /** @brief Processes a SCOREBOARD packet received from a client. */
     case C2S_SCOREBOARD:
       {
         // On envoie l'en-tête
@@ -428,6 +457,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
                              "END_OF_SCOREBOARD");
       }
       break;
+      /** @brief Processes a GAME_OVER packet received from a client. */
     case C2S_GAME_OVER:
       {
         // On récupère le client qui a envoyé le message
@@ -447,22 +477,22 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         client->game_id = NO_GAME_ID;
       }
       break;
+      /** @brief Processes a LIST packet received from a client. */
     case C2S_LIST:
       process_list_packet (manager, ctx, client_index, pkt->payload);
       break;
-
+      /** @brief Processes a TIMEOUT packet received from a client. */
     case PKT_TIMEOUT:
       // ROUTING : The opponent is notified that time is up.
       route_packet_to_opponent (manager, ctx, client_index, pkt);
-
       break;
-
+      /** @brief Processes a MOVE packet received from a client. */
     case C2S_MOVE:
       // ROUTING: The move is relayed to the opponent
       route_packet_to_opponent (manager, ctx, client_index, pkt);
-
       break;
 
+      /** @brief Processes an unknown packet received from a client. */
     default:
       printf ("[SERVER] Unmanaged package (Type: %d)\n", pkt->type);
       break;
@@ -474,6 +504,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
 {
   switch (pkt->type)
     {
+      /** @brief Processes a WELCOME packet received from the server. */
     case S2C_WELCOME:
       printf ("\n[CLIENT] Connection accepted by server: %s\n", pkt->payload);
       if (manager->callbacks.OnPlayerJoined)
@@ -482,10 +513,12 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnPlayerJoined ("Server");
         }
       break;
+      /** @brief Processes a TIMEOUT packet received from the server. */
     case PKT_TIMEOUT:
       if (manager->callbacks.OnTimeoutReceived)
         manager->callbacks.OnTimeoutReceived ();
       break;
+      /** @brief Processes a REJECT packet received from the server. */
     case S2C_REJECT:
       printf ("[CLIENT] Connection rejected: %s\n", pkt->payload);
       NetworkManager_Cleanup (manager);
@@ -494,13 +527,14 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnPlayerDisconnected ("Username already taken");
         }
       break;
-
+      /** @brief Processes a LIST packet received from the server. */
     case S2C_LIST:
       if (manager->callbacks.OnListReceived)
         {
           manager->callbacks.OnListReceived (pkt->payload);
         }
       break;
+      /** @brief Processes a SCOREBOARD packet received from the server. */
     case S2C_SCOREBOARD:
       {
         if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
@@ -517,6 +551,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           }
       }
       break;
+      /** @brief Processes a PONG packet received from the server. */
     case S2C_PONG:
       {
         struct timeval tv;
@@ -532,7 +567,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         fflush (stdout);
       }
       break;
-
+      /** @brief Processes an ERROR packet received from the server. */
     case S2C_ERROR:
       if (manager->callbacks.OnGameError)
         {
@@ -544,13 +579,14 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
         }
       break;
+      /** @brief Processes a DECLINE packet received from the server. */
     case S2C_DECLINE:
       if (manager->callbacks.OnInvitationDeclined)
         {
           manager->callbacks.OnInvitationDeclined (pkt->payload);
         }
       break;
-
+      /** @brief Processes a CANCEL packet received from the server. */
     case S2C_CANCEL:
       if (manager->callbacks.OnInvitationDeclined)
         {
@@ -558,6 +594,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnInvitationDeclined (pkt->payload);
         }
       break;
+      /** @brief Processes an OPPONENT_LEFT packet received from the server. */
     case S2C_OPPONENT_LEFT:
 
       if (manager->callbacks.OnPlayerDisconnected)
@@ -565,6 +602,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnPlayerDisconnected (pkt->payload);
         }
       break;
+      /** @brief Processes a GAME_START packet received from the server. */
     case S2C_GAME_START:
       printf ("[CLIENT] Game is starting!\n");
       int color_val = 0, board_size = 10;
@@ -577,10 +615,11 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
           manager->callbacks.OnGameStarted (my_color, board_size);
         }
       break;
-
+      /** @brief Processes a MOVE packet received from the server. */
     case S2C_MOVE:
       process_move_packet (manager, pkt->payload);
       break;
+      /** @brief Processes an INVITE packet received from the server. */
     case S2C_INVITE:
       if (manager->callbacks.OnInvitationReceived)
         {
@@ -588,7 +627,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         }
 
       break;
-
+      /** @brief Processes an unknown packet received from the server. */
     default:
       printf ("[CLIENT] Unmanaged package (Type: %d)\n", pkt->type);
       break;

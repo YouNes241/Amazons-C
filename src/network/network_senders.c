@@ -245,7 +245,8 @@ NetworkManager_SendScoreboardRequest (NetworkManager *manager)
 
 /**
  * @brief Sends a simple network packet (without a payload) to the server.
- * Used for AWAY, BACK, CANCEL, PING, etc.
+ * Used for AWAY, BACK, etc.
+ *
  * @param manager Pointer to the NetworkManager instance.
  * @param type The PacketType to send (e.g., C2S_AWAY, C2S_BACK, C2S_PING).
  * @return int NET_SUCCESS on success, NET_ERROR on failure.

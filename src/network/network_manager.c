@@ -25,10 +25,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-/* ==========================================================================
- * Forward Declarations (Private Helpers)
- * ==========================================================================
- */
+/* Forward Declarations (Private Helpers) */
 
 static int set_nonblocking (int fd);
 static int receive_into_buffer (int sock, tcp_buffer_t *buffer);
@@ -324,6 +321,15 @@ NetworkManager_Cleanup (NetworkManager *manager)
   manager->current_mode = NET_MODE_NONE;
 }
 
+/**
+ * @brief Regular tick function to process network events and timeouts.
+ *
+ * This function should be called regularly (e.g., in the main loop) to allow
+ * the NetworkManager to handle incoming data, new connections, and perform
+ * periodic tasks such as sending discovery broadcasts.
+ *
+ * @param manager Pointer to the NetworkManager instance.
+ */
 void
 NetworkManager_Tick (NetworkManager *manager)
 {
@@ -545,11 +551,14 @@ receive_into_buffer (int sock, tcp_buffer_t *buffer)
 
   return NET_DATA_READ; // Succes
 }
-
 /**
- * @brief Handles a new incoming connection for the server.
- * @details Accepts the socket, finds a free slot, configures the pollfd array,
- * and initializes the dedicated TCP buffer for the new client.
+ * @brief Handles a new incoming connection on the server's listening socket.
+ *
+ * This function accepts the new connection, sets it to non-blocking mode, and
+ * adds it to the server context's monitoring table. If the server is at full
+ * capacity, the connection is refused and closed immediately.
+ *
+ * @param ctx Pointer to the ServerContext structure.
  */
 static void
 handle_server_new_connection (ServerContext *ctx)
@@ -597,7 +606,10 @@ handle_server_new_connection (ServerContext *ctx)
 }
 
 /**
- * @brief Cleans up a specific client slot on the server.
+ * @brief Disconnects a client from the server.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client to disconnect.
  */
 static void
 disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
@@ -642,9 +654,10 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
     manager->callbacks.OnPlayerDisconnected ("Network disconnection");
 }
 
-/**
- * @brief Common helper to extract and process all complete packets from a
- * buffer.
+/** @brief Processes all complete packets extracted from a TCP buffer.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param buffer Pointer to the TCP buffer containing the data.
+ * @param client_index Index of the client associated with the buffer.
  */
 static void
 process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
@@ -686,8 +699,10 @@ process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
     }
 }
 
-/**
- * @brief Handles incoming data or disconnection from a specific client.
+/** @brief Handles incoming data or disconnection from a specific client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client associated with the data.
  */
 static void
 handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
@@ -715,8 +730,9 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
                           client_index);
 }
 
-/**
- * @brief Handles the server's multiplexing logic.
+/** @brief Handles the server's periodic tick events.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
  */
 static void
 handle_server_tick (NetworkManager *manager, ServerContext *ctx)
@@ -756,8 +772,9 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
     }
 }
 
-/**
- * @brief Handles the client's multiplexing logic.
+/** @brief Handles the client's periodic tick events.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ClientContext structure.
  */
 static void
 handle_client_tick (NetworkManager *manager, ClientContext *ctx)
@@ -790,9 +807,9 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
   process_buffer_packets (manager, &ctx->buffer, 0);
 }
 
-/**
- * @brief Vérifie si un adversaire est connecté (utilisé pour le timer)
- * @return 1 si oui, 0 si non.
+/** @brief Checks if an opponent is connected.
+ * @param manager Pointer to the NetworkManager instance.
+ * @return HAS_OPPONENT if an opponent is connected, NO_OPPONENT otherwise.
  */
 int
 NetworkManager_HasOpponent (NetworkManager *manager)
@@ -830,7 +847,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
                     // empty buffer
 
   // =========================================================================
-  // case 1 : "players <id>" -> Detailed info about a specific player (F40)
+  // case 1 : "players <id>" -> Detailed info about a specific player
   // =========================================================================
   if (target_id >= 0)
     {
@@ -869,6 +886,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       // detailled format for a specific player, as requested in F40. Note that
       // we don't have real score data, so we put placeholders for
       // wins/losses/matches.
+      // TODO: Replace placeholders with actual score data when available
       snprintf (buffer, max_len,
                 "--- Player Details ---\n"
                 "ID     : %d\n"
@@ -885,7 +903,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
 
   // =========================================================================
   // case 2 : "players" -> List of all connected players with basic status
-  // (F39)
+  //
   // =========================================================================
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
@@ -917,6 +935,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       snprintf (buffer, max_len, "No players currently in the lobby.\n");
     }
 }
+
 /**
  * @brief gets the current server status, including number of clients and
  * games.
@@ -1001,6 +1020,12 @@ NetworkManager_ShutdownServer (NetworkManager *manager)
   NetworkManager_Cleanup (manager);
 }
 
+/** @brief Retrieves a list of available servers on the local network.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param buffer Pointer to the buffer where the server list will be stored.
+ * @param max_len Maximum length of the buffer.
+ * @return The number of servers found, or -1 on error.
+ */
 int
 NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
                               size_t max_len)

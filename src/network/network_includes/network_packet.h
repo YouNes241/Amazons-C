@@ -27,36 +27,65 @@
  */
 typedef enum
 {
+  /** @brief Unknown packet type. */
   PKT_UNKNOWN = 0,
-  C2S_JOIN = 1,       // Client -> Server: Connection request with a nickname
-  C2S_MOVE = 2,       // Client -> Server: Sends a played move
-  C2S_INVITE = 3,     // Client A wants to invite Client B
-  C2S_ACCEPT = 4,     // Client B accepts
-  C2S_DECLINE = 5,    // Client B refuses
-  C2S_LIST = 6,       // Client -> Server: Requests the list of players
-  S2C_GAME_START = 7, // Server -> Client: The game starts
-  S2C_ERROR = 8,      // Server -> Client: Error message (e.g., invalid move)
-  S2C_WELCOME = 9,    // Server -> Acceptance of nickname
-  S2C_REJECT = 10,    // Server ->  Username rejected (already taken, etc.)
+  /** @brief Client -> Server: Connection request with a nickname. */
+  C2S_JOIN = 1,
+  /** @brief Client -> Server: Sends a played move. */
+  C2S_MOVE = 2,
+  /** @brief Client A wants to invite Client B. */
+  C2S_INVITE = 3,
+  /** @brief Client B accepts. */
+  C2S_ACCEPT = 4,
+  /** @brief Client B refuses. */
+  C2S_DECLINE = 5,
+  /** @brief Client -> Server: Requests the list of players. */
+  C2S_LIST = 6,
+  /** @brief Server -> Client: The game starts. */
+  S2C_GAME_START = 7,
+  /** @brief Server -> Client: Error message (e.g., invalid move). */
+  S2C_ERROR = 8,
+  /** @brief Server -> Client: Acceptance of nickname. */
+  S2C_WELCOME = 9,
+  /** @brief Server -> Client: Username rejected (already taken, etc.). */
+  S2C_REJECT = 10,
+  /** @brief Server -> Client: Sent when a move is received. */
   S2C_MOVE = 11,
-  S2C_INVITE = 12,  // The server tells Client B, "A invites you."
-  S2C_DECLINE = 13, // The server tells Client A "B refused"
-  S2C_LIST = 14,    // Server -> Client: Sends the list of players
+  /** @brief Server -> Client: Inform the invitee that someone has invited
+     them. */
+  S2C_INVITE = 12,
+  /** @brief Server -> Client: Inform the challenger that their invite was
+     refused. */
+  S2C_DECLINE = 13,
+  /** @brief Server -> Client: Sends the list of players. */
+  S2C_LIST = 14,
+  /** @brief Server -> Client: Timeout message. */
+
   PKT_TIMEOUT = 15,
+  /** @brief Server -> Client: Inform the client that their opponent has left.
+   */
   S2C_OPPONENT_LEFT = 16,
-  C2S_CANCEL = 17, // Client -> Server: Cancel an invite
-  S2C_CANCEL = 18, // Server -> Client: Inform the invitee that the challenger
-                   // canceled
-  C2S_AWAY = 19,   // Client -> Server: Set status to away
-  C2S_BACK = 20,   // Client -> Server: Set status to back
+  /** @brief Client -> Server: Cancel an invite. */
+  C2S_CANCEL = 17,
+  /** @brief Server -> Client: Inform the invitee that the challenger has
+     canceled. */
+  S2C_CANCEL = 18,
+  /** @brief Client -> Server: Set status to away. */
+  C2S_AWAY = 19,
+  /** @brief Client -> Server: Set status to back. */
+  C2S_BACK = 20,
+  /** @brief Client -> Server: Send a ping message. */
   C2S_PING = 21,
+  /** @brief Server -> Client: Send a pong message. */
   S2C_PONG = 22,
-  C2S_SCOREBOARD = 23, // Client -> Server: Requests the scoreboard
-  S2C_SCOREBOARD = 24, // Server -> Client: Sends the scoreboard
-  C2S_GAME_OVER
-  = 25, // Client -> Server: Inform the server that the game is over
-  PKT_TYPE_MAX = 26 // Not a real packet, just a marker for the max value (used
-                    // in validation)
+  /** @brief Client -> Server: Request the current scoreboard. */
+  C2S_SCOREBOARD = 23,
+  /** @brief Server -> Client: Send the current scoreboard. */
+  S2C_SCOREBOARD = 24,
+  /** @brief Client -> Server: Inform the server that the game is over. */
+  C2S_GAME_OVER = 25,
+  /** @brief Maximum value for packet types (used in validation). */
+  PKT_TYPE_MAX = 26
 } PacketType;
 
 /* ==========================================================================
@@ -77,10 +106,13 @@ typedef enum
 #define NULL_CHAR_SPACE                                                       \
   1 // Reserved space for the end-of-string character '\0'
 
+/** @brief Structure representing a network packet. */
 typedef struct
 {
-  PacketType type;                // The message type id
-  char payload[MAX_PAYLOAD_SIZE]; // the message content in text
+  /** @brief The type of the packet. */
+  PacketType type;
+  /** @brief The payload of the packet. */
+  char payload[MAX_PAYLOAD_SIZE];
 } Packet;
 
 /* ==========================================================================
