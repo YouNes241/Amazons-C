@@ -15,12 +15,21 @@ initAppContext (game_config_t *config)
   ctx->gameState = NULL;
   ctx->mainWindow = NULL;
   ctx->mainStack = NULL;
-  ctx->gameBoard
-      = malloc (ctx->gameConfig->board_size * ctx->gameConfig->board_size
-                * sizeof (GtkWidget *));
-  assert (ctx->gameBoard);
+  ctx->gameBoard = NULL;
 
   ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
+  strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_load_game, "<Control>l", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_save_game, "<Control>s", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_config, "<Control>comma", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_info, "<Control>i", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_quit, "<Control>q", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_undo, "<Control>u", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_redo, "<Control>r", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_pause, "<Control>p", SHORTCUTS_SIZE - 1);
+  strncpy (ctx->keyBindings.key_hint, "<Control>h", SHORTCUTS_SIZE - 1);
 
   return ctx;
 }
@@ -40,7 +49,7 @@ freeAppContext (AppContext *ctx)
 void
 drawPiece (AppContext *ctx, int x, int y, CellContent content)
 {
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
   int index = y * size + x;
 
   GtkWidget *cellBox = ctx->gameBoard[index];
@@ -77,7 +86,7 @@ drawPiece (AppContext *ctx, int x, int y, CellContent content)
 void
 drawBoard (AppContext *ctx)
 {
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
 
   for (int y = 0; y < size; y++)
     {
@@ -91,7 +100,7 @@ drawBoard (AppContext *ctx)
 void
 clearHighlights (AppContext *ctx)
 {
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
   for (int i = 0; i < size * size; i++)
     {
       gtk_widget_remove_css_class (ctx->gameBoard[i], "highlight-valid");
@@ -105,7 +114,7 @@ highlightReachableSquares (AppContext *ctx, int srcX, int srcY)
 {
   clearHighlights (ctx);
 
-  int size = ctx->gameConfig->board_size;
+  int size = ctx->gameState->size;
   uint8_t start_index = coords_to_index (srcX, srcY, size);
 
   Bitboard bb_white, bb_black, bb_arrows;

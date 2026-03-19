@@ -1,10 +1,11 @@
 /**
  * @file tcp_buffer.h
- * @brief Header file for the TCP Buffer utility.
+ * @brief Header for TCP buffer management in the network module.
  *
- * @details This module provides a safe, fixed-size buffer implementation
- * to handle the stream nature of TCP connections (fragmentation and
- * concatenation).
+ * This header defines the structure and functions for managing a TCP buffer
+ * used to accumulate incoming data from a socket. It includes functionality to
+ * initialize the buffer, append new data, and extract complete messages based
+ * on newline delimiters.
  */
 
 #ifndef TCP_BUFFER_H

@@ -1,9 +1,22 @@
+/**
+ * @file cli_commands.c
+ * @brief Implementation of CLI command handling for the Amazons game.
+ *
+ * This file contains the implementation of the main command handler function
+ * for processing user input in the command-line interface (CLI) of the
+ * Amazons game. It includes logic for handling various commands related to
+ * game management, network interactions, and gameplay actions, as well as
+ * utilities for managing the CLI prompt and command completion.
+ */
+
 #include "cli_commands.h"
+#include "../../include/ai_factory.h"
 #include "../../include/cli_view.h"
 #include "../../include/controller.h"
 #include "../../include/game_engine.h"
 #include "../../include/input.h"
 #include "../../include/save.h"
+#include "../../include/utils.h"
 #include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,10 +24,11 @@
 
 // --- Autocomplete ---
 static char *commands_list[]
-    = { "new",    "help",    "quit",         "load", "save",
-        "pause",  "hint",    "undo",         "redo", "show",
-        "set",    "details", "start server", "join", "players",
-        "invite", "accept",  "decline",      NULL };
+    = { "new",   "help",    "quit",         "load",          "save",
+        "pause", "hint",    "undo",         "redo",          "show",
+        "set",   "details", "start server", "server status", "server stop",
+        "join",  "players", "accept",       "decline",       "away",
+        "back",  "cancel",  "ping",         "scoreboard",    NULL };
 
 static char *
 command_generator (const char *text, int state)
@@ -68,8 +82,8 @@ update_prompt_string (CliContext *ctx)
       return;
     }
   // If we are on a network
-  if (ctx->net_manager != NULL
-      && ctx->net_manager->current_mode != NET_MODE_NONE)
+  else if (ctx->net_manager != NULL
+           && ctx->net_manager->current_mode != NET_MODE_NONE)
     {
       if (ctx->in_network_match)
         {
@@ -81,8 +95,14 @@ update_prompt_string (CliContext *ctx)
         }
       else
         {
-          // Not in a game yet: Show LOBBY prompt
-          snprintf (prompt_str, sizeof (prompt_str), "[LOBBY] >> ");
+          if (ctx->is_away)
+            {
+              snprintf (prompt_str, sizeof (prompt_str), "[AWAY] >> ");
+            }
+          else
+            {
+              snprintf (prompt_str, sizeof (prompt_str), "[LOBBY] >> ");
+            }
         }
     }
   else
@@ -112,36 +132,83 @@ refresh_prompt (CliContext *ctx)
  */
 
 void
-handle_command (char *input_buffer, CliContext *ctx)
+execute_hint (CliContext *ctx)
 {
-  // 1. QUIT
-  if (strcmp (input_buffer, "quit") == 0)
+  if (!ctx->current_game)
     {
-      ctx->game_running = false;
+      printf ("%s", "[ERROR] No game in progress to get advice.\n");
       return;
     }
 
+  if (!ctx->ai_initialized)
+    {
+      printf ("%s", "[AI] Initializing advice engine...\n");
+      ConfigMap empty_params = { NULL, 0 };
+      ctx->ai = create_ai ("minimax", empty_params);
+
+      if (ctx->ai.vtable == NULL)
+        {
+          printf ("[ERROR] %s\n", "Failed to load the advice engine.");
+          return;
+        }
+      ctx->ai_initialized = true;
+    }
+
+  printf ("%s", "[AI] Analyzing the situation...\n");
+
+  Move sug = ctx->ai.vtable->get_best_move (&ctx->ai, *(ctx->current_game));
+
+  char src[POS_STRING_MAX_LEN], dst[POS_STRING_MAX_LEN],
+      arr[POS_STRING_MAX_LEN];
+  pos_to_string (sug.queen_src, src, sizeof (src));
+  pos_to_string (sug.queen_dst, dst, sizeof (dst));
+  pos_to_string (sug.arrow_dst, arr, sizeof (arr));
+
+  printf ("\n[ADVICE] Based on the current state:\n");
+  printf (" - Move the queen from %s to %s\n", src, dst);
+  printf (" - Shoot the arrow at %s\n", arr);
+}
+
+void
+handle_command (char *input_buffer, CliContext *ctx)
+{
+
   // 2. HELP & CONFIGURATION
-  else if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
+  if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
     {
       printf ("\n=== COMMAND LIST ===\n");
       printf ("--- Game Management ---\n");
-      printf ("  new         : Start a new local game\n");
-      printf ("  quit        : Exit the application\n");
-      printf ("  show        : Display the board\n");
-      printf ("  undo/redo   : Cancel or replay a move\n");
-      printf ("  save/load   : Save or load a game state\n");
-      printf ("  hint        : Get AI assistance\n");
-      printf ("  set/details : Configure game options\n");
-
-      printf ("\n--- Network & LOBBY ---\n");
-      printf ("  server start [port]        : Host a new server\n");
-      printf ("  join [IP:Port] [username]  : Connect to a server\n");
+      printf ("  new                  : Start a new local game\n");
       printf (
-          "  players                    : List all players in the LOBBY\n");
-      printf ("  invite <ID>                : Invite a player to a game\n");
-      printf ("  accept <ID>                : Accept an invitation\n");
-      printf ("  decline <ID>               : Decline an invitation\n");
+          "  quit                 : Exit the application or leave network\n");
+      printf ("  show                 : Display the board\n");
+      printf (
+          "  undo/redo            : Cancel or replay a move (Local vs AI)\n");
+      printf ("  save/load [filename] : Save or load a game state\n");
+      printf ("  hint                 : Get AI assistance\n");
+      printf ("  set / details        : Configure and display game options\n");
+
+      printf ("\n--- Network (Server) ---\n");
+      printf ("  server start [port]  : Host a new server\n");
+      printf ("  server stop          : Stop hosting the server\n");
+      printf ("  server status        : Show connected clients and active "
+              "games\n");
+      printf (
+          "  server list          : Discover local servers on the network\n");
+
+      printf ("\n--- Network (Client & Lobby) ---\n");
+      printf ("  join [IP:Port] [name]: Connect to a server\n");
+      printf ("  players [ID]         : List all players in the LOBBY (or "
+              "detail an ID)\n");
+      printf (
+          "  scoreboard           : Display the server's global scoreboard\n");
+      printf ("  ping                 : Check your latency with the server\n");
+      printf ("  new <ID>             : Invite a player to a game\n");
+      printf ("  accept <ID>          : Accept an invitation\n");
+      printf ("  decline <ID>         : Decline an invitation\n");
+      printf ("  cancel <ID>          : Cancel an invitation you sent\n");
+      printf ("  away                 : Mark yourself as AWAY\n");
+      printf ("  back                 : Mark yourself as BACK/IDLE\n");
 
       printf ("\n--- Playing a Move ---\n");
       printf (
@@ -158,24 +225,53 @@ handle_command (char *input_buffer, CliContext *ctx)
   // 3. NETWORK: SERVER START
   else if (strncmp (input_buffer, "server start", CMD_LEN_SERVER_START) == 0)
     {
-      ctx->in_main_menu = false;
-      cli_clear_screen ();
+
       int port = DEFAULT_PORT;
       if (strlen (input_buffer) > CMD_LEN_SERVER_START + CMD_SPACE_OFFSET)
         sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
                 &port);
-      NetworkManager_ServerStart (ctx->net_manager, port);
+      if (NetworkManager_ServerStart (ctx->net_manager, port) == 0)
+        {
+          ctx->in_main_menu = false;
+          cli_clear_screen ();
+
+          printf ("[INFO] Server started successfully on port %d.\n", port);
+        }
+      else
+        {
+          // Si le port est pris, on prévient l'utilisateur et on REST dans le
+          // menu
+          printf ("[ERROR] Failed to start server. Port %d might be in use.\n",
+                  port);
+        }
+      return;
+    }
+
+  else if (strcmp (input_buffer, "server list") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_NONE)
+        {
+          char list_buffer[512];
+          printf ("\n=== Local Amazons Servers ===\n");
+          NetworkManager_GetServerList (ctx->net_manager, list_buffer,
+                                        sizeof (list_buffer));
+          printf ("%s", list_buffer);
+          printf ("=============================\n");
+        }
+      else
+        {
+          printf ("You are already connected to a network.\n");
+        }
       return;
     }
 
   // 4. NETWORK: JOIN (Full parsing)
   else if (strncmp (input_buffer, "join", CMD_LEN_JOIN) == 0)
     {
-      ctx->in_main_menu = false;
+
       char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
-      cli_clear_screen ();
       int port = DEFAULT_PORT;
-      char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
+      char username[MAX_USERNAME_LEN] = DEFAULT_USERNAME;
 
       if (strlen (input_buffer) > CMD_LEN_JOIN + CMD_SPACE_OFFSET)
         {
@@ -202,7 +298,16 @@ handle_command (char *input_buffer, CliContext *ctx)
 
       if (NetworkManager_ClientJoin (ctx->net_manager, ip, port) == 0)
         {
+          ctx->in_main_menu = false;
+          cli_clear_screen ();
           NetworkManager_SendJoin (ctx->net_manager, username);
+        }
+      else
+        {
+
+          printf (
+              "\n[ERROR] Connection failed. Is the server running at %s:%d?\n",
+              ip, port);
         }
       return;
     }
@@ -211,13 +316,16 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendListRequest (ctx->net_manager);
+          NetworkManager_SendListRequest (
+              ctx->net_manager,
+              -1); // -1 signifie "aucun ID fourni, on veut tout le monde"
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
           char list_buffer[LOBBY_LIST_BUFFER_SIZE];
-          NetworkManager_GetServerPlayerList (ctx->net_manager, list_buffer,
-                                              sizeof (list_buffer));
+          NetworkManager_GetServerPlayerList (
+              ctx->net_manager, list_buffer, sizeof (list_buffer),
+              -1); // -1 signifie "aucun ID fourni, on veut tout le monde"
           printf ("\n=== SERVER LOBBY ===\n%s\n====================\n",
                   list_buffer);
         }
@@ -227,19 +335,142 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       return;
     }
-  else if (strncmp (input_buffer, "invite ", CMD_LEN_INVITE) == 0)
+  else if (strcmp (input_buffer, "away") == 0)
     {
-      if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          printf ("You must join a server first to invite someone.\n");
-          return;
+          NetworkManager_SendAway (ctx->net_manager);
+          ctx->is_away = true;
+          printf ("You are now marked as AWAY.\n");
         }
-      int target_id;
-      if (sscanf (input_buffer + CMD_LEN_INVITE, "%d", &target_id) == 1)
+      return;
+    }
+  else if (strcmp (input_buffer, "back") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          if (NetworkManager_SendInvite (ctx->net_manager, target_id) == 0)
-            printf ("Invitation sent to player %d. Waiting for response...\n",
-                    target_id);
+          NetworkManager_SendBack (ctx->net_manager);
+          ctx->is_away = false;
+          printf ("Welcome back! You are now IDLE.\n");
+        }
+      return;
+    }
+  else if (strcmp (input_buffer, "cancel") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          NetworkManager_SendCancel (ctx->net_manager, ctx->last_invited_id);
+          printf ("Invitation to player %d canceled.\n", ctx->last_invited_id);
+        }
+      return;
+    }
+  if (strcmp (input_buffer, "quit") == 0)
+    {
+      if (ctx->net_manager->current_mode != NET_MODE_NONE)
+        {
+
+          NetworkManager_Cleanup (ctx->net_manager);
+          ctx->in_main_menu = true;
+          ctx->in_network_match = false;
+          printf ("\n[NETWORK] Disconnected. Returned to local menu.\n");
+        }
+      else
+        {
+          ctx->game_running = false;
+        }
+      return;
+    }
+  // 3. NETWORK: SERVER STOP
+  else if (strcmp (input_buffer, "server stop") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_SERVER)
+        {
+          NetworkManager_ShutdownServer (ctx->net_manager);
+          ctx->in_main_menu = true;
+          printf (
+              "\n[SERVER] Server successfully stopped. Returned to menu.\n");
+        }
+      else
+        {
+          printf ("Error: No server is running.\n");
+        }
+      return;
+    }
+
+  // 3. NETWORK: SERVER STATUS
+  else if (strcmp (input_buffer, "server status") == 0)
+    {
+      int clients = 0, games = 0, port = 0;
+      if (NetworkManager_GetServerStatus (ctx->net_manager, &clients, &games,
+                                          &port)
+          == 0)
+        {
+          printf ("\n=== SERVER STATUS ===\n");
+          printf ("Status: Active\n");
+          printf ("Port: %d\n", port);
+          printf ("Connected clients: %d\n", clients);
+          printf ("Games in progress: %d\n", games);
+          printf ("=====================\n");
+        }
+      else
+        {
+          printf ("Error: You are not running a server.\n");
+        }
+      return;
+    }
+  else if (strcmp (input_buffer, "scoreboard") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          // On crée une fonction NetworkManager_SendScoreboardRequest
+          NetworkManager_SendScoreboardRequest (ctx->net_manager);
+        }
+      else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
+        {
+          // Le serveur peut l'afficher directement en lisant son fichier
+          system ("cat scoreboard.txt"); // Ou une version plus propre en C
+        }
+      return;
+    }
+  else if (strcmp (input_buffer, "ping") == 0)
+    {
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          NetworkManager_SendPing (ctx->net_manager);
+          printf ("Client: PING\n");
+        }
+      else
+        {
+          printf ("You must join a server first to ping it.\n");
+        }
+      return;
+    }
+
+  else if (strncmp (input_buffer, "players", 7) == 0)
+    {
+      int target_id
+          = -1; // -1 signifie "aucun ID fourni, on veut tout le monde"
+
+      // On cherche un chiffre après "players"
+      sscanf (input_buffer + 7, "%d", &target_id);
+
+      if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          NetworkManager_SendListRequest (ctx->net_manager,
+                                          target_id); // On passe l'ID
+        }
+      else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
+        {
+          char list_buffer[LOBBY_LIST_BUFFER_SIZE];
+          NetworkManager_GetServerPlayerList (ctx->net_manager, list_buffer,
+                                              sizeof (list_buffer),
+                                              target_id); // On passe l'ID
+          printf ("\n=== SERVER LOBBY ===\n%s\n====================\n",
+                  list_buffer);
+        }
+      else
+        {
+          printf ("You must start or join a server first to see players.\n");
         }
       return;
     }
@@ -272,11 +503,32 @@ handle_command (char *input_buffer, CliContext *ctx)
   // 5. GAME MANAGEMENT (UNDO / REDO / SAVE / LOAD / NEW)
   else if (strncmp (input_buffer, "new", CMD_LEN_NEW) == 0)
     {
-      printf ("New local game.\n");
-      game_init (ctx->current_game);
-      ctx->turn_start_time = time (NULL);
-      ctx->in_main_menu = false; // On quitte le menu !
-      cli_clear_screen ();       // On efface le menu ASCII
+      int target_id;
+      // On regarde s'il y a un ID après "new " (ex: "new 2")
+      if (sscanf (input_buffer + CMD_LEN_NEW, "%d", &target_id) == 1)
+        {
+          if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
+            {
+              printf ("You must join a server first to invite someone.\n");
+              return;
+            }
+          if (NetworkManager_SendInvite (ctx->net_manager, target_id,
+                                         ctx->config->board_size)
+              == 0)
+            {
+              ctx->last_invited_id = target_id; // <-- ON MÉMORISE L'ID ICI
+              printf ("Invitation sent to player %d.\n", target_id);
+            }
+        }
+      else
+        {
+          // Pas d'ID ? Alors c'est une partie locale !
+          printf ("New local game.\n");
+          game_init (ctx->current_game);
+          ctx->turn_start_time = time (NULL);
+          ctx->in_main_menu = false;
+          cli_clear_screen ();
+        }
       return;
     }
   else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
@@ -367,8 +619,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else if (strcmp (input_buffer, "hint") == 0)
     {
-      printf ("Tip: (AI in progress)...)\n");
-      return;
+      execute_hint (ctx);
     }
   else if (strncmp (input_buffer, "show", CMD_LEN_SHOW) == 0)
     {
