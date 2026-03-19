@@ -271,7 +271,7 @@ handle_command (char *input_buffer, CliContext *ctx)
 
       char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
       int port = DEFAULT_PORT;
-      char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
+      char username[MAX_USERNAME_LEN] = DEFAULT_USERNAME;
 
       if (strlen (input_buffer) > CMD_LEN_JOIN + CMD_SPACE_OFFSET)
         {

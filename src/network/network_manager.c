@@ -122,7 +122,6 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
 
   if (bind (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
-      perror ("Bind error");
       close (sock);
       return NET_ERROR;
     }
