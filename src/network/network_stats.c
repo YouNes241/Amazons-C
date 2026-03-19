@@ -1,0 +1,138 @@
+/**
+ * @file network_stats.c
+ * @brief Implementation of functions to manage player statistics and the
+ * scoreboard for the Amazons game.
+ *
+ * This file contains functions to save and load player statistics to and from
+ * a file, as well as to update the scoreboard after each game. The statistics
+ * include wins, losses, and games played for each player, which are stored in
+ * a simple text file format.
+ */
+
+#include "network_includes/network_internal.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* ==========================================================================
+ * Public API Implementation
+ * ==========================================================================
+ */
+
+/**
+ * @brief Saves the current player statistics to a file named "scoreboard.txt".
+ *
+ * The function iterates through the list of connected clients and writes their
+ * username, wins, losses, and games played to the file. Each line in the file
+ * corresponds to one player and has the format: "username wins losses games".
+ *
+ * @param manager Pointer to the NetworkManager instance containing the server
+ * context with client information.
+ */
+void
+SaveScoreboard (NetworkManager *manager)
+{
+  FILE *f = fopen ("scoreboard.txt", "w");
+  if (!f)
+    return;
+
+  // Ici, on pourrait parcourir une liste globale,
+  // mais pour l'instant sauvegardons les clients actifs
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (manager->server_ctx->clients[i].is_joined)
+        {
+          fprintf (f, "%s %d %d %d\n",
+                   manager->server_ctx->clients[i].username,
+                   manager->server_ctx->clients[i].wins,
+                   manager->server_ctx->clients[i].losses,
+                   manager->server_ctx->clients[i].games_played);
+        }
+    }
+  fclose (f);
+}
+
+/**
+ * @brief Loads player statistics from the "scoreboard.txt" file for a specific
+ * client.
+ *
+ * The function reads the scoreboard file line by line, looking for a matching
+ * username. If found, it populates the client's wins, losses, and games
+ * played fields with the corresponding values from the file.
+ *
+ * @param client Pointer to the ConnectedClient structure for which to load
+ * statistics.
+ */
+void
+LoadScoreboardForClient (ConnectedClient *client)
+{
+  FILE *f = fopen ("scoreboard.txt", "r");
+  if (!f)
+    return;
+
+  char name[MAX_USERNAME_LENGTH];
+  int w, l, g;
+  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+    {
+      if (strcmp (name, client->username) == 0)
+        {
+          client->wins = w;
+          client->losses = l;
+          client->games_played = g;
+          break;
+        }
+    }
+  fclose (f);
+}
+
+/**
+ * @brief Updates the player statistics after a game and saves the updated
+ * scoreboard.
+ *
+ * This function should be called at the end of each game to update the wins,
+ * losses, and games played for the involved players. It then calls
+ * SaveScoreboard to persist the changes to the file.
+ *
+ * @param username The username of the player whose stats are being updated.
+ * @param won True if the player won the game, false if they lost.
+ */
+void
+NetworkManager_UpdatePlayerStats (const char *username, bool won)
+{
+  FILE *f = fopen ("scoreboard.txt", "r");
+  // On utilise un fichier temporaire pour réécrire les données
+  FILE *temp = fopen ("scoreboard.tmp", "w");
+  if (!temp)
+    return;
+
+  bool found = false;
+  char name[32];
+  int w, l, g;
+
+  if (f)
+    {
+      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+        {
+          if (strcmp (name, username) == 0)
+            {
+              found = true;
+              g++; // +1 partie jouée
+              if (won)
+                w++;
+              else
+                l++; // +1 victoire ou défaite
+            }
+          fprintf (temp, "%s %d %d %d\n", name, w, l, g);
+        }
+      fclose (f);
+    }
+
+  // Si le joueur n'existait pas encore dans le fichier
+  if (!found)
+    {
+      fprintf (temp, "%s %d %d %d\n", username, won ? 1 : 0, won ? 0 : 1, 1);
+    }
+
+  fclose (temp);
+  rename ("scoreboard.tmp", "scoreboard.txt");
+}

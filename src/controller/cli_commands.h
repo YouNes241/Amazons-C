@@ -1,3 +1,13 @@
+/**
+ * @file cli_commands.h
+ * @brief Header for CLI command handling in the Amazons game.
+ *
+ * This header defines the functions and constants used for processing user
+ * commands in the command-line interface (CLI) of the Amazons game. It
+ * includes the main command handler function, as well as utilities for
+ * managing the CLI prompt and command completion.
+ */
+
 #ifndef CLI_COMMANDS_H
 #define CLI_COMMANDS_H
 
@@ -24,16 +34,28 @@
 #define CMD_SPACE_OFFSET                                                      \
   1 // Indentation to ignore the space after a command (e.g., "join")
 
-// Declaration so that Readline can use it
+/** @brief Completion function for Readline.
+ *  @param text The text to complete.
+ *  @param start The start position of the text.
+ *  @param end The end position of the text.
+ *  @return A list of possible completions.
+ */
 char **amazons_completion (const char *text, int start, int end);
 
-// The main order processing function
+/** @brief Handles a user command.
+ *  @param input_buffer The buffer containing the user's input.
+ *  @param ctx The CLI context.
+ */
 void handle_command (char *input_buffer, CliContext *ctx);
 
-// Utility function for redrawing the interface (used by commands
-// and the network)
+/** @brief Refreshes the CLI prompt.
+ *  @param ctx The CLI context.
+ */
 void refresh_prompt (CliContext *ctx);
 
+/** @brief Updates the prompt string based on the current state.
+ *  @param ctx The CLI context.
+ */
 void update_prompt_string (CliContext *ctx);
 
 void execute_hint (CliContext *ctx);

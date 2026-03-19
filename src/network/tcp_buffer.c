@@ -1,9 +1,15 @@
 /**
  * @file tcp_buffer.c
- * @brief Implementation of a TCP buffer for handling fragmented network data.
+ * @brief Implementation of a TCP buffer for managing incoming data streams.
+ *
+ * This file contains the implementation of a TCP buffer structure and
+ * associated functions to initialize the buffer, append new data, and extract
+ * complete messages (lines) from the buffer. The buffer is designed to handle
+ * incoming data from a TCP socket, allowing for efficient management of
+ * partial and complete messages.
  */
 
-#include "tcp_buffer.h"
+#include "network_includes/tcp_buffer.h"
 #include <string.h>
 
 /**
