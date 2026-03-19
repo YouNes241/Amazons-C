@@ -14,7 +14,11 @@
 #include "../../include/network_common.h"
 #include "cli_context.h"
 
-// Function that will return a ready-to-use NetworkEvents structure
+/** @brief Creates a NetworkEvents structure populated with CLI-specific
+ * handler functions.
+ *  @param ctx The CLI context.
+ *  @return A NetworkEvents structure with the appropriate handler functions.
+ */
 NetworkEvents create_cli_network_events (CliContext *ctx);
 
 #endif // CLI_NETWORK_EVENTS_H

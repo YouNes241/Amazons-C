@@ -86,22 +86,25 @@
  * ==========================================================================
  */
 
+/** @brief Enumeration for client status within the server context. */
 typedef enum
 {
-  CLIENT_STATUS_CONNECTED, // TCP connection established, but no username sent
-                           // yet
-  CLIENT_STATUS_IDLE,      //  Player is in the lobby, waiting for an invite
-  CLIENT_STATUS_AWAY,      // Player is in the lobby but marked as away (not
-                           // available for invites)
-  CLIENT_STATUS_WAITGAME,  // Player has sent an invite and is waiting for
-                           // acceptance
-  CLIENT_STATUS_INGAME // Player is currently in a game (either as challenger
-                       // or invitee)
+  /** @brief Client is connected to the server but has not yet joined a game.
+   */
+  CLIENT_STATUS_CONNECTED,
+  /** @brief Client is in the lobby and waiting for an invite. */
+  CLIENT_STATUS_IDLE,
+  /** @brief Client is in the lobby but marked as away (not available for
+     invites). */
+  CLIENT_STATUS_AWAY,
+  /** @brief Client has sent an invite and is waiting for acceptance. */
+  CLIENT_STATUS_WAITGAME,
+  /** @brief Client is currently in a game (either as challenger or invitee).
+   */
+  CLIENT_STATUS_INGAME
 } ClientStatus;
 
-/**
- * @brief Represents a client connected to the server with its own buffer.
- */
+/** @brief Structure representing a connected client. */
 typedef struct
 {
   int fd;                             // Client socket file descriptor
@@ -121,6 +124,7 @@ typedef struct
 
 // --- UDP Discovery Structures ---
 
+/** @brief Structure for managing UDP discovery context on the server side. */
 typedef struct
 {
   int udp_socket_fd;
@@ -128,6 +132,7 @@ typedef struct
   time_t last_broadcast_time;
 } ServerDiscoveryContext;
 
+/** @brief Structure for representing a discovered server. */
 typedef struct
 {
   char ip[INET_ADDRSTRLEN];
@@ -136,7 +141,8 @@ typedef struct
   time_t last_seen;
 } DiscoveredServer;
 
-struct ClientDiscoveryContext // Définition de la structure opaque du client
+/** @brief Structure for managing UDP discovery context on the client side. */
+struct ClientDiscoveryContext
 {
   int udp_listen_socket;
   DiscoveredServer servers[MAX_DISCOVERED_SERVERS];
@@ -145,11 +151,7 @@ struct ClientDiscoveryContext // Définition de la structure opaque du client
 
 // --- Core Context Structures ---
 
-/**
- * @brief Internal structure of the Server Context.
- * @details Exposed here to allow unit tests to verify the number of clients
- * and the state of the file descriptor array (fds).
- */
+/** @brief Internal structure of the Server Context. */
 struct ServerContext
 {
   int listen_socket;
