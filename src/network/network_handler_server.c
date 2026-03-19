@@ -1,11 +1,12 @@
 /**
- * @file network_handler.c
- * @brief Implementation of packet handlers for both Server and Client.
+ * @file network_handler_server.c
+ * @brief Implementation of packet handlers for the Server.
  *
- * This file contains the logic for processing incoming packets on both the
- * Server and Client sides. It includes functions to handle various message
- * types such as Join, Move, Invite, etc., and ensures that the game state is
- * updated accordingly based on the received data.
+ * This file contains the logic for processing incoming packets on the
+ * Server side. It includes functions to handle various message types such as
+ * Join, Move, etc., and ensures that the game state is updated accordingly
+ * based on the received data. It also manages client disconnections and the
+ * routing of messages to the appropriate clients.
  */
 
 #include "network_includes/network_handlers.h"
@@ -15,6 +16,101 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <unistd.h>
+
+/**
+ * @brief Disconnects a client from the server.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param client_index Index of the client to disconnect.
+ */
+void
+disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
+                          int client_index)
+{
+  printf ("\n[SERVER] Client %d has disconnected.\n", client_index);
+
+  int game_id = ctx->clients[client_index].game_id;
+  if (game_id != NO_GAME_ID)
+    {
+      for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+        {
+          // if there is still another player in the game
+          if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
+              && ctx->clients[i].game_id == game_id)
+            {
+              // we send him back to the lobby
+              ctx->clients[i].status = CLIENT_STATUS_IDLE;
+              ctx->clients[i].game_id = NO_GAME_ID;
+
+              Packet pkt;
+              pkt.type = S2C_OPPONENT_LEFT;
+              strncpy (pkt.payload, "Opponent disconnected.",
+                       MAX_PAYLOAD_SIZE - 1);
+              char out_buf[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+                {
+                  NetworkManager_Send (manager, i, out_buf);
+                }
+            }
+        }
+    }
+
+  close (ctx->fds[client_index].fd);
+  ctx->fds[client_index].fd = INVALID_SOCKET;
+  ctx->clients[client_index].is_joined = false;
+  ctx->clients[client_index].status = CLIENT_STATUS_CONNECTED;
+  ctx->clients[client_index].game_id = NO_GAME_ID;
+  ctx->num_clients--;
+
+  if (manager->callbacks.OnPlayerDisconnected)
+    manager->callbacks.OnPlayerDisconnected ("Network disconnection");
+}
+
+/** @brief Processes all complete packets extracted from a TCP buffer.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param buffer Pointer to the TCP buffer containing the data.
+ * @param client_index Index of the client associated with the buffer.
+ */
+void
+process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
+                        int client_index)
+{
+  char extracted_msg[RECV_TEMP_BUFFER_SIZE];
+  int res;
+  const char *log_prefix
+      = (manager->current_mode == NET_MODE_SERVER) ? "[SERVER]" : "[CLIENT]";
+
+  while ((res = tcp_buffer_extract_line (buffer, extracted_msg,
+                                         sizeof (extracted_msg)))
+         != EXTRACT_NO_MSG)
+    {
+      if (res == EXTRACT_MSG_OVERFLOW)
+        {
+          printf ("%s Warning: oversized message discarded.\n", log_prefix);
+          continue;
+        }
+
+      Packet pkt;
+      if (!DeserializePacket (extracted_msg, &pkt))
+        {
+          printf ("%s Incorrect format of received package : %s\n", log_prefix,
+                  extracted_msg);
+          continue;
+        }
+
+      // Route the packet to the correct handler
+      if (manager->current_mode == NET_MODE_SERVER)
+        {
+          handle_server_packet (manager, manager->server_ctx, client_index,
+                                &pkt);
+        }
+      else
+        {
+          handle_client_packet (manager, &pkt);
+        }
+    }
+}
 
 /** @brief Sends a message to a specific client.
  * @param manager Pointer to the NetworkManager instance.
@@ -35,23 +131,6 @@ send_server_message (NetworkManager *manager, int target_index,
   if (SerializePacket (&pkt, out_buffer, sizeof (out_buffer)) >= 0)
     {
       NetworkManager_Send (manager, target_index, out_buffer);
-    }
-}
-
-/** @brief Processes a MOVE packet received from a client.
- * @param manager Pointer to the NetworkManager instance.
- * @param payload The payload of the MOVE packet.
- */
-static void
-process_move_packet (NetworkManager *manager, const char *payload)
-{
-  if (payload == NULL)
-    return;
-  Move parsed_move;
-  if (Protocol_StringToMove (payload, &parsed_move))
-    {
-      if (manager->callbacks.OnMoveReceived)
-        manager->callbacks.OnMoveReceived (parsed_move);
     }
 }
 
@@ -118,8 +197,11 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
     manager->callbacks.OnPlayerJoined (ctx->clients[client_index].username);
 }
 
-/**
- * @brief Relays a packet only to the correct opponent (same * game_id).
+/** @brief Routes a packet only to the correct opponent (same game_id).
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext structure.
+ * @param sender_index Index of the client sending the packet.
+ * @param pkt Pointer to the packet to route.
  */
 static void
 route_packet_to_opponent (NetworkManager *manager, ServerContext *ctx,
@@ -495,141 +577,6 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       /** @brief Processes an unknown packet received from a client. */
     default:
       printf ("[SERVER] Unmanaged package (Type: %d)\n", pkt->type);
-      break;
-    }
-}
-
-void
-handle_client_packet (NetworkManager *manager, Packet *pkt)
-{
-  switch (pkt->type)
-    {
-      /** @brief Processes a WELCOME packet received from the server. */
-    case S2C_WELCOME:
-      printf ("\n[CLIENT] Connection accepted by server: %s\n", pkt->payload);
-      if (manager->callbacks.OnPlayerJoined)
-        {
-
-          manager->callbacks.OnPlayerJoined ("Server");
-        }
-      break;
-      /** @brief Processes a TIMEOUT packet received from the server. */
-    case PKT_TIMEOUT:
-      if (manager->callbacks.OnTimeoutReceived)
-        manager->callbacks.OnTimeoutReceived ();
-      break;
-      /** @brief Processes a REJECT packet received from the server. */
-    case S2C_REJECT:
-      printf ("[CLIENT] Connection rejected: %s\n", pkt->payload);
-      NetworkManager_Cleanup (manager);
-      if (manager->callbacks.OnPlayerDisconnected)
-        {
-          manager->callbacks.OnPlayerDisconnected ("Username already taken");
-        }
-      break;
-      /** @brief Processes a LIST packet received from the server. */
-    case S2C_LIST:
-      if (manager->callbacks.OnListReceived)
-        {
-          manager->callbacks.OnListReceived (pkt->payload);
-        }
-      break;
-      /** @brief Processes a SCOREBOARD packet received from the server. */
-    case S2C_SCOREBOARD:
-      {
-        if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
-          {
-            // Fin de la liste, on redessine proprement le prompt
-            printf ("[LOBBY] >> ");
-            fflush (stdout);
-          }
-        else
-          {
-            // On affiche simplement la ligne reçue avec un retour à la ligne
-            // local
-            printf ("%s\n", pkt->payload);
-          }
-      }
-      break;
-      /** @brief Processes a PONG packet received from the server. */
-    case S2C_PONG:
-      {
-        struct timeval tv;
-        gettimeofday (&tv, NULL);
-        long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
-
-        long long sent_time = atoll (pkt->payload); // On lit l'heure de départ
-        long long rtt = now_ms - sent_time;         // Round-Trip Time
-
-        printf ("\nServer: PONG TIME=%lldms\n", rtt);
-
-        printf ("[LOBBY] >> ");
-        fflush (stdout);
-      }
-      break;
-      /** @brief Processes an ERROR packet received from the server. */
-    case S2C_ERROR:
-      if (manager->callbacks.OnGameError)
-        {
-          manager->callbacks.OnGameError (pkt->payload);
-        }
-      else
-        {
-
-          printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
-        }
-      break;
-      /** @brief Processes a DECLINE packet received from the server. */
-    case S2C_DECLINE:
-      if (manager->callbacks.OnInvitationDeclined)
-        {
-          manager->callbacks.OnInvitationDeclined (pkt->payload);
-        }
-      break;
-      /** @brief Processes a CANCEL packet received from the server. */
-    case S2C_CANCEL:
-      if (manager->callbacks.OnInvitationDeclined)
-        {
-
-          manager->callbacks.OnInvitationDeclined (pkt->payload);
-        }
-      break;
-      /** @brief Processes an OPPONENT_LEFT packet received from the server. */
-    case S2C_OPPONENT_LEFT:
-
-      if (manager->callbacks.OnPlayerDisconnected)
-        {
-          manager->callbacks.OnPlayerDisconnected (pkt->payload);
-        }
-      break;
-      /** @brief Processes a GAME_START packet received from the server. */
-    case S2C_GAME_START:
-      printf ("[CLIENT] Game is starting!\n");
-      int color_val = 0, board_size = 10;
-      sscanf (pkt->payload, "%d %d", &color_val, &board_size);
-      PlayerColor my_color
-          = (color_val == ROLE_WHITE_VAL) ? PLAYER_WHITE : PLAYER_BLACK;
-
-      if (manager->callbacks.OnGameStarted)
-        {
-          manager->callbacks.OnGameStarted (my_color, board_size);
-        }
-      break;
-      /** @brief Processes a MOVE packet received from the server. */
-    case S2C_MOVE:
-      process_move_packet (manager, pkt->payload);
-      break;
-      /** @brief Processes an INVITE packet received from the server. */
-    case S2C_INVITE:
-      if (manager->callbacks.OnInvitationReceived)
-        {
-          manager->callbacks.OnInvitationReceived (atoi (pkt->payload));
-        }
-
-      break;
-      /** @brief Processes an unknown packet received from the server. */
-    default:
-      printf ("[CLIENT] Unmanaged package (Type: %d)\n", pkt->type);
       break;
     }
 }

@@ -32,4 +32,21 @@ void handle_server_packet (NetworkManager *manager, ServerContext *ctx,
  */
 void handle_client_packet (NetworkManager *manager, Packet *pkt);
 
+/** @brief Processes packets in the TCP buffer.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param buffer Pointer to the TCP buffer containing the packets.
+ * @param client_index The index of the client whose packets are being
+ * processed.
+ */
+void process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
+                             int client_index);
+
+/** @brief Disconnects a client from the server.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param ctx Pointer to the ServerContext containing the server state.
+ * @param client_index The index of the client to disconnect.
+ */
+void disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
+                               int client_index);
+
 #endif // NETWORK_HANDLERS_H
