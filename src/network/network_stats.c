@@ -32,6 +32,8 @@
 void
 SaveScoreboard (NetworkManager *manager)
 {
+  if (!manager || !manager->server_ctx)
+    return;
   FILE *f = fopen ("scoreboard.txt", "w");
   if (!f)
     return;
@@ -66,6 +68,8 @@ SaveScoreboard (NetworkManager *manager)
 void
 LoadScoreboardForClient (ConnectedClient *client)
 {
+  if (!client)
+    return;
   FILE *f = fopen ("scoreboard.txt", "r");
   if (!f)
     return;
@@ -99,6 +103,8 @@ LoadScoreboardForClient (ConnectedClient *client)
 void
 NetworkManager_UpdatePlayerStats (const char *username, bool won)
 {
+  if (!username)
+    return;
   FILE *f = fopen ("scoreboard.txt", "r");
   // On utilise un fichier temporaire pour réécrire les données
   FILE *temp = fopen ("scoreboard.tmp", "w");

@@ -358,6 +358,8 @@ NetworkManager_SendPing (NetworkManager *manager)
 int
 NetworkManager_SendGameOver (NetworkManager *manager, bool won)
 {
+  if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
+    return NET_ERROR;
   Packet pkt;
   pkt.type = C2S_GAME_OVER;
   snprintf (pkt.payload, MAX_PAYLOAD_SIZE, won ? "WIN" : "LOSE");

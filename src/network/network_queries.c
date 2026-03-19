@@ -48,7 +48,11 @@ NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
                               size_t max_len)
 {
   if (!manager || !manager->discovery_ctx || !buffer || max_len == 0)
-    return -1;
+    {
+      if (buffer && max_len > 0)
+        buffer[0] = '\0';
+      return -1;
+    }
 
   buffer[0] = '\0';
   int count = 0;
@@ -141,7 +145,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
   // =========================================================================
   // case 1 : "players <id>" -> Detailed info about a specific player
   // =========================================================================
-  if (target_id >= 0)
+  if (target_id != -1)
     {
       // verify if the target player exists and is connected
       if (target_id < FIRST_CLIENT_INDEX || target_id > MAX_CLIENTS
