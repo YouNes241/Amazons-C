@@ -7,6 +7,7 @@
 #define PARSE_MOVE_SUCCESS 0
 
 // Command lengths (for strncmp)
+#define POS_STRING_MAX_LEN 6
 #define CMD_LEN_HELP 4
 #define CMD_LEN_DETAILS 7
 #define CMD_LEN_SERVER_START 12
@@ -34,5 +35,7 @@ void handle_command (char *input_buffer, CliContext *ctx);
 void refresh_prompt (CliContext *ctx);
 
 void update_prompt_string (CliContext *ctx);
+
+void execute_hint (CliContext *ctx);
 
 #endif // CLI_COMMANDS_H

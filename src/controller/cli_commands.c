@@ -1,9 +1,11 @@
 #include "cli_commands.h"
+#include "../../include/ai_factory.h"
 #include "../../include/cli_view.h"
 #include "../../include/controller.h"
 #include "../../include/game_engine.h"
 #include "../../include/input.h"
 #include "../../include/save.h"
+#include "../../include/utils.h"
 #include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,6 +112,44 @@ refresh_prompt (CliContext *ctx)
    COMMAND LOGIC (handle_command)
    ==========================================================================
  */
+
+void
+execute_hint (CliContext *ctx)
+{
+  if (!ctx->current_game)
+    {
+      printf ("%s", "[ERROR] No game in progress to get advice.\n");
+      return;
+    }
+
+  if (!ctx->ai_initialized)
+    {
+      printf ("%s", "[AI] Initializing advice engine...\n");
+      ConfigMap empty_params = { NULL, 0 };
+      ctx->ai = create_ai ("minimax", empty_params);
+
+      if (ctx->ai.vtable == NULL)
+        {
+          printf ("[ERROR] %s\n", "Failed to load the advice engine.");
+          return;
+        }
+      ctx->ai_initialized = true;
+    }
+
+  printf ("%s", "[AI] Analyzing the situation...\n");
+
+  Move sug = ctx->ai.vtable->get_best_move (&ctx->ai, *(ctx->current_game));
+
+  char src[POS_STRING_MAX_LEN], dst[POS_STRING_MAX_LEN],
+      arr[POS_STRING_MAX_LEN];
+  pos_to_string (sug.queen_src, src, sizeof (src));
+  pos_to_string (sug.queen_dst, dst, sizeof (dst));
+  pos_to_string (sug.arrow_dst, arr, sizeof (arr));
+
+  printf ("\n[ADVICE] Based on the current state:\n");
+  printf (" - Move the queen from %s to %s\n", src, dst);
+  printf (" - Shoot the arrow at %s\n", arr);
+}
 
 void
 handle_command (char *input_buffer, CliContext *ctx)
@@ -356,8 +396,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else if (strcmp (input_buffer, "hint") == 0)
     {
-      printf ("Tip: (AI in progress)...)\n");
-      return;
+      execute_hint (ctx);
     }
   else if (strncmp (input_buffer, "show", CMD_LEN_SHOW) == 0)
     {
