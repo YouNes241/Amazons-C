@@ -7,9 +7,11 @@
  * provide feedback to the user and to facilitate interactions with the server.
  */
 
+#include "network_common.h"
 #include "network_includes/network_internal.h"
 #include <stdio.h>
 #include <string.h>
+#include <time.h> // IMPORTANT: This is needed for time-related functions used in server discovery and status checks.
 
 /** @brief Checks if an opponent is connected.
  * @param manager Pointer to the NetworkManager instance.

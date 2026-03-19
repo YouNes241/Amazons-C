@@ -13,9 +13,11 @@
 
 #include "network_includes/network_handlers.h"
 #include "network_protocol.h"
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -301,15 +303,6 @@ NetworkManager_Cleanup (NetworkManager *manager)
 
   // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
   // Car on l'a alloué dans NetworkManager_Init, peu importe le mode !
-  if (manager->discovery_ctx)
-    {
-      if (manager->discovery_ctx->udp_listen_socket != INVALID_SOCKET)
-        {
-          close (manager->discovery_ctx->udp_listen_socket);
-        }
-      free (manager->discovery_ctx);
-      manager->discovery_ctx = NULL;
-    }
 
   manager->current_mode = NET_MODE_NONE;
 }
