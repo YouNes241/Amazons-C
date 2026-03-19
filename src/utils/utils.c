@@ -1,5 +1,4 @@
 #include "utils.h"
-#include <stddef.h>
 #include <sys/time.h>
 
 unsigned long
@@ -26,4 +25,10 @@ moves_are_equal (Move a, Move b)
           && a.queen_dst.col == b.queen_dst.col
           && a.arrow_dst.row == b.arrow_dst.row
           && a.arrow_dst.col == b.arrow_dst.col);
+}
+
+void
+pos_to_string (Position pos, char *out, size_t out_size)
+{
+  snprintf (out, out_size, "%c%d", 'a' + pos.col, pos.row + 1);
 }
