@@ -100,7 +100,6 @@ on_player_joined (const char *name)
 static void
 on_player_disconnected (const char *reason)
 {
-  (void)reason;
   if (!g_net_ctx)
     return;
   if (g_net_ctx->net_manager->current_mode == NET_MODE_NONE)
@@ -109,8 +108,10 @@ on_player_disconnected (const char *reason)
       g_net_ctx->in_network_match = false;
       g_net_ctx->in_main_menu = true;
 
-      cli_display_main_menu ();
-      printf ("\n[SYSTEM] Connection lost: Server has shut down.\n");
+      if (reason && strlen (reason) > 0)
+        {
+          printf ("\n[SYSTEM] Connection lost: %s\n", reason);
+        }
     }
   else
     {

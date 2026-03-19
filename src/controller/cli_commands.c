@@ -178,31 +178,37 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       printf ("\n=== COMMAND LIST ===\n");
       printf ("--- Game Management ---\n");
-      printf ("  new         : Start a new local game\n");
-      printf ("  quit        : Exit the application\n");
-      printf ("  show        : Display the board\n");
-      printf ("  undo/redo   : Cancel or replay a move\n");
-      printf ("  save/load   : Save or load a game state\n");
-      printf ("  hint        : Get AI assistance\n");
-      printf ("  set/details : Configure game options\n");
+      printf ("  new                  : Start a new local game\n");
+      printf (
+          "  quit                 : Exit the application or leave network\n");
+      printf ("  show                 : Display the board\n");
+      printf (
+          "  undo/redo            : Cancel or replay a move (Local vs AI)\n");
+      printf ("  save/load [filename] : Save or load a game state\n");
+      printf ("  hint                 : Get AI assistance\n");
+      printf ("  set / details        : Configure and display game options\n");
 
-      printf ("\n--- Network & LOBBY ---\n");
-      printf ("  server start [port]        : Host a new server\n");
-      printf ("  join [IP:Port] [username]  : Connect to a server\n");
+      printf ("\n--- Network (Server) ---\n");
+      printf ("  server start [port]  : Host a new server\n");
+      printf ("  server stop          : Stop hosting the server\n");
+      printf ("  server status        : Show connected clients and active "
+              "games\n");
       printf (
-          "  players                    : List all players in the LOBBY\n");
-      printf ("  new <ID>                : Invite a player to a game\n");
-      printf ("  accept <ID>                : Accept an invitation\n");
-      printf ("  decline <ID>               : Decline an invitation\n");
-      printf ("  away                       : Mark yourself as AWAY in the "
-              "lobby\n");
-      printf ("  back                       : Mark yourself as BACK/IDLE in "
-              "the lobby\n");
-      printf ("  cancel <ID>               : Cancel a pending invitation\n");
-      printf ("  server stop                : Stop hosting the server\n");
+          "  server list          : Discover local servers on the network\n");
+
+      printf ("\n--- Network (Client & Lobby) ---\n");
+      printf ("  join [IP:Port] [name]: Connect to a server\n");
+      printf ("  players [ID]         : List all players in the LOBBY (or "
+              "detail an ID)\n");
       printf (
-          "  quit                       : Leave the server or exit the app\n");
-      printf ("\n====================\n");
+          "  scoreboard           : Display the server's global scoreboard\n");
+      printf ("  ping                 : Check your latency with the server\n");
+      printf ("  new <ID>             : Invite a player to a game\n");
+      printf ("  accept <ID>          : Accept an invitation\n");
+      printf ("  decline <ID>         : Decline an invitation\n");
+      printf ("  cancel <ID>          : Cancel an invitation you sent\n");
+      printf ("  away                 : Mark yourself as AWAY\n");
+      printf ("  back                 : Mark yourself as BACK/IDLE\n");
 
       printf ("\n--- Playing a Move ---\n");
       printf (
@@ -219,13 +225,25 @@ handle_command (char *input_buffer, CliContext *ctx)
   // 3. NETWORK: SERVER START
   else if (strncmp (input_buffer, "server start", CMD_LEN_SERVER_START) == 0)
     {
-      ctx->in_main_menu = false;
-      cli_clear_screen ();
+
       int port = DEFAULT_PORT;
       if (strlen (input_buffer) > CMD_LEN_SERVER_START + CMD_SPACE_OFFSET)
         sscanf (input_buffer + CMD_LEN_SERVER_START + CMD_SPACE_OFFSET, "%d",
                 &port);
-      NetworkManager_ServerStart (ctx->net_manager, port);
+      if (NetworkManager_ServerStart (ctx->net_manager, port) == 0)
+        {
+          ctx->in_main_menu = false;
+          cli_clear_screen ();
+
+          printf ("[INFO] Server started successfully on port %d.\n", port);
+        }
+      else
+        {
+          // Si le port est pris, on prévient l'utilisateur et on REST dans le
+          // menu
+          printf ("[ERROR] Failed to start server. Port %d might be in use.\n",
+                  port);
+        }
       return;
     }
 
@@ -250,7 +268,7 @@ handle_command (char *input_buffer, CliContext *ctx)
   // 4. NETWORK: JOIN (Full parsing)
   else if (strncmp (input_buffer, "join", CMD_LEN_JOIN) == 0)
     {
-      ctx->in_main_menu = false;
+
       char ip[MAX_IP_LEN + 1] = DEFAULT_IP;
       int port = DEFAULT_PORT;
       char username[MAX_USERNAME_LEN] = "DEFAULT_USERNAME";
@@ -286,7 +304,6 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          ctx->in_main_menu = true;
 
           printf (
               "\n[ERROR] Connection failed. Is the server running at %s:%d?\n",

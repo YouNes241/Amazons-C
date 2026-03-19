@@ -668,6 +668,17 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
               printf (
                   "\n[SERVER] Client %d timed out (no activity for %d sec).\n",
                   i, CLIENT_TIMEOUT_SEC);
+
+              Packet pkt;
+              pkt.type = S2C_ERROR;
+              snprintf (pkt.payload, MAX_PAYLOAD_SIZE,
+                        "Kicked for inactivity (%d sec).", CLIENT_TIMEOUT_SEC);
+
+              char out_buf[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+                {
+                  NetworkManager_Send (manager, i, out_buf);
+                }
               disconnect_server_client (manager, ctx, i);
             }
         }
@@ -694,7 +705,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
       printf ("\n[CLIENT] The server has cut the connection.\n");
       NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
-        manager->callbacks.OnPlayerDisconnected ("Server closed");
+        manager->callbacks.OnPlayerDisconnected ("");
 
       return;
     }

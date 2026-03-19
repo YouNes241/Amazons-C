@@ -67,8 +67,9 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
         {
-          manager->callbacks.OnPlayerDisconnected ("Username already taken");
+          manager->callbacks.OnPlayerDisconnected (pkt->payload);
         }
+      NetworkManager_Cleanup (manager);
       break;
       /** @brief Processes a LIST packet received from the server. */
     case S2C_LIST:

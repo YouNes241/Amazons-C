@@ -179,16 +179,14 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       // we don't have real score data, so we put placeholders for
       // wins/losses/matches.
       // TODO: Replace placeholders with actual score data when available
-      snprintf (buffer, max_len,
-                "--- Player Details ---\n"
-                "ID     : %d\n"
-                "Name   : %s\n"
-                "Status : %s\n"
-                "Score  : 0 Wins, 0 Losses\n"
-                "Matches: 0 Played\n"
-                "----------------------\n",
-                target_id, manager->server_ctx->clients[target_id].username,
-                status_str);
+      snprintf (
+          buffer, max_len,
+          "Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost "
+          "(%d played)",
+          target_id, manager->server_ctx->clients[target_id].username,
+          status_str, manager->server_ctx->clients[target_id].wins,
+          manager->server_ctx->clients[target_id].losses,
+          manager->server_ctx->clients[target_id].games_played);
       return; // we stop here for the specific player case, the general list is
               // only for "players" without ID
     }
@@ -210,7 +208,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
               simple_status = "ingame";
             }
 
-          snprintf (line, sizeof (line), "[ID %d] %s - %s\n", i,
+          snprintf (line, sizeof (line), "[ID %d] %s - (%s),", i,
                     manager->server_ctx->clients[i].username, simple_status);
 
           if (strlen (buffer) + strlen (line) < max_len - 1)

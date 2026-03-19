@@ -223,4 +223,8 @@ struct ClientContext
       buffer; // Personal buffer used by the client to receive server messages
 };
 
+void SaveScoreboard (NetworkManager *manager);
+void LoadScoreboardForClient (ConnectedClient *client);
+void NetworkManager_UpdatePlayerStats (const char *username, bool won);
+
 #endif // NETWORK_INTERNAL_H

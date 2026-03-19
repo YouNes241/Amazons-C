@@ -171,6 +171,7 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
                MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
+
       return; // We'll stop there if the name is already taken.
     }
 
@@ -180,8 +181,11 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[client_index].username[MAX_USERNAME_LENGTH] = '\0'; // Security
   ctx->clients[client_index].is_joined = true;
 
-  // --- LE FIX EST ICI : On place le joueur dans le Lobby ---
   ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
+  ctx->clients[client_index].wins = 0;
+  ctx->clients[client_index].losses = 0;
+  ctx->clients[client_index].games_played = 0;
+  LoadScoreboardForClient (&ctx->clients[client_index]);
 
   printf ("\n[SERVER] Player '%s' successfully joined Slot %d!\n", username,
           client_index);
