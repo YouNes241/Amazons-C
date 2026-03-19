@@ -248,7 +248,7 @@ NetworkManager_SendScoreboardRequest (NetworkManager *manager)
  * Used for AWAY, BACK, etc.
  *
  * @param manager Pointer to the NetworkManager instance.
- * @param type The PacketType to send (e.g., C2S_AWAY, C2S_BACK, C2S_PING).
+ * @param type The PacketType to send (e.g., C2S_AWAY, C2S_BACK).
  * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int

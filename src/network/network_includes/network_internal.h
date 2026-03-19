@@ -51,16 +51,91 @@
 #define CLIENT_TIMEOUT_SEC 60
 
 // Buffer Sizes & Limits
+/** @brief Size of the temporary receive buffer.
+ * @details Used for initial reads from the socket before processing into the
+ * client's TCP buffer.
+ * why 256 :
+  - It's large enough to hold multiple small packets or a single large packet,
+    allowing for efficient reads and reducing the number of recv calls needed.
+  - It provides a good balance between memory usage and performance, as most
+    packets in our protocol are expected to be well under this size.
+  - It allows for handling cases where multiple packets arrive in quick
+ succession without overwhelming the server's memory resources.
+ */
 #define RECV_TEMP_BUFFER_SIZE 256
+
+/** @brief Maximum size of a move string representation.
+ * @details Used for converting move structures to strings for network
+ * transmission. 128 bytes is sufficient to represent a move in our protocol,
+ * which typically includes the starting position, ending position, and any
+ * additional move details. This size allows for a clear and unambiguous
+ * representation of moves while ensuring that we do not exceed typical packet
+ * size limits for our protocol.
+ */
 #define MAX_MOVE_STR_SIZE 128
+
+/** @brief Size of the buffer for storing player information.
+ * @details Used for managing player data within the server context.
+ * 64 bytes is chosen to accommodate typical player information such as
+ * username, status, and other relevant details without being excessively
+ * large. This size allows for efficient memory usage while providing enough
+ * space for necessary player attributes.
+ */
 #define PLAYER_INFO_BUFFER_SIZE 64
+
+/** @brief Size of the buffer for storing scoreboard entry information.
+ * @details Used for managing scoreboard data within the server context.
+ * 128 bytes is chosen to accommodate typical scoreboard entry information such
+ * as username, wins, losses, and other relevant details without being
+ * excessively large. This size allows for efficient memory usage while
+ * providing enough space for necessary scoreboard attributes.
+ */
 #define SCOREBOARD_ENTRY_BUFFER_SIZE 128
+
+/** @brief Maximum length of a username.
+ * @details Used for validating and storing usernames within the server
+ * context. 32 characters is chosen to provide a reasonable limit for usernames
+ * while ensuring that we do not exceed typical buffer sizes for our protocol.
+ */
 #define MAX_USERNAME_LENGTH 32
+
+/** @brief Maximum size of a formatted packet.
+ * @details Used for ensuring that packets do not exceed the maximum allowed
+ * size. 512 bytes is chosen to provide a reasonable limit for packet sizes
+ * while ensuring that we do not exceed typical network buffer sizes for our
+ * protocol.
+ */
 #define MAX_FORMATTED_PKT_SIZE 512
+
+/** @brief Size of the buffer for UDP discovery messages.
+ * @details Used for managing discovery messages within the server context.
+ * 128 bytes is chosen to accommodate typical discovery messages while
+ * ensuring that we do not exceed typical network buffer sizes for our
+ * protocol.
+ */
 #define UDP_DISCOVERY_BUFFER_SIZE 128
+
+/** @brief Offset for the null terminator in strings.
+ * @details Used for ensuring strings are properly null-terminated.
+ */
 #define NULL_TERMINATOR_OFFSET 1 // Space for '\0'
+
+/** @brief Maximum length of a server name.
+ * @details Used for validating and storing server names within the server
+ * context. 32 characters is chosen to provide a reasonable limit for server
+ * names while ensuring that we do not exceed typical buffer sizes for our
+ * protocol.
+ */
 #define MAX_SERVER_NAME_LEN 32
+
+/** @brief Maximum number of discovered servers to keep track of.
+ * @details Used for managing the list of discovered servers within the server
+ * context. 10 servers is chosen to provide a reasonable limit for the number
+ * of discovered servers while ensuring that we do not exceed typical buffer
+ * sizes for our protocol.
+ */
 #define MAX_DISCOVERED_SERVERS 10
+
 // Client & Target Indexing
 #define MAX_CLIENTS 64
 #define FIRST_CLIENT_INDEX 1
