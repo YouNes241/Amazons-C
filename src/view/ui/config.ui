@@ -73,14 +73,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;N</property>
+                              <object class="GtkToggleButton" id="bind_new_game_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -98,14 +100,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;L</property>
+                              <object class="GtkToggleButton" id="bind_load_game_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -123,89 +127,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;S</property>
+                              <object class="GtkToggleButton" id="bind_save_game_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkListBoxRow">
-                        <child>
-                          <object class="GtkBox">
-                            <property name="orientation">horizontal</property>
-                            <property name="margin-start">15</property>
-                            <property name="margin-end">15</property>
-                            <property name="margin-top">10</property>
-                            <property name="margin-bottom">10</property>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">Display game configuration</property>
-                                <property name="hexpand">true</property>
-                                <property name="halign">start</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;comma</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkListBoxRow">
-                        <child>
-                          <object class="GtkBox">
-                            <property name="orientation">horizontal</property>
-                            <property name="margin-start">15</property>
-                            <property name="margin-end">15</property>
-                            <property name="margin-top">10</property>
-                            <property name="margin-bottom">10</property>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">Display game informations</property>
-                                <property name="hexpand">true</property>
-                                <property name="halign">start</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;I</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkListBoxRow">
-                        <child>
-                          <object class="GtkBox">
-                            <property name="orientation">horizontal</property>
-                            <property name="margin-start">15</property>
-                            <property name="margin-end">15</property>
-                            <property name="margin-top">10</property>
-                            <property name="margin-bottom">10</property>
-                            <child>
-                              <object class="GtkLabel">
-                                <property name="label">Exit the program</property>
-                                <property name="hexpand">true</property>
-                                <property name="halign">start</property>
-                              </object>
-                            </child>
-                            <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;Q</property>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -223,14 +154,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;U</property>
+                              <object class="GtkToggleButton" id="bind_undo_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -248,14 +181,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;R</property>
+                              <object class="GtkToggleButton" id="bind_redo_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -273,14 +208,16 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;P</property>
+                              <object class="GtkToggleButton" id="bind_pause_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>
                         </child>
                       </object>
                     </child>
+
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
@@ -298,8 +235,90 @@
                               </object>
                             </child>
                             <child>
-                              <object class="GtkShortcutLabel">
-                                <property name="accelerator">&lt;Control&gt;H</property>
+                              <object class="GtkToggleButton" id="bind_hint_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Display game configuration</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkToggleButton" id="bind_config_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Display game informations</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkToggleButton" id="bind_info_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <child>
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="margin-start">15</property>
+                            <property name="margin-end">15</property>
+                            <property name="margin-top">10</property>
+                            <property name="margin-bottom">10</property>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="label">Exit the program</property>
+                                <property name="hexpand">true</property>
+                                <property name="halign">start</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkToggleButton" id="bind_quit_btn">
+                                <property name="valign">center</property>
+                                <property name="width-request">150</property>
                               </object>
                             </child>
                           </object>

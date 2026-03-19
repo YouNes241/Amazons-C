@@ -10,6 +10,8 @@ static void navigationClick (GtkButton *button, gpointer user_data);
 static void quitButtonClick (GtkButton *button, gpointer user_data);
 static void infoPopupButtonClick (GtkButton *button, gpointer user_data);
 static void configPopupButtonClick (GtkButton *button, gpointer user_data);
+static void undoButtonClick (GtkButton *button, gpointer user_data);
+static void redoButtonClick (GtkButton *button, gpointer user_data);
 static void setupBoard (AppContext *ctx, GtkWidget *boardGrid);
 static void newGameButtonClick (GtkButton *button, gpointer user_data);
 static GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,
@@ -45,8 +47,20 @@ static gboolean shortcutConfig (GtkWidget *widget, GVariant *args,
                                 gpointer user_data);
 static gboolean shortcutQuit (GtkWidget *widget, GVariant *args,
                               gpointer user_data);
+static gboolean shortcutUndo (GtkWidget *widget, GVariant *args,
+                              gpointer user_data);
+// REDO NEEDS ENGINE FIX //
+static gboolean shortcutRedo (GtkWidget *widget, GVariant *args,
+                              gpointer user_data);
 static gboolean shortcutDummy (GtkWidget *widget, GVariant *args,
                                gpointer user_data);
+static void bindingButtonAnimate (GtkToggleButton *button, gpointer user_data);
+static gboolean bindingKeyPressed (GtkEventControllerKey *controller,
+                                   guint keyval, guint keycode,
+                                   GdkModifierType state, gpointer user_data);
+static void setupBindingButton (GtkWidget *btn, char *target_str,
+                                AppContext *ctx);
+static void updateGameShortcuts (AppContext *ctx);
 
 GtkWidget *
 createMainMenuPage (AppContext *ctx)
@@ -171,6 +185,27 @@ createConfigPage (AppContext *ctx)
   langDropdown
       = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
 
+  GtkWidget *bindNewGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
+  GtkWidget *bindLoadBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
+  GtkWidget *bindSaveBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
+  GtkWidget *bindUndoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
+  GtkWidget *bindRedoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
+  GtkWidget *bindPauseBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
+  GtkWidget *bindHintBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
+  GtkWidget *bindConfigBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
+  GtkWidget *bindInfoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
+  GtkWidget *bindQuitBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
+
   if (verboseSwitch)
     gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
                            ctx->gameConfig->verbose);
@@ -215,6 +250,17 @@ createConfigPage (AppContext *ctx)
     g_signal_connect (langDropdown, "changed",
                       G_CALLBACK (updateConfigLanguage), ctx);
 
+  setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
+  setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
+  setupBindingButton (bindSaveBtn, ctx->keyBindings.key_save_game, ctx);
+  setupBindingButton (bindUndoBtn, ctx->keyBindings.key_undo, ctx);
+  setupBindingButton (bindRedoBtn, ctx->keyBindings.key_redo, ctx);
+  setupBindingButton (bindPauseBtn, ctx->keyBindings.key_pause, ctx);
+  setupBindingButton (bindHintBtn, ctx->keyBindings.key_hint, ctx);
+  setupBindingButton (bindConfigBtn, ctx->keyBindings.key_config, ctx);
+  setupBindingButton (bindInfoBtn, ctx->keyBindings.key_info, ctx);
+  setupBindingButton (bindQuitBtn, ctx->keyBindings.key_quit, ctx);
+
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
@@ -252,6 +298,8 @@ createGamePage (AppContext *ctx)
   GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
   GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
+  g_object_set_data (G_OBJECT (ctx->mainStack), "game_box", box);
+
   GtkWidget *newGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
   GtkWidget *infoBtn
@@ -260,9 +308,15 @@ createGamePage (AppContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
   GtkWidget *quitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  GtkWidget *undoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "undo_btn"));
+  GtkWidget *redoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "redo_btn"));
   GtkWidget *boardGrid
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
+
   g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
+
   ctx->gameState = NULL;
   ctx->gameBoard = NULL;
 
@@ -283,35 +337,10 @@ createGamePage (AppContext *ctx)
                     NULL);
   g_signal_connect (configBtn, "clicked", G_CALLBACK (configPopupButtonClick),
                     ctx);
+  g_signal_connect (undoBtn, "clicked", G_CALLBACK (undoButtonClick), ctx);
+  g_signal_connect (redoBtn, "clicked", G_CALLBACK (redoButtonClick), ctx);
 
-  GtkShortcutController *shortcutController
-      = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
-  gtk_shortcut_controller_set_scope (shortcutController,
-                                     GTK_SHORTCUT_SCOPE_MANAGED);
-
-  struct
-  {
-    const char *key;
-    GtkShortcutFunc func;
-  } shortcuts[] = {
-    { "<Control>n", shortcutNewGame }, { "<Control>comma", shortcutConfig },
-    { "<Control>i", shortcutInfo },    { "<Control>q", shortcutQuit },
-    { "<Control>l", shortcutDummy },   { "<Control>s", shortcutDummy },
-    { "<Control>u", shortcutDummy },   { "<Control>r", shortcutDummy },
-    { "<Control>p", shortcutDummy },   { "<Control>h", shortcutDummy }
-  };
-
-  for (int i = 0; i < 10; i++)
-    {
-      GtkShortcutTrigger *trigger
-          = gtk_shortcut_trigger_parse_string (shortcuts[i].key);
-      GtkShortcutAction *action
-          = gtk_callback_action_new (shortcuts[i].func, ctx, NULL);
-      GtkShortcut *shortcut = gtk_shortcut_new (trigger, action);
-      gtk_shortcut_controller_add_shortcut (shortcutController, shortcut);
-    }
-
-  gtk_widget_add_controller (box, GTK_EVENT_CONTROLLER (shortcutController));
+  updateGameShortcuts (ctx);
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -388,6 +417,26 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
   GtkWidget *langDropdown
       = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
+  GtkWidget *bindNewGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
+  GtkWidget *bindLoadBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
+  GtkWidget *bindSaveBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
+  GtkWidget *bindUndoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
+  GtkWidget *bindRedoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
+  GtkWidget *bindPauseBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
+  GtkWidget *bindHintBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
+  GtkWidget *bindConfigBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
+  GtkWidget *bindInfoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
+  GtkWidget *bindQuitBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
 
   if (verboseSwitch)
     gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
@@ -433,9 +482,66 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
     g_signal_connect (langDropdown, "changed",
                       G_CALLBACK (updateConfigLanguage), ctx);
 
+  setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
+  setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
+  setupBindingButton (bindSaveBtn, ctx->keyBindings.key_save_game, ctx);
+  setupBindingButton (bindUndoBtn, ctx->keyBindings.key_undo, ctx);
+  setupBindingButton (bindRedoBtn, ctx->keyBindings.key_redo, ctx);
+  setupBindingButton (bindPauseBtn, ctx->keyBindings.key_pause, ctx);
+  setupBindingButton (bindHintBtn, ctx->keyBindings.key_hint, ctx);
+  setupBindingButton (bindConfigBtn, ctx->keyBindings.key_config, ctx);
+  setupBindingButton (bindInfoBtn, ctx->keyBindings.key_info, ctx);
+  setupBindingButton (bindQuitBtn, ctx->keyBindings.key_quit, ctx);
+
   gtk_window_present (configWindow);
 
   g_object_unref (builder);
+}
+
+static void
+undoButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+
+  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+  if (!has_ai)
+    return;
+
+  if (undo_move (ctx->gameState))
+    {
+      undo_move (ctx->gameState);
+
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+      clearHighlights (ctx);
+      drawBoard (ctx);
+    }
+}
+
+static void
+redoButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+
+  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+  if (!has_ai)
+    return;
+
+  if (redo_move (ctx->gameState))
+    {
+      redo_move (ctx->gameState);
+
+      ctx->currentPhase = PHASE_MOVE_QUEEN;
+      clearHighlights (ctx);
+      drawBoard (ctx);
+    }
 }
 
 static void
@@ -853,6 +959,24 @@ shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data)
 }
 
 static gboolean
+shortcutUndo (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  undoButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
+shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  redoButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+static gboolean
 shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
@@ -860,4 +984,145 @@ shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
   (void)user_data;
   g_print ("Not implemented.\n");
   return TRUE;
+}
+
+static void
+updateGameShortcuts (AppContext *ctx)
+{
+  if (!ctx || !ctx->mainStack)
+    return;
+
+  GtkWidget *game_box
+      = GTK_WIDGET (g_object_get_data (G_OBJECT (ctx->mainStack), "game_box"));
+  if (!game_box)
+    return;
+
+  GtkEventController *old_ctrl = GTK_EVENT_CONTROLLER (
+      g_object_get_data (G_OBJECT (game_box), "shortcut_controller"));
+  if (old_ctrl)
+    {
+      gtk_widget_remove_controller (game_box, old_ctrl);
+    }
+
+  GtkShortcutController *shortcutController
+      = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
+  gtk_shortcut_controller_set_scope (shortcutController,
+                                     GTK_SHORTCUT_SCOPE_MANAGED);
+
+  struct
+  {
+    const char *key;
+    GtkShortcutFunc func;
+  } shortcuts[] = { { ctx->keyBindings.key_new_game, shortcutNewGame },
+                    { ctx->keyBindings.key_config, shortcutConfig },
+                    { ctx->keyBindings.key_info, shortcutInfo },
+                    { ctx->keyBindings.key_quit, shortcutQuit },
+                    { ctx->keyBindings.key_load_game, shortcutDummy },
+                    { ctx->keyBindings.key_save_game, shortcutDummy },
+                    { ctx->keyBindings.key_undo, shortcutUndo },
+                    { ctx->keyBindings.key_redo, shortcutDummy },
+                    { ctx->keyBindings.key_pause, shortcutDummy },
+                    { ctx->keyBindings.key_hint, shortcutDummy } };
+
+  for (int i = 0; i < SHORTCUTS_COUNT; i++)
+    {
+      if (shortcuts[i].key != NULL && shortcuts[i].key[0] != '\0')
+        {
+          GtkShortcutTrigger *trigger
+              = gtk_shortcut_trigger_parse_string (shortcuts[i].key);
+          if (trigger)
+            {
+              GtkShortcutAction *action
+                  = gtk_callback_action_new (shortcuts[i].func, ctx, NULL);
+              GtkShortcut *shortcut = gtk_shortcut_new (trigger, action);
+              gtk_shortcut_controller_add_shortcut (shortcutController,
+                                                    shortcut);
+            }
+        }
+    }
+
+  g_object_set_data (G_OBJECT (game_box), "shortcut_controller",
+                     shortcutController);
+  gtk_widget_add_controller (game_box,
+                             GTK_EVENT_CONTROLLER (shortcutController));
+}
+
+static void
+bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
+{
+  (void)user_data;
+  if (gtk_toggle_button_get_active (button))
+    {
+      gtk_button_set_label (GTK_BUTTON (button), "Press...");
+    }
+  else
+    {
+      char *target_str
+          = (char *)g_object_get_data (G_OBJECT (button), "target_str");
+      if (target_str)
+        gtk_button_set_label (GTK_BUTTON (button), target_str);
+    }
+}
+
+static gboolean
+bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
+                   guint keycode, GdkModifierType state, gpointer user_data)
+{
+  (void)keycode;
+  GtkWidget *button
+      = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller));
+
+  if (!gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button)))
+    return FALSE;
+
+  if (keyval == GDK_KEY_Shift_L || keyval == GDK_KEY_Shift_R
+      || keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R
+      || keyval == GDK_KEY_Alt_L || keyval == GDK_KEY_Alt_R)
+    return FALSE;
+
+  state &= gtk_accelerator_get_default_mod_mask ();
+
+  char *accel_name = gtk_accelerator_name (keyval, state);
+
+  if (accel_name && accel_name[0] != '\0')
+    {
+      char *target_str
+          = (char *)g_object_get_data (G_OBJECT (button), "target_str");
+      if (target_str)
+        {
+          strncpy (target_str, accel_name, SHORTCUTS_SIZE - 1);
+          target_str[SHORTCUTS_SIZE - 1] = '\0';
+        }
+
+      gtk_button_set_label (GTK_BUTTON (button), accel_name);
+      g_free (accel_name);
+    }
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), FALSE);
+
+  AppContext *ctx = (AppContext *)user_data;
+  if (ctx)
+    {
+      updateGameShortcuts (ctx);
+    }
+
+  return TRUE;
+}
+
+static void
+setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx)
+{
+  if (!btn)
+    return;
+
+  gtk_button_set_label (GTK_BUTTON (btn), target_str);
+
+  g_object_set_data (G_OBJECT (btn), "target_str", target_str);
+
+  g_signal_connect (btn, "toggled", G_CALLBACK (bindingButtonAnimate), NULL);
+
+  GtkEventController *key_ctrl = gtk_event_controller_key_new ();
+  g_signal_connect (key_ctrl, "key-pressed", G_CALLBACK (bindingKeyPressed),
+                    ctx);
+  gtk_widget_add_controller (btn, key_ctrl);
 }

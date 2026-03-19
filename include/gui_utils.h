@@ -5,6 +5,9 @@
 #include "game_types.h"
 #include <gtk/gtk.h>
 
+#define SHORTCUTS_SIZE 16
+#define SHORTCUTS_COUNT 10
+
 typedef enum
 {
   PHASE_MOVE_QUEEN,
@@ -13,8 +16,23 @@ typedef enum
 
 typedef struct
 {
+  char key_new_game[SHORTCUTS_SIZE];
+  char key_load_game[SHORTCUTS_SIZE];
+  char key_save_game[SHORTCUTS_SIZE];
+  char key_config[SHORTCUTS_SIZE];
+  char key_info[SHORTCUTS_SIZE];
+  char key_quit[SHORTCUTS_SIZE];
+  char key_undo[SHORTCUTS_SIZE];
+  char key_redo[SHORTCUTS_SIZE];
+  char key_pause[SHORTCUTS_SIZE];
+  char key_hint[SHORTCUTS_SIZE];
+} KeyBindings;
+
+typedef struct
+{
   game_config_t *gameConfig;
   GameState *gameState;
+  KeyBindings keyBindings;
   GtkWindow *mainWindow;
   GtkStack *mainStack;
   GtkWidget **gameBoard;
