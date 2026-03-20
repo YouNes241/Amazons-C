@@ -9,15 +9,15 @@
  * handling and supports both local and networked gameplay.
  */
 
-#include "../../include/ai_factory.h"
-#include "../../include/ai_interface.h"
-#include "../../include/cli_view.h"
-#include "../../include/controller.h"
-#include "../../include/game_engine.h"
-#include "../../include/input.h"
-#include "../../include/network_common.h"
+#include "ai_factory.h"
+#include "ai_interface.h"
 #include "cli_commands.h"
 #include "cli_network_events.h"
+#include "cli_view.h"
+#include "controller.h"
+#include "game_engine.h"
+#include "input.h"
+#include "network_common.h"
 #include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>

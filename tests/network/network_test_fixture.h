@@ -9,10 +9,10 @@
 
 extern "C"
 {
-#include "../../include/network_protocol.h"
 #include "../../src/network/network_includes/network_handlers.h"
 #include "../../src/network/network_includes/network_internal.h"
 #include "../../src/network/network_includes/network_packet.h"
+#include "network_protocol.h"
 }
 
 // Variables globales externes pour les compteurs de callbacks

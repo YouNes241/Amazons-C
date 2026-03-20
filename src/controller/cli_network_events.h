@@ -11,8 +11,8 @@
 #ifndef CLI_NETWORK_EVENTS_H
 #define CLI_NETWORK_EVENTS_H
 
-#include "../../include/network_common.h"
 #include "cli_context.h"
+#include "network_common.h"
 
 /** @brief Creates a NetworkEvents structure populated with CLI-specific
  * handler functions.

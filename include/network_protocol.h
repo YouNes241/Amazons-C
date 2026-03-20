@@ -10,7 +10,7 @@
 #ifndef NETWORK_PROTOCOL_H
 #define NETWORK_PROTOCOL_H
 
-#include "../include/game_types.h"
+#include "game_types.h"
 #include <stddef.h>
 
 /* ==========================================================================

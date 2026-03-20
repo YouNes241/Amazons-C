@@ -2,12 +2,12 @@
  * @file gui_controller.c
  * @brief Controller dedicated to Graphics mode (GTK).
  */
-#include "../../include/ai_factory.h"
-#include "../../include/ai_interface.h"
-#include "../../include/controller.h"
-#include "../../include/game_engine.h"
-#include "../../include/gui_application.h"
-#include "../../include/gui_utils.h"
+#include "ai_factory.h"
+#include "ai_interface.h"
+#include "controller.h"
+#include "game_engine.h"
+#include "gui_application.h"
+#include "gui_utils.h"
 #include <gtk/gtk.h>
 
 // --- FORWARD DECLARATIONS ---

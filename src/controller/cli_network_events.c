@@ -11,9 +11,9 @@
  */
 
 #include "cli_network_events.h"
-#include "../../include/game_engine.h"
 #include "cli_commands.h"
 #include "cli_view.h"
+#include "game_engine.h"
 #include <stdio.h>
 
 // A local global pointer to this module so that callbacks can access it.

@@ -10,13 +10,13 @@
  */
 
 #include "cli_commands.h"
-#include "../../include/ai_factory.h"
-#include "../../include/cli_view.h"
-#include "../../include/controller.h"
-#include "../../include/game_engine.h"
-#include "../../include/input.h"
-#include "../../include/save.h"
-#include "../../include/utils.h"
+#include "ai_factory.h"
+#include "cli_view.h"
+#include "controller.h"
+#include "game_engine.h"
+#include "input.h"
+#include "save.h"
+#include "utils.h"
 #include <readline/readline.h>
 #include <stdio.h>
 #include <stdlib.h>
