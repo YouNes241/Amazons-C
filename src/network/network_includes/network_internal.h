@@ -48,7 +48,7 @@
 #define BROADCAST_INTERVAL_SEC 10
 #define SERVER_TIMEOUT_SEC 30
 
-#define CLIENT_TIMEOUT_SEC 60000
+#define CLIENT_TIMEOUT_SEC 60
 
 // Buffer Sizes & Limits
 /** @brief Size of the temporary receive buffer.

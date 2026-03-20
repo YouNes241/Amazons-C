@@ -151,6 +151,7 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
       // just a typo)
       printf ("[SERVER] Hack attempt! Invalid move format from Client %d.\n",
               client_index);
+      return;
     }
 
   if (is_move_legal (server_board, parsed_move))

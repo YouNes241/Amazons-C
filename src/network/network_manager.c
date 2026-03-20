@@ -672,7 +672,8 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
           continue;
         }
 
-      if (ctx->clients[i].pending_invite_from != -1)
+      if (ctx->clients[i].is_joined
+          && ctx->clients[i].pending_invite_from != -1)
         {
           double elapsed_time
               = difftime (now, ctx->clients[i].invite_timestamp);
