@@ -14,23 +14,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-/** @brief Processes a MOVE packet received from a client.
- * @param manager Pointer to the NetworkManager instance.
- * @param payload The payload of the MOVE packet.
- */
-static void
-process_move_packet (NetworkManager *manager, const char *payload)
-{
-  if (payload == NULL)
-    return;
-  Move parsed_move;
-  if (Protocol_StringToMove (payload, &parsed_move))
-    {
-      if (manager->callbacks.OnMoveReceived)
-        manager->callbacks.OnMoveReceived (parsed_move);
-    }
-}
-
 /**
  * @brief Handles incoming packets for the client.
  * @param manager Pointer to the NetworkManager instance.
@@ -161,7 +144,22 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       break;
       /** @brief Processes a MOVE packet received from the server. */
     case S2C_MOVE:
-      process_move_packet (manager, pkt->payload);
+      if (manager->callbacks.OnMoveReceived)
+        {
+          Move incoming_move;
+          // On traduit le texte reçu en structure Move
+          if (Protocol_StringToMove (pkt->payload, &incoming_move))
+            {
+              // Si la traduction réussit, on passe la VRAIE structure au jeu
+              manager->callbacks.OnMoveReceived (incoming_move);
+            }
+          else
+            {
+              printf ("[CLIENT] Error: Received unreadable move format from "
+                      "server: %s\n",
+                      pkt->payload);
+            }
+        }
       break;
       /** @brief Processes an INVITE packet received from the server. */
     case S2C_INVITE:

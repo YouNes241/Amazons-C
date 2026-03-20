@@ -478,25 +478,20 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
         return;
-      int challenger_id;
-      if (sscanf (input_buffer + CMD_LEN_ACCEPT, "%d", &challenger_id) == 1)
-        {
-          if (NetworkManager_SendAccept (ctx->net_manager, challenger_id) == 0)
-            printf ("Accepted invitation from player %d.\n", challenger_id);
-        }
+
+      NetworkManager_SendAccept (ctx->net_manager);
+      printf ("[CLIENT] accepting invitation\n");
+
       return;
     }
-  else if (strncmp (input_buffer, "decline ", CMD_LEN_DECLINE) == 0)
+  else if (strncmp (input_buffer, "decline", CMD_LEN_DECLINE) == 0)
     {
       if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
         return;
-      int challenger_id;
-      if (sscanf (input_buffer + CMD_LEN_DECLINE, "%d", &challenger_id) == 1)
-        {
-          if (NetworkManager_SendDecline (ctx->net_manager, challenger_id)
-              == 0)
-            printf ("Declined invitation from player %d.\n", challenger_id);
-        }
+
+      NetworkManager_SendDecline (ctx->net_manager);
+      printf ("Declined invitation from challenger.\n");
+
       return;
     }
 

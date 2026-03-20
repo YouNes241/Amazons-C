@@ -194,24 +194,20 @@ int NetworkManager_SendInvite (NetworkManager *manager, int target_id,
                                int board_size);
 
 /** @brief Send an accept message to the challenger.
- *  @param manager Pointer to the network manager.
- *  @param challenger_id The ID of the challenger to send the accept message
- * to.
+ *  @param manager Pointer to the network manager..
  *  @return 0 on success, -1 on failure.
  * @details This function sends an accept message to the specified challenger
  * over the network.
  */
-int NetworkManager_SendAccept (NetworkManager *manager, int challenger_id);
+int NetworkManager_SendAccept (NetworkManager *manager);
 
 /** @brief Send a decline message to the challenger.
  *  @param manager Pointer to the network manager.
- *  @param challenger_id The ID of the challenger to send the decline message
- * to.
  *  @return 0 on success, -1 on failure.
  * @details This function sends a decline message to the specified challenger
  * over the network.
  */
-int NetworkManager_SendDecline (NetworkManager *manager, int challenger_id);
+int NetworkManager_SendDecline (NetworkManager *manager);
 
 /** @brief Send a list request to the server.
  *  @param manager Pointer to the network manager.

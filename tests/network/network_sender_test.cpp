@@ -13,16 +13,16 @@ TEST_F (NetworkManagerTest, LobbyAPIHelpersCoverage)
 
   // 1. Null/Invalid Manager Checks
   EXPECT_EQ (NetworkManager_SendInvite (nullptr, 2, 10), NET_ERROR);
-  EXPECT_EQ (NetworkManager_SendAccept (&server_mgr, 2),
+  EXPECT_EQ (NetworkManager_SendAccept (&server_mgr),
              NET_ERROR); // Server cannot accept invites
-  EXPECT_EQ (NetworkManager_SendDecline (nullptr, 2), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendDecline (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendListRequest (nullptr, 0), NET_ERROR);
 
   // 2. Valid Client Calls
   EXPECT_EQ (NetworkManager_SendListRequest (&client_mgr, 0), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendInvite (&client_mgr, 2, 10), NET_SUCCESS);
-  EXPECT_EQ (NetworkManager_SendAccept (&client_mgr, 2), NET_SUCCESS);
-  EXPECT_EQ (NetworkManager_SendDecline (&client_mgr, 2), NET_SUCCESS);
+  EXPECT_EQ (NetworkManager_SendAccept (&client_mgr), NET_SUCCESS);
+  EXPECT_EQ (NetworkManager_SendDecline (&client_mgr), NET_SUCCESS);
 }
 
 TEST_F (NetworkManagerTest, APIHelperFunctionsCoverage2)

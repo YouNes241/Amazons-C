@@ -9,6 +9,7 @@
  * routing of messages to the appropriate clients.
  */
 
+#include "game_engine.h"
 #include "network_includes/network_handlers.h"
 #include "network_protocol.h"
 #include <stdio.h>
@@ -112,6 +113,88 @@ process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
     }
 }
 
+/** @brief Processes a MOVE packet received from a client.
+ * @param manager Pointer to the NetworkManager instance.
+ * @param payload The payload of the MOVE packet.
+ */
+static void
+process_move_packet (NetworkManager *manager, ServerContext *ctx,
+                     int client_index, const char *payload)
+{
+  if (payload == NULL)
+    return;
+  int game_idx = ctx->clients[client_index].game_id;
+  if (game_idx == NO_GAME_ID || game_idx < 0 || game_idx >= (MAX_CLIENTS / 2))
+    return;
+
+  int opponent_idx = -1;
+  for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
+    {
+      if (i != client_index && ctx->clients[i].game_id == game_idx
+          && ctx->clients[i].status == CLIENT_STATUS_INGAME)
+        {
+          opponent_idx = i;
+          break;
+        }
+    }
+
+  if (opponent_idx == -1)
+    return;
+
+  GameState *server_board = &ctx->active_games[game_idx];
+
+  Move parsed_move;
+  if (!Protocol_StringToMove (payload, &parsed_move))
+    {
+      // if text format is wrong, we ignore the move and we warn the client
+      // that he sent a wrong format (but we don't disconnect him, maybe it was
+      // just a typo)
+      printf ("[SERVER] Hack attempt! Invalid move format from Client %d.\n",
+              client_index);
+    }
+
+  if (is_move_legal (server_board, parsed_move))
+    {
+      // 1. On met VRAIMENT à jour le plateau de l'arbitre (le serveur)
+      apply_move (server_board, parsed_move);
+
+      // 2. On prépare un paquet propre pour l'adversaire
+      Packet relay_pkt;
+      relay_pkt.type = S2C_MOVE;
+      strncpy (relay_pkt.payload, payload, MAX_PAYLOAD_SIZE - 1);
+      relay_pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+
+      char out_buffer[MAX_FORMATTED_PKT_SIZE];
+
+      // SerializePacket va ajouter le type ET le \n vital à la fin !
+      if (SerializePacket (&relay_pkt, out_buffer, sizeof (out_buffer)) >= 0)
+        {
+          NetworkManager_Send (manager, opponent_idx, out_buffer);
+        }
+    }
+  else
+    {
+      // if the move is illegal, we ignore it and we warn the client that he
+      // tried to cheat (but we don't disconnect him, maybe it was just a
+      // mistake)
+      printf ("\n[SERVER ANTI-CHEAT] Client %d tried an illegal move: %s\n",
+              client_index, payload);
+
+      Packet err_pkt;
+      err_pkt.type = S2C_ERROR;
+      strncpy (err_pkt.payload,
+               "Illegal move detected! You have been desynced.",
+               MAX_PAYLOAD_SIZE - 1);
+
+      char out_buf[MAX_FORMATTED_PKT_SIZE];
+      SerializePacket (&err_pkt, out_buf, sizeof (out_buf));
+      NetworkManager_Send (manager, client_index, out_buf);
+
+      // Optionally, we could disconnect the client here if we want to be
+      // strict: disconnect_server_client(manager, ctx, client_index);
+    }
+}
+
 /** @brief Sends a message to a specific client.
  * @param manager Pointer to the NetworkManager instance.
  * @param target_index Index of the target client.
@@ -180,7 +263,7 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
            MAX_USERNAME_LENGTH - NULL_TERMINATOR_OFFSET);
   ctx->clients[client_index].username[MAX_USERNAME_LENGTH] = '\0'; // Security
   ctx->clients[client_index].is_joined = true;
-
+  ctx->clients[client_index].pending_invite_from = -1;
   ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
   ctx->clients[client_index].wins = 0;
   ctx->clients[client_index].losses = 0;
@@ -295,10 +378,18 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
                            "Error: Player is not available.");
       return;
     }
-
+  if (ctx->clients[target_index].pending_invite_from != -1)
+    {
+      send_server_message (
+          manager, sender_index, S2C_ERROR,
+          "Error: Player is already considering another invitation.");
+      return;
+    }
   // 4. Everything is good: We put the sender on hold
   ctx->clients[sender_index].status = CLIENT_STATUS_WAITGAME;
   ctx->clients[sender_index].board_size = board_size;
+  ctx->clients[target_index].pending_invite_from = sender_index;
+  ctx->clients[target_index].invite_timestamp = time (NULL);
 
   // 5. The invitation is sent to the target (Payload = the sender's ID)
   char sender_id_str[32];
@@ -317,25 +408,27 @@ static void
 process_accept_packet (NetworkManager *manager, ServerContext *ctx,
                        int sender_index, const char *payload)
 {
-  if (payload == NULL || payload[0] == '\0')
+  if (payload == NULL)
     return;
+  int challenger_index = ctx->clients[sender_index].pending_invite_from;
 
-  int challenger_index = atoi (payload);
-
-  if (challenger_index < FIRST_CLIENT_INDEX || challenger_index > MAX_CLIENTS)
+  if (challenger_index == -1)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Invalid ID.");
+                           "Error: You have no pending invitations.");
       return;
     }
+  // Clear the pending invite to prevent multiple acceptances
+  ctx->clients[sender_index].pending_invite_from = -1;
 
   // Check if the challenger is still there and still waiting
   if (ctx->fds[challenger_index].fd == INVALID_SOCKET
       || !ctx->clients[challenger_index].is_joined
       || ctx->clients[challenger_index].status != CLIENT_STATUS_WAITGAME)
     {
-      send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Invite expired or player left.");
+      send_server_message (
+          manager, sender_index, S2C_ERROR,
+          "Error: The challenger left or the invite expired.");
       ctx->clients[sender_index].status
           = CLIENT_STATUS_IDLE; // We put the client back in idle.
       return;
@@ -344,20 +437,26 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   //  invitation accepted : starting the game
   int new_game_id = ctx->next_game_id++; // We take a ticket and increment it.
 
-  int board_size = ctx->clients[challenger_index].board_size;
+  int game_index = new_game_id % (MAX_CLIENTS / 2);
 
-  // We assign the ID and change the statuses.
-  ctx->clients[challenger_index].game_id = new_game_id;
-  ctx->clients[challenger_index].status = CLIENT_STATUS_INGAME;
+  ctx->active_games[game_index].size
+      = ctx->clients[challenger_index]
+            .board_size; // board size is decided by the challenger and
+                         // stored in the client context when he sends
+                         // the invite. We retrieve it here.
+  game_init (&ctx->active_games[game_index]);
+  ctx->active_games[game_index].current_player = PLAYER_WHITE;
+  ctx->clients[sender_index].game_id = game_index;
+  ctx->clients[challenger_index].game_id = game_index;
 
-  ctx->clients[sender_index].game_id = new_game_id;
   ctx->clients[sender_index].status = CLIENT_STATUS_INGAME;
+  ctx->clients[challenger_index].status = CLIENT_STATUS_INGAME;
 
   char payload_white[MAX_PAYLOAD_SIZE], payload_black[MAX_PAYLOAD_SIZE];
   snprintf (payload_white, MAX_PAYLOAD_SIZE, "%d %d", ROLE_WHITE_VAL,
-            board_size);
+            ctx->clients[challenger_index].board_size);
   snprintf (payload_black, MAX_PAYLOAD_SIZE, "%d %d", ROLE_BLACK_VAL,
-            board_size);
+            ctx->clients[challenger_index].board_size);
   // Sending to the Challenger (He will play the WHITES)
   send_server_message (manager, challenger_index, S2C_GAME_START,
                        payload_white);
@@ -376,21 +475,31 @@ static void
 process_decline_packet (NetworkManager *manager, ServerContext *ctx,
                         int sender_index, const char *payload)
 {
-  if (payload == NULL || payload[0] == '\0')
+  if (payload == NULL)
     return;
-  int challenger_index = atoi (payload);
-
-  // Put the player who refused back into IDLE mode
-  ctx->clients[sender_index].status = CLIENT_STATUS_IDLE;
+  int challenger_index = ctx->clients[sender_index].pending_invite_from;
 
   // If the challenger is still connected, we put them back to IDLE and we warn
   // them
+  if (challenger_index == -1)
+    {
+      send_server_message (manager, sender_index, S2C_ERROR,
+                           "Error: You have no pending invitations.");
+      return;
+    }
+  // Put the player who refused back into IDLE mode
+  ctx->clients[sender_index].status = CLIENT_STATUS_IDLE;
+  ctx->clients[sender_index].pending_invite_from = -1;
+
   if (challenger_index >= FIRST_CLIENT_INDEX && challenger_index <= MAX_CLIENTS
       && ctx->fds[challenger_index].fd != INVALID_SOCKET)
     {
+      // On le libère de son statut d'attente
       ctx->clients[challenger_index].status = CLIENT_STATUS_IDLE;
+
+      // On le prévient que son invitation a été refusée !
       send_server_message (manager, challenger_index, S2C_DECLINE,
-                           "Invitation declined.");
+                           "Invitation declined by the opponent.");
     }
 }
 
@@ -575,7 +684,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       /** @brief Processes a MOVE packet received from a client. */
     case C2S_MOVE:
       // ROUTING: The move is relayed to the opponent
-      route_packet_to_opponent (manager, ctx, client_index, pkt);
+      process_move_packet (manager, ctx, client_index, pkt->payload);
       break;
 
       /** @brief Processes an unknown packet received from a client. */

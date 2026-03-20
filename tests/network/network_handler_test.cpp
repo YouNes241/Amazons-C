@@ -244,7 +244,7 @@ TEST_F (NetworkManagerTest, LobbyFullLifecycle_InviteAndAccept)
   EXPECT_EQ (server_mgr.server_ctx->clients[2].status, CLIENT_STATUS_IDLE);
 
   // 3. Bob accepts Alice's invite
-  NetworkManager_SendAccept (&bob, 1);
+  NetworkManager_SendAccept (&bob);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);
@@ -315,7 +315,7 @@ TEST_F (NetworkManagerTest, LobbyDeclineAndInvalidInvites)
 
   EXPECT_EQ (server_mgr.server_ctx->clients[1].status, CLIENT_STATUS_WAITGAME);
 
-  NetworkManager_SendDecline (&bob, 1);
+  NetworkManager_SendDecline (&bob);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);
@@ -327,7 +327,7 @@ TEST_F (NetworkManagerTest, LobbyDeclineAndInvalidInvites)
   EXPECT_EQ (server_mgr.server_ctx->clients[2].status, CLIENT_STATUS_IDLE);
 
   // 4. Bob tries to accept an expired/non-existent invite from Alice
-  NetworkManager_SendAccept (&bob, 1);
+  NetworkManager_SendAccept (&bob);
   for (int i = 0; i < 3; i++)
     {
       NetworkManager_Tick (&server_mgr);

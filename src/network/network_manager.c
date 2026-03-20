@@ -650,26 +650,76 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
     }
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
-      if (ctx->fds[i].fd != INVALID_SOCKET)
+      if (ctx->fds[i].fd == INVALID_SOCKET)
+        continue;
+
+      if (difftime (now, ctx->clients[i].last_activity) >= CLIENT_TIMEOUT_SEC)
         {
-          if (difftime (now, ctx->clients[i].last_activity)
-              >= CLIENT_TIMEOUT_SEC)
-            {
-              printf (
-                  "\n[SERVER] Client %d timed out (no activity for %d sec).\n",
+          printf ("\n[SERVER] Client %d timed out (no activity for %d sec).\n",
                   i, CLIENT_TIMEOUT_SEC);
 
-              Packet pkt;
-              pkt.type = S2C_ERROR;
-              snprintf (pkt.payload, MAX_PAYLOAD_SIZE,
-                        "Kicked for inactivity (%d sec).", CLIENT_TIMEOUT_SEC);
+          Packet pkt;
+          pkt.type = S2C_ERROR;
+          snprintf (pkt.payload, MAX_PAYLOAD_SIZE,
+                    "Kicked for inactivity (%d sec).", CLIENT_TIMEOUT_SEC);
 
-              char out_buf[MAX_FORMATTED_PKT_SIZE];
-              if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+          char out_buf[MAX_FORMATTED_PKT_SIZE];
+          if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+            {
+              NetworkManager_Send (manager, i, out_buf);
+            }
+          disconnect_server_client (manager, ctx, i);
+          continue;
+        }
+
+      if (ctx->clients[i].pending_invite_from != -1)
+        {
+          double elapsed_time
+              = difftime (now, ctx->clients[i].invite_timestamp);
+          if (elapsed_time >= 300.0) // 5 minutes = 300 secondes
+            {
+              int challenger_idx = ctx->clients[i].pending_invite_from;
+
+              // 1. On efface l'invitation périmée chez la cible
+              ctx->clients[i].pending_invite_from = -1;
+
+              // On prévient la cible que l'invitation a expiré
+              Packet pkt_target;
+              pkt_target.type = S2C_ERROR;
+              strncpy (pkt_target.payload,
+                       "The invitation has expired (5 minutes).",
+                       MAX_PAYLOAD_SIZE - 1);
+              char out_buf_target[MAX_FORMATTED_PKT_SIZE];
+              if (SerializePacket (&pkt_target, out_buf_target,
+                                   sizeof (out_buf_target))
+                  >= 0)
                 {
-                  NetworkManager_Send (manager, i, out_buf);
+                  NetworkManager_Send (manager, i, out_buf_target);
                 }
-              disconnect_server_client (manager, ctx, i);
+
+              // 2. On libère le challenger qui attendait depuis 5 minutes !
+              if (challenger_idx >= FIRST_CLIENT_INDEX
+                  && challenger_idx <= MAX_CLIENTS
+                  && ctx->fds[challenger_idx].fd != INVALID_SOCKET
+                  && ctx->clients[challenger_idx].status
+                         == CLIENT_STATUS_WAITGAME)
+                {
+                  ctx->clients[challenger_idx].status = CLIENT_STATUS_IDLE;
+
+                  Packet pkt_challenger;
+                  pkt_challenger.type = S2C_ERROR;
+                  strncpy (pkt_challenger.payload,
+                           "Your invitation expired without an answer.",
+                           MAX_PAYLOAD_SIZE - 1);
+                  char out_buf_chal[MAX_FORMATTED_PKT_SIZE];
+                  if (SerializePacket (&pkt_challenger, out_buf_chal,
+                                       sizeof (out_buf_chal))
+                      >= 0)
+                    {
+                      NetworkManager_Send (manager, challenger_idx,
+                                           out_buf_chal);
+                    }
+                }
             }
         }
     }

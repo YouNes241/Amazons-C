@@ -48,7 +48,7 @@
 #define BROADCAST_INTERVAL_SEC 10
 #define SERVER_TIMEOUT_SEC 30
 
-#define CLIENT_TIMEOUT_SEC 60
+#define CLIENT_TIMEOUT_SEC 60000
 
 // Buffer Sizes & Limits
 /** @brief Size of the temporary receive buffer.
@@ -205,6 +205,11 @@ typedef struct
   /** @brief Timestamp of the client's last activity, used for timeout
    * management. */
   time_t last_activity;
+  /** @brief The ID of the player who invited this client. -1 if none. */
+  int pending_invite_from;
+  /** @brief The timestamp when the invitation was received (for the 300s
+   * timeout). */
+  time_t invite_timestamp;
   /** @brief Player's statistics (can be used for a scoreboard feature). */
   int wins;
   int losses;
@@ -280,6 +285,11 @@ struct ServerContext
   int num_clients;
   /** @brief The ID of the next game to be created. */
   int next_game_id;
+
+  /** * @brief Array of active games on the server.
+   * @details We can have up to MAX_CLIENTS / 2 simultaneous games.
+   */
+  GameState active_games[MAX_CLIENTS / 2];
 };
 
 /**

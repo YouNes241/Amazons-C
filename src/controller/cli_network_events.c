@@ -141,8 +141,7 @@ on_invitation_received (int challenger_id)
   if (!g_net_ctx)
     return;
   printf ("\n[LOBBY] Player %d invited you to a game!\n", challenger_id);
-  printf ("Type 'accept %d' to play, or 'decline %d' to refuse.\n",
-          challenger_id, challenger_id);
+  printf ("Type 'accept' to play, or 'decline' to refuse.\n");
   refresh_prompt (g_net_ctx);
 }
 static void
