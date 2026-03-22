@@ -2,6 +2,7 @@
 #include "evaluator.h"
 #include "utils.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 BitboardState
 create_empty_state (uint8_t size)
@@ -104,14 +105,14 @@ sync_from_logic (GameState *gs)
  * @return A new BitboardState with the move applied.
  */
 BitboardState
-apply_move_bitboard (BitboardState state, Move move)
+apply_move_bitboard (BitboardState *state, Move move)
 {
   // Init
-  BitboardState next = state;
+  BitboardState next = *state;
   Position q_src = move.queen_src;
   Position q_dst = move.queen_dst;
   Position a_dst = move.arrow_dst;
-  int size = state.size;
+  int size = state->size;
 
   // Convert pos for bits
   uint8_t src_idx = q_src.row * size + q_src.col;
@@ -120,7 +121,7 @@ apply_move_bitboard (BitboardState state, Move move)
 
   // Who's moving ?
   Bitboard *my_queens
-      = (state.white_to_move) ? &next.white_queens : &next.black_queens;
+      = (state->white_to_move) ? &next.white_queens : &next.black_queens;
 
   // Remove
   bitboard_clear_bit (my_queens, src_idx);
@@ -129,7 +130,7 @@ apply_move_bitboard (BitboardState state, Move move)
   bitboard_set_bit (my_queens, dst_idx);
   bitboard_set_bit (&next.arrows, arr_idx);
 
-  next.white_to_move = !state.white_to_move;
+  next.white_to_move = !state->white_to_move;
 
   return next;
 }
@@ -141,32 +142,32 @@ apply_move_bitboard (BitboardState state, Move move)
  * @return Max number of legal moves possibles
  */
 int
-get_move_limit (BitboardState state)
+get_move_limit (BitboardState *state)
 {
-  int k = bitboard_count_bits (state.white_queens);
-  int reach = (state.size - 1) << 2;
+  int k = bitboard_count_bits (state->white_queens);
+  int reach = (state->size - 1) << 2;
   return k * reach * reach;
 }
 
 Bitboard
-bitboard_state_get_occupied_squares (BitboardState state)
+bitboard_state_get_occupied_squares (BitboardState *state)
 {
-  Bitboard occupied = bitboard_or (state.white_queens, state.black_queens);
-  occupied = bitboard_or (occupied, state.arrows);
+  Bitboard occupied = bitboard_or (state->white_queens, state->black_queens);
+  occupied = bitboard_or (occupied, state->arrows);
   return occupied;
 }
 
 Bitboard
-bitboard_state_get_empty_squares (BitboardState state)
+bitboard_state_get_empty_squares (BitboardState *state)
 {
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
-  return bitboard_masked_not (occupied, state.size);
+  return bitboard_masked_not (occupied, state->size);
 }
 
 Bitboard
-bitboard_state_get_current_queens (BitboardState state)
+bitboard_state_get_current_queens (BitboardState *state)
 {
-  return (state.white_to_move) ? state.white_queens : state.black_queens;
+  return (state->white_to_move) ? state->white_queens : state->black_queens;
 }
 
 /**
@@ -176,7 +177,7 @@ bitboard_state_get_current_queens (BitboardState state)
  * @return true if the game is over (no legal moves), false otherwise.
  */
 bool
-bitboard_state_is_game_over (BitboardState state)
+bitboard_state_is_game_over (BitboardState *state)
 {
   // Get the current queens
   Bitboard my_queens = bitboard_state_get_current_queens (state);
@@ -185,32 +186,30 @@ bitboard_state_is_game_over (BitboardState state)
   Bitboard empty = bitboard_state_get_empty_squares (state);
 
   // Move 1 movement around, from our queens and using the empty tiles
-  Bitboard adjacent_moves = expand_king_step (my_queens, empty, state.size);
+  Bitboard adjacent_moves = expand_king_step (my_queens, empty, state->size);
 
   // Check if even a single move like this exist
   return bitboard_is_zero (adjacent_moves);
 }
 
 int
-get_legal_moves (BitboardState state, Move *moves_array)
+get_legal_moves (BitboardState *state, Move *moves_array)
 {
   int count = 0;
-  int size = state.size;
+  int size = state->size;
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
   Bitboard my_queens = bitboard_state_get_current_queens (state);
 
-  for (uint8_t q_from = 0; q_from < (size * size); q_from++)
+  while (bitboard_count_bits (my_queens) != 0)
     {
-      if (!bitboard_get_bit (my_queens, q_from))
-        continue; // TODO : optimize
+      int q_from = pop_lsb (&my_queens);
 
       Bitboard queen_destinations
           = bitboard_get_reachable (q_from, occupied, size);
 
-      for (uint8_t q_to = 0; q_to < (size * size); q_to++)
+      while (bitboard_count_bits (queen_destinations) != 0)
         {
-          if (!bitboard_get_bit (queen_destinations, q_to))
-            continue;
+          int q_to = pop_lsb (&queen_destinations);
 
           Bitboard arrow_occupied = occupied;
           bitboard_clear_bit (&arrow_occupied, q_from);
@@ -219,10 +218,9 @@ get_legal_moves (BitboardState state, Move *moves_array)
           Bitboard arrow_destinations
               = bitboard_get_reachable (q_to, arrow_occupied, size);
 
-          for (uint8_t arrow_to = 0; arrow_to < (size * size); arrow_to++)
+          while (bitboard_count_bits (arrow_destinations) != 0)
             {
-              if (!bitboard_get_bit (arrow_destinations, arrow_to))
-                continue;
+              int arrow_to = pop_lsb (&arrow_destinations);
 
               if (moves_array != NULL)
                 {
@@ -236,4 +234,50 @@ get_legal_moves (BitboardState state, Move *moves_array)
         }
     }
   return count;
+}
+
+Move
+get_random_move_mcts (BitboardState *state)
+{
+  int size = state->size;
+  Bitboard occupied = bitboard_state_get_occupied_squares (state);
+  Bitboard my_queens = bitboard_state_get_current_queens (state);
+
+  int q_count = bitboard_count_bits (my_queens);
+  if (q_count == 0)
+    return (Move){ 0 };
+
+  int target_q = rand () % q_count;
+  for (int i = 0; i < target_q; i++)
+    pop_lsb (&my_queens);
+  uint8_t q_from = pop_lsb (&my_queens);
+
+  Bitboard q_dests = bitboard_get_reachable (q_from, occupied, size);
+  int q_dest_count = bitboard_count_bits (q_dests);
+  if (q_dest_count == 0)
+    return (Move){ 0 };
+
+  int target_qd = rand () % q_dest_count;
+  for (int i = 0; i < target_qd; i++)
+    pop_lsb (&q_dests);
+  uint8_t q_to = pop_lsb (&q_dests);
+
+  Bitboard arrow_occ = occupied;
+  bitboard_clear_bit (&arrow_occ, q_from);
+  bitboard_set_bit (&arrow_occ, q_to);
+
+  Bitboard a_dests = bitboard_get_reachable (q_to, arrow_occ, size);
+  int a_dest_count = bitboard_count_bits (a_dests);
+  if (a_dest_count == 0)
+    return (Move){ 0 };
+
+  int target_ad = rand () % a_dest_count;
+  for (int i = 0; i < target_ad; i++)
+    pop_lsb (&a_dests);
+  uint8_t arrow_to = pop_lsb (&a_dests);
+
+  Move m = { .queen_src = idx_to_pos (q_from, size),
+             .queen_dst = idx_to_pos (q_to, size),
+             .arrow_dst = idx_to_pos (arrow_to, size) };
+  return m;
 }

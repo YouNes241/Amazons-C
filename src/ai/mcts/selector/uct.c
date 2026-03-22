@@ -3,6 +3,12 @@
 #include <math.h>
 #include <stdlib.h>
 
+/**
+ * @struct UCT_Data
+ * @brief Contains the parameters of UCT
+ * @var UCT_Data::exploration_constant
+ * Constant used to give more value to exploration
+ */
 typedef struct
 {
   float exploration_constant;
@@ -31,7 +37,7 @@ uct_select_child (ISelector *self, MCTS_Node *parent)
   MCTS_Node *best_child = NULL;
   float best_uct_score = -INFINITY;
   float parent_score = data->exploration_constant
-                       * sqrt (logf ((float)parent->visit_count + 1.0f));
+                       * sqrtf (logf ((float)parent->visit_count + 1.0f));
 
   while (current != NULL)
     {
