@@ -428,7 +428,10 @@ handle_command (char *input_buffer, CliContext *ctx)
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
           // Le serveur peut l'afficher directement en lisant son fichier
-          system ("cat scoreboard.txt"); // Ou une version plus propre en C
+          if (system ("cat scoreboard.txt") != 0)
+            {
+              printf ("Failed to read scoreboard.txt\n");
+            }
         }
       return;
     }

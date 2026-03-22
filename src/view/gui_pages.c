@@ -967,6 +967,7 @@ shortcutUndo (GtkWidget *widget, GVariant *args, gpointer user_data)
   return TRUE;
 }
 
+G_GNUC_UNUSED
 static gboolean
 shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {

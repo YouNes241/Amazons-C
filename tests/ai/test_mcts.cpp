@@ -27,7 +27,7 @@ protected:
   void
   SetUp () override
   {
-    ConfigMap empty_params = { .list = NULL, .count = 0 };
+    ConfigMap empty_params = { NULL, 0 };
     ai = create_ai ("mcts", empty_params);
   }
 
@@ -43,7 +43,7 @@ TEST_F (MCTSParamTest, UpdatesTimeLimitFromParams)
 {
   // Re-init with specific params
   Param p[] = { { (char *)"time_limit", (char *)"1500" } };
-  ConfigMap params = { .list = p, .count = 1 };
+  ConfigMap params = { p, 1 };
 
   ai.vtable->init (&ai, &params);
   MCTS_Data *data = (MCTS_Data *)ai.context;
@@ -73,17 +73,11 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
   cc[0][0] = CONTENT_BLACK_QUEEN;
   cc[0][1] = CONTENT_EMPTY;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 50,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {} };
 
   // Give MCTS 1 second to explore
   Param p = { (char *)"time_limit", (char *)"1000" };
-  ConfigMap cm = { .list = &p, .count = 1 };
+  ConfigMap cm = { &p, 1 };
 
   AI_Interface ai = create_ai ("mcts", cm);
   ASSERT_NE (ai.vtable, nullptr);
@@ -123,16 +117,10 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   Param p = { (char *)"time_limit", (char *)"500" };
-  ConfigMap cm = { .list = &p, .count = 1 };
+  ConfigMap cm = { &p, 1 };
 
   AI_Interface ai1 = create_ai ("mcts", cm);
   Move m1 = ai1.vtable->get_best_move (&ai1, state);
@@ -154,7 +142,7 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
 // 4. Factory Test: Creation
 TEST (AIFactoryTest, CreateMCTSReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { .list = NULL, .count = 0 };
+  ConfigMap empty_params = { NULL, 0 };
   AI_Interface ai = create_ai ("mcts", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
@@ -178,16 +166,10 @@ TEST (MCTSCoverageTest, TriggerChildLoop)
   cc[0][0] = CONTENT_WHITE_QUEEN;
   cc[3][3] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { .size = 4,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 4, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   Param p = { (char *)"time_limit", (char *)"3000" };
-  ConfigMap cm = { .list = &p, .count = 1 };
+  ConfigMap cm = { &p, 1 };
 
   AI_Interface ai = create_ai ("mcts", cm);
   Move m = ai.vtable->get_best_move (&ai, state);

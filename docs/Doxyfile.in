@@ -22,9 +22,9 @@ STRIP_FROM_INC_PATH   = @CMAKE_CURRENT_SOURCE_DIR@
 FULL_PATH_NAMES       = NO
 
 # Code and preprocessor settings
-EXTRACT_ALL           = YES
-EXTRACT_PRIVATE       = YES
-EXTRACT_STATIC        = YES
+EXTRACT_ALL           = NO
+EXTRACT_PRIVATE       = NO
+EXTRACT_STATIC        = NO
 
 ENABLE_PREPROCESSING   = YES
 SEARCH_INCLUDES        = YES
@@ -56,3 +56,9 @@ GROUP_GRAPHS           = YES
 
 GRAPHICAL_HIERARCHY    = YES
 DIRECTORY_GRAPH        = YES
+
+# Warn missings
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+
+WARN_LOGFILE           = doxygen_warnings.txt

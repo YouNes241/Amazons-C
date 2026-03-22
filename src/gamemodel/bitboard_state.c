@@ -235,6 +235,5 @@ get_legal_moves (BitboardState state, Move *moves_array)
             }
         }
     }
-  printf ("count : %d\n", count);
   return count;
 }

@@ -8,30 +8,6 @@
 #include <stdlib.h>
 
 /**
- * @brief Checks if the given parent node has a child corresponding to the
- * specified move.
- * @param parent The MCTS_Node to check for the child move.
- * @param move The Move to look for among the children of the parent node.
- * @return true if a child node with the specified move exists, false
- * otherwise.
- */
-static bool
-has_child_with_move (MCTS_Node *parent, Move move)
-{
-  if (parent == NULL || parent->first_child == NULL)
-    return false;
-
-  MCTS_Node *current = parent->first_child;
-  while (current != NULL)
-    {
-      if (moves_are_equal (current->move_from_parent, move))
-        return true;
-      current = current->next_sibling;
-    }
-  return false;
-}
-
-/**
  * @brief Select a node to expand from the given root node using the provided
  * selection strategy.
  * @param root The root node of the MCTS tree to start selection from.
@@ -139,41 +115,6 @@ alloc_mcts_node (MCTS_Node *parent, Move move)
   node->score = 0.0f;
   node->first_child = NULL;
   node->next_sibling = NULL;
-
-  return node;
-}
-
-/**
- * @brief Creates a new MCTS node with the given parent and move, and adds it
- * to the parent's children list.
- * @param parent The parent MCTS node to which the new node will be added as a
- * child. Can be NULL for the root node.
- * @param move The Move that leads from the parent node to this new node.
- * Ignored if parent is NULL.
- * @return A pointer to the newly created MCTS_Node, or NULL if memory
- * allocation fails.
- */
-static MCTS_Node *
-create_mcts_node (MCTS_Node *parent, Move move)
-{
-  MCTS_Node *node = alloc_mcts_node (parent, move);
-
-  if (parent != NULL)
-    {
-      if (parent->first_child == NULL)
-        {
-          parent->first_child = node;
-        }
-      else
-        {
-          MCTS_Node *sibling = parent->first_child;
-          while (sibling->next_sibling != NULL)
-            {
-              sibling = sibling->next_sibling;
-            }
-          sibling->next_sibling = node;
-        }
-    }
 
   return node;
 }

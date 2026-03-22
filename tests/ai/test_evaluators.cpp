@@ -15,6 +15,11 @@ typedef struct
 GameState
 setup_standard_start (int board_size)
 {
+  if (board_size < 4)
+    board_size = 4;
+  if (board_size > 11)
+    board_size = 11;
+
   CellContent **cc
       = (CellContent **)malloc (sizeof (CellContent *) * board_size);
   for (int i = 0; i < board_size; i++)
@@ -60,13 +65,9 @@ setup_standard_start (int board_size)
       cc[board_size - 1][board_size - 1] = CONTENT_WHITE_QUEEN;
     }
 
-  return (GameState){ .size = (uint8_t)board_size,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState new_game
+      = { (uint8_t)board_size, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  return new_game;
 }
 
 void
@@ -140,18 +141,18 @@ TEST (TournamentTest, MinimaxVsMCTS)
   // Configure Minimax
   Param p_mini[] = { { (char *)"depth", (char *)"2" },
                      { (char *)"evaluator", (char *)"qd&kd" } };
-  ConfigMap cm_mini = { .list = p_mini, .count = 2 };
+  ConfigMap cm_mini = { p_mini, 2 };
   AI_Interface minimax = create_ai ("minimax", cm_mini);
 
   // Configure Minimax
   Param p_mini2[] = { { (char *)"depth", (char *)"2" },
                       { (char *)"evaluator", (char *)"rth" } };
-  ConfigMap cm_mini2 = { .list = p_mini2, .count = 2 };
+  ConfigMap cm_mini2 = { p_mini2, 2 };
   AI_Interface minimax2 = create_ai ("minimax", cm_mini2);
 
   // Configure MCTS
-  Param p_mcts = { (char *)"time_limit", (char *)"1000" };
-  ConfigMap cm_mcts = { .list = &p_mcts, .count = 1 };
+  Param p_mcts = { (char *)"time_limit", (char *)"500" };
+  ConfigMap cm_mcts = { &p_mcts, 1 };
   AI_Interface mcts = create_ai ("mcts", cm_mcts);
 
   // Play two games (swap sides to ensure fairness)
@@ -320,13 +321,7 @@ TEST (EvaluatorTest, RandomMove)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
@@ -369,21 +364,15 @@ TEST (EvaluatorTest, MiniMaxMove)
   cc[9][3] = CONTENT_WHITE_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  Param depth = { .key = "depth", .value = "3" };
-  Param evaluator = { .key = "evaluator", .value = "me" };
+  Param depth = { "depth", "3" };
+  Param evaluator = { "evaluator", "me" };
   Param params[] = { depth, evaluator };
-  ConfigMap cm = { .list = params, .count = 2 };
+  ConfigMap cm = { params, 2 };
   AI_Interface randomAI = create_ai ("minimax", cm);
   Move move = randomAI.vtable->get_best_move (&randomAI, state);
 
@@ -425,30 +414,24 @@ TEST (EvaluatorTest, MiniMaxWin)
   cc[8][9] = CONTENT_EMPTY;
   cc[7][9] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0,
-                      .undo_stack = {},
-                      .redo_stack = {} };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  Param depth = { .key = "depth", .value = "3" };
+  Param depth = { "depth", "3" };
 
-  Param evaluator_qdkd = { .key = "evaluator", .value = "qdkd" };
-  Param evaluator_rth = { .key = "evaluator", .value = "rth" };
-  Param evaluator_me = { .key = "evaluator", .value = "me" };
+  Param evaluator_qdkd = { "evaluator", "qdkd" };
+  Param evaluator_rth = { "evaluator", "rth" };
+  Param evaluator_me = { "evaluator", "me" };
 
   Param params_qdkd[] = { depth, evaluator_qdkd };
   Param params_rth[] = { depth, evaluator_rth };
   Param params_me[] = { depth, evaluator_me };
 
-  ConfigMap cm_qdkd = { .list = params_qdkd, .count = 2 };
-  ConfigMap cm_rth = { .list = params_rth, .count = 2 };
-  ConfigMap cm_me = { .list = params_me, .count = 2 };
+  ConfigMap cm_qdkd = { params_qdkd, 2 };
+  ConfigMap cm_rth = { params_rth, 2 };
+  ConfigMap cm_me = { params_me, 2 };
 
   AI_Interface qdkdAI = create_ai ("minimax", cm_qdkd);
   AI_Interface rthAI = create_ai ("minimax", cm_rth);

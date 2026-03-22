@@ -262,7 +262,9 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   // 2. Accept player
   strncpy (ctx->clients[client_index].username, username,
            MAX_USERNAME_LENGTH - NULL_TERMINATOR_OFFSET);
-  ctx->clients[client_index].username[MAX_USERNAME_LENGTH] = '\0'; // Security
+
+  ctx->clients[client_index].username[MAX_USERNAME_LENGTH - 1]
+      = '\0'; // Security
   ctx->clients[client_index].is_joined = true;
   ctx->clients[client_index].pending_invite_from = -1;
   ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
