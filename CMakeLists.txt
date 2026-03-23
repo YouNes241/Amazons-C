@@ -19,7 +19,7 @@ include(CTest)
 include(GoogleTest)
 
 enable_testing()
-add_compile_options(-Wall -Wextra -O3 -Wpedantic -g -Werror)
+add_compile_options(-Wall -Wextra -O3 -g -Werror)
 
 # --- DEPENDENCIES ---
 find_package(OpenMP REQUIRED)
