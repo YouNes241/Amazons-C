@@ -1,6 +1,7 @@
 #include "mcts.h"
 #include "ai_interface.h"
 #include "bitboard.h"
+#include "evaluator.h"
 #include "i_selector.h"
 #include "uct.h"
 #include "utils.h"
@@ -18,10 +19,12 @@ static MCTS_Node *
 select_node (MCTS_Node *root, ISelector *selector)
 {
   MCTS_Node *node = root;
-  while (node->first_child != NULL)
+
+  while (node->is_fully_expanded && node->first_child != NULL)
     {
       node = selector->vtable->select_child (selector, node);
     }
+
   return node;
 }
 
@@ -41,7 +44,7 @@ derive_state (BitboardState root_state, MCTS_Node *node)
     return root_state;
 
   BitboardState state = derive_state (root_state, node->parent);
-  return apply_move_bitboard (state, node->move_from_parent);
+  return apply_move_bitboard (&state, node->move_from_parent);
 }
 
 /**
@@ -66,6 +69,41 @@ backpropagate (MCTS_Node *node, float result)
     }
 }
 
+// TODO : doc
+static float
+get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
+{
+  float raw_score = eval_me (state);
+
+  if (!starting_player_was_white)
+    {
+      raw_score = -raw_score;
+    }
+
+  // TODO : calculate using board size (state->size) for more
+  // accurate results within different board sizes.
+  const float MAX_MOBILITY_DIFF = 40.0f;
+
+  float win_probability = 0.5f + (raw_score / (2.0f * MAX_MOBILITY_DIFF));
+
+  if (win_probability > 1.0f)
+    return 1.0f;
+  if (win_probability < 0.0f)
+    return 0.0f;
+
+  return win_probability;
+}
+
+// TODO : doc
+static inline bool
+is_move_null (Move *m)
+{
+  // If the source and destination are the same, it's not a legal move in
+  // Amazons
+  return m->queen_src.col == m->queen_dst.col
+         && m->queen_src.row == m->queen_dst.row;
+}
+
 /**
  * @brief Performs a random rollout (simulation) from the given state until the
  * game ends, and returns the result from the perspective of the player to move
@@ -79,42 +117,51 @@ rollout (BitboardState state)
 {
   BitboardState current = state;
   bool starting_player = state.white_to_move;
+  Move m = (Move){ 0 };
 
-  while (true)
+  int current_depth = 0;
+  int max_depth = 5; // May be set by a parameter
+
+  // Play random moves until reaching max_depth
+  while (current_depth < max_depth)
     {
-      Move moves_array[get_move_limit (current)];
-      int count = get_legal_moves (current, moves_array);
-
-      if (count == 0)
+      if (bitboard_state_is_game_over (&current))
         break;
 
-      int random_index = rand () % count;
-      Move chosen = moves_array[random_index];
+      m = get_direct_random_move (&current);
 
-      current = apply_move_bitboard (current, chosen);
+      if (!is_move_null (&m))
+        {
+          current = apply_move_bitboard (&current, m);
+          current_depth++;
+        }
+      else
+        break;
     }
 
-  bool starting_player_won = !current.white_to_move;
+  if (bitboard_state_is_game_over (&current))
+    {
+      bool starting_player_won = (starting_player != current.white_to_move);
+      return starting_player_won ? 1.0f : 0.0f;
+    }
 
-  if (starting_player == starting_player_won)
-    return 1.0f;
-
-  return -1.0f;
+  return get_mcts_win_probability (&current, starting_player);
 }
 
 static MCTS_Node *
-alloc_mcts_node (MCTS_Node *parent, Move move)
+alloc_mcts_node (MCTS_Node *parent, Move *move)
 {
   MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
   if (!node)
     return NULL;
 
   node->parent = parent;
-  node->move_from_parent = move;
+  node->move_from_parent = *move;
   node->visit_count = 0;
   node->score = 0.0f;
   node->first_child = NULL;
   node->next_sibling = NULL;
+  node->is_fully_expanded = false;
 
   return node;
 }
@@ -129,42 +176,51 @@ alloc_mcts_node (MCTS_Node *parent, Move move)
  * the parent node if all moves have already been tried.
  */
 static MCTS_Node *
-expand (MCTS_Node *parent, BitboardState state)
+expand (MCTS_Node *parent, BitboardState *state)
 {
   if (bitboard_state_is_game_over (state))
-    {
-      return parent;
-    }
-
-  Move moves[get_move_limit (state)];
-  int count = get_legal_moves (state, moves);
-
-  if (count == 0)
     return parent;
 
-  MCTS_Node *last_added = NULL;
+  // Generate the moves
+  Move moves[get_move_limit (state)];
+  int total_possible_moves = get_legal_moves (state, moves);
 
-  for (int i = 0; i < count; i++)
+  if (total_possible_moves == 0)
+    return parent;
+
+  // Count the number of children
+  int num_existing_children = 0;
+  MCTS_Node *current = parent->first_child;
+  MCTS_Node *last_child = NULL;
+
+  while (current != NULL)
     {
-      MCTS_Node *node = alloc_mcts_node (parent, moves[i]);
+      num_existing_children++;
+      last_child = current;
+      current = current->next_sibling;
+    }
 
-      if (parent->first_child == NULL)
-        parent->first_child = node;
+  // If there are unexplored children, take the next available one and
+  // initialize it
+  if (num_existing_children < total_possible_moves)
+    {
+      Move new_move = moves[num_existing_children];
+      MCTS_Node *new_node = alloc_mcts_node (parent, &new_move);
+
+      if (last_child == NULL)
+        parent->first_child = new_node;
       else
-        last_added->next_sibling = node;
+        last_child->next_sibling = new_node;
 
-      last_added = node;
+      if (num_existing_children + 1 == total_possible_moves)
+        {
+          parent->is_fully_expanded = true;
+        }
+
+      return new_node;
     }
 
-  int random_idx = rand () % count;
-  MCTS_Node *chosen = parent->first_child;
-
-  for (int i = 0; i < random_idx; i++)
-    {
-      chosen = chosen->next_sibling;
-    }
-
-  return chosen;
+  return parent;
 }
 
 /**
@@ -231,28 +287,33 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 
   unsigned long start_time = get_time_ms ();
   unsigned long time_limit = data->time_constraint;
+  int max_iters = data->max_iterations;
+  int current_iterations = 0;
 
-  while ((get_time_ms () - start_time) < time_limit)
+  while (((get_time_ms () - start_time) < time_limit)
+         && (current_iterations < max_iters))
     {
       MCTS_Node *picked = select_node (root, data->strategy_select);
 
       BitboardState current_state = derive_state (root_state, picked);
-      picked = expand (picked, current_state);
+      picked = expand (picked, &current_state);
 
       current_state
-          = apply_move_bitboard (current_state, picked->move_from_parent);
+          = apply_move_bitboard (&current_state, picked->move_from_parent);
       float result = rollout (current_state);
 
       backpropagate (picked, 1.0f - result);
+
+      current_iterations++;
     }
 
   MCTS_Node *best_node = get_child_with_max_visits (root);
   Move final_move = best_node->move_from_parent;
 
-  printf ("[MCTS] Best move : (%d, %d) -> (%d, %d) +-> (%d, %d)\n",
-          final_move.queen_src.row, final_move.queen_src.col,
-          final_move.queen_dst.row, final_move.queen_dst.col,
-          final_move.arrow_dst.row, final_move.arrow_dst.col);
+  printf ("[MCTS] Iterations: %d | Best move : (%d, %d) -> (%d, %d)\n",
+          current_iterations, final_move.queen_src.row,
+          final_move.queen_src.col, final_move.queen_dst.row,
+          final_move.queen_dst.col);
 
   free_mcts_tree (root);
   return final_move;
@@ -308,7 +369,7 @@ mcts_init (AI_Interface *self, ConfigMap *params)
 
   data->time_constraint = 5000;
   // TODO : Finish implementing missing parameters
-  data->max_iterations = 100000;
+  data->max_iterations = INT32_MAX;
   data->max_workers = 1;
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));

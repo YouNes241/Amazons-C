@@ -7,6 +7,17 @@
 
 typedef struct AI_Interface AI_Interface;
 
+/**
+ * @struct AI_VTable
+ * @brief Contains the different functions usable with any AI.
+ * @var AI_VTable::init
+ * Initialisation function, takes parameters and itself in order to initialize
+ * itself.
+ * @var AI_VTable::clean
+ * Cleans the memory of the AI.
+ * @var AI_VTable::get_best_move
+ * Gets the best move using the specified AI.
+ */
 typedef struct
 {
   void (*init) (struct AI_Interface *self, ConfigMap *params);
@@ -14,6 +25,14 @@ typedef struct
   Move (*get_best_move) (AI_Interface *self, GameState state);
 } AI_VTable;
 
+/**
+ * @struct AI_Interface
+ * @brief Acts as an interface between the developer and the AI methods.
+ * @var AI_Interface::vtable
+ * Contains init, clean and get_best_move functions.
+ * @var AI_Interface::context
+ * Context of the AI (parameters)
+ */
 struct AI_Interface
 {
   const AI_VTable *vtable;
@@ -33,6 +52,25 @@ check_param (Param p, const char *key, int *target)
   if (strcmp (p.key, key) == 0)
     {
       *target = atoi (p.value);
+    }
+}
+
+static inline void
+check_ul_param (Param p, const char *key, unsigned long *target)
+{
+  if (strcmp (p.key, key) == 0)
+    {
+      *target = strtoul (p.value, NULL, 10);
+    }
+}
+
+static inline void
+check_bool_param (Param p, const char *key, _Bool *target)
+{
+  if (strcmp (p.key, key) == 0)
+    {
+      int val = atoi (p.value);
+      *target = (val != 0);
     }
 }
 

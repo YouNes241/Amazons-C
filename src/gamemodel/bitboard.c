@@ -1,272 +1,28 @@
 #include "../../include/bitboard.h"
 #include <stdio.h>
 
+static Bitboard MASK_NOT_A[12];
+static Bitboard MASK_NOT_H[12];
 static Bitboard BOARD_MASKS[12];
+static bool slide_masks_init = false;
 static bool masks_initialized = false;
 
-/**
- * @brief Initialize an empty bitboard with all bits set to 0.
- */
-Bitboard
-bitboard_create_empty (void)
+static void
+init_slide_masks ()
 {
-  Bitboard bb;
-  bb.low = 0;
-  bb.high = 0;
-  return bb;
-}
-
-/**
- * @brief Initialize a full bitboard with all bits set to 1.
- */
-Bitboard
-bitboard_create_full (void)
-{
-  Bitboard bb;
-  // Bitwise NOT of 0 fills all bits with 1
-  bb.low = ~0ULL;
-  bb.high = ~0ULL;
-  return bb;
-}
-
-/**
- * @brief Set a specific bit to 1 at the given index.
- *
- * For indices 0-63, operates on the low part.
- * For indices 64-127, operates on the high part (with index - 64 offset).
- */
-void
-bitboard_set_bit (Bitboard *bb, uint8_t index)
-{
-  if (index < 64)
+  if (slide_masks_init)
+    return;
+  for (int w = 4; w <= 11; w++)
     {
-      // Operating on low part: create a mask with a single 1 at position
-      // index, then OR it
-      bb->low |= (1ULL << index);
+      MASK_NOT_A[w] = bitboard_create_full ();
+      MASK_NOT_H[w] = bitboard_create_full ();
+      for (int r = 0; r < w; r++)
+        {
+          bitboard_clear_bit (&MASK_NOT_A[w], r * w);
+          bitboard_clear_bit (&MASK_NOT_H[w], r * w + (w - 1));
+        }
     }
-  else
-    {
-      // Operating on high part: adjust index by subtracting 64 to get position
-      // within high
-      bb->high |= (1ULL << (index - 64));
-    }
-}
-
-/**
- * @brief Clear a specific bit to 0 at the given index.
- *
- * Creates an inverted mask and ANDs it to clear only that bit.
- */
-void
-bitboard_clear_bit (Bitboard *bb, uint8_t index)
-{
-  if (index < 64)
-    {
-      // Create a mask with a single 0 at position index, AND it to clear only
-      // that bit
-      bb->low &= ~(1ULL << index);
-    }
-  else
-    {
-      // Same logic applied to high part
-      bb->high &= ~(1ULL << (index - 64));
-    }
-}
-
-/**
- * @brief Check if a specific bit is set to 1.
- *
- * Returns non-zero (true) if the bit is set, zero (false) otherwise.
- */
-bool
-bitboard_get_bit (Bitboard bb, uint8_t index)
-{
-  if (index < 64)
-    {
-      // AND with a single-1 mask; non-zero result means bit is set
-      return (bb.low & (1ULL << index)) != 0;
-    }
-  else
-    {
-      // Same logic for high part
-      return (bb.high & (1ULL << (index - 64))) != 0;
-    }
-}
-
-/**
- * @brief Toggle a specific bit (flip 0 to 1 or 1 to 0).
- */
-void
-bitboard_toggle_bit (Bitboard *bb, uint8_t index)
-{
-  if (index < 64)
-    {
-      // XOR with a single-1 mask flips only that bit
-      bb->low ^= (1ULL << index);
-    }
-  else
-    {
-      // Same logic for high part
-      bb->high ^= (1ULL << (index - 64));
-    }
-}
-
-/**
- * @brief Bitwise OR: combines two bitboards.
- *
- * Resulting bitboard has 1 where either input has a 1.
- */
-Bitboard
-bitboard_or (Bitboard a, Bitboard b)
-{
-  Bitboard res;
-  res.low = a.low | b.low;
-  res.high = a.high | b.high;
-  return res;
-}
-
-/**
- * @brief Bitwise AND: keeps only common bits.
- *
- * Resulting bitboard has 1 only where both inputs have a 1.
- */
-Bitboard
-bitboard_and (Bitboard a, Bitboard b)
-{
-  Bitboard res;
-  res.low = a.low & b.low;
-  res.high = a.high & b.high;
-  return res;
-}
-
-/**
- * @brief Bitwise XOR: keeps differing bits.
- *
- * Resulting bitboard has 1 where inputs differ.
- */
-Bitboard
-bitboard_xor (Bitboard a, Bitboard b)
-{
-  Bitboard res;
-  res.low = a.low ^ b.low;
-  res.high = a.high ^ b.high;
-  return res;
-}
-
-/**
- * @brief Bitwise NOT: inverts all bits.
- */
-Bitboard
-bitboard_not (Bitboard a)
-{
-  Bitboard res;
-  res.low = ~a.low;
-  res.high = ~a.high;
-  return res;
-}
-
-Bitboard
-bitboard_masked_not (Bitboard a, uint8_t size)
-{
-  return bitboard_and (bitboard_not (a), get_board_mask (size));
-}
-
-/**
- * @brief Check if two bitboards are equal.
- */
-bool
-bitboard_equals (Bitboard a, Bitboard b)
-{
-  return (a.low == b.low) && (a.high == b.high);
-}
-
-/**
- * @brief Check if bitboard is empty (all bits are 0).
- */
-bool
-bitboard_is_zero (Bitboard bb)
-{
-  return (bb.low == 0) && (bb.high == 0);
-}
-
-/**
- * @brief Shift all bits left by the specified amount (towards higher indices).
- *
- * Used to compute moves toward South/East.
- * Bits overflow from low to high when shift < 64.
- * For shift >= 64, all of low moves into high.
- */
-Bitboard
-bitboard_shift_left (Bitboard bb, uint8_t shift)
-{
-  Bitboard res = { 0, 0 };
-
-  if (shift >= 128)
-    {
-      return res;
-    }
-
-  // If shift is 0, no operation needed
-  if (shift == 0)
-    return bb;
-
-  if (shift >= 64)
-    {
-      // Extreme case: shift is large enough that all of 'low' moves into
-      // 'high' 'low' becomes empty (0)
-      res.low = 0;
-      res.high = bb.low << (shift - 64);
-    }
-  else
-    {
-      // Shift all bits; bits from low overflow into high
-
-      // High receives its own shifted bits plus bits overflowing from low
-
-      res.high = (bb.high << shift) | (bb.low >> (64 - shift));
-
-      // Low is simply left-shifted; new bits on right side are 0
-      res.low = bb.low << shift;
-    }
-  return res;
-}
-
-/**
- * @brief Shift all bits right by the specified amount (towards lower indices).
- *
- * Used to compute moves toward North/West.
- * Bits overflow from high to low when shift < 64.
- * For shift >= 64, all of high moves into low.
- */
-Bitboard
-bitboard_shift_right (Bitboard bb, uint8_t shift)
-{
-  Bitboard res = { 0, 0 };
-
-  if (shift >= 128)
-    {
-      return res;
-    }
-
-  // If shift is 0, no operation needed
-  if (shift == 0)
-    return bb;
-
-  if (shift >= 64)
-    {
-      // Extreme case: shift is large enough that all of 'high' moves into
-      // 'low' 'high' becomes empty (0)
-      res.low = bb.high >> (shift - 64);
-      res.high = 0;
-    }
-  else
-    {
-      // Low receives its own shifted bits plus bits overflowing from high
-      res.low = (bb.low >> shift) | (bb.high << (64 - shift));
-      // High is simply right-shifted; new bits on left side are 0
-      res.high = bb.high >> shift;
-    }
-  return res;
+  slide_masks_init = true;
 }
 
 void
@@ -302,45 +58,91 @@ bitboard_print (Bitboard bb, uint8_t width)
   printf ("\n");
 }
 
-int
-bitboard_count_bits (Bitboard bb)
+/**
+ * @brief Generates all squares reachable by a "King" step from the 'sources'
+ * bitboard.
+ *
+ * @param sources Bitboard with the starting positions (e.g., queens).
+ * @param empty Bitboard with all empty squares (not occupied).
+ * @param width The width of the board.
+ * @return A Bitboard representing all valid reachable squares.
+ */
+Bitboard
+expand_king_step (Bitboard sources, Bitboard empty, uint8_t width)
 {
-  return __builtin_popcountll (bb.low) + __builtin_popcountll (bb.high);
+  if (!slide_masks_init)
+    init_slide_masks ();
+
+  Bitboard result = bitboard_create_empty ();
+
+  result = bitboard_or (result, bitboard_shift_right (sources, width)); // N
+  result = bitboard_or (result, bitboard_shift_left (sources, width));  // S
+
+  // Fetch pre-computed boundary masks
+  Bitboard mask_not_a = MASK_NOT_A[width];
+  Bitboard mask_not_h = MASK_NOT_H[width];
+  Bitboard west_moves = bitboard_and (sources, mask_not_a);
+  Bitboard east_moves = bitboard_and (sources, mask_not_h);
+
+  // Apply shifts for East, West, and Diagonals
+  result = bitboard_or (result, bitboard_shift_right (west_moves, 1)); // W
+  result = bitboard_or (result,
+                        bitboard_shift_right (west_moves, width + 1)); // NW
+  result = bitboard_or (result,
+                        bitboard_shift_left (west_moves, width - 1)); // SW
+
+  result = bitboard_or (result, bitboard_shift_left (east_moves, 1)); // E
+  result = bitboard_or (result,
+                        bitboard_shift_right (east_moves, width - 1)); // NE
+  result = bitboard_or (result,
+                        bitboard_shift_left (east_moves, width + 1)); // SE
+
+  return bitboard_and (result, empty);
 }
 
+/**
+ * @brief Generates all squares reachable by "Queen" slides from the 'sources'
+ * bitboard.
+ *
+ * @param sources Bitboard with the starting positions (e.g., queens).
+ * @param empty Bitboard with all empty squares (not occupied).
+ * @param width The width of the board.
+ * @return A Bitboard representing all valid reachable squares.
+ */
 Bitboard
-bitboard_get_reachable (uint8_t start_index, Bitboard occupied, uint8_t size)
+expand_queen_slide (Bitboard sources, Bitboard empty, uint8_t width)
 {
-  Bitboard reachable = bitboard_create_empty ();
-  uint8_t start_r = start_index / size;
-  uint8_t start_c = start_index % size;
+  if (!slide_masks_init)
+    init_slide_masks ();
 
-  for (int8_t dr = -1; dr <= 1; dr++)
-    for (int8_t dc = -1; dc <= 1; dc++)
-      {
-        // origin
-        if (dr == 0 && dc == 0)
-          continue;
+  Bitboard not_a = MASK_NOT_A[width];
+  Bitboard not_h = MASK_NOT_H[width];
+  Bitboard full = bitboard_create_full ();
 
-        // any movement
-        for (int dist = 1; dist < size; dist++)
-          {
-            int8_t r = start_r + (dr * dist);
-            int8_t c = start_c + (dc * dist);
+  Bitboard attacks = bitboard_create_empty ();
 
-            if (r < 0 || r >= size || c < 0 || c >= size)
-              break;
+  // N/S
+  attacks
+      = bitboard_or (attacks, kogge_stone_right (sources, empty, full, width));
+  attacks
+      = bitboard_or (attacks, kogge_stone_left (sources, empty, full, width));
 
-            uint8_t current_idx = r * size + c;
+  // E/W
+  attacks = bitboard_or (attacks, kogge_stone_left (sources, empty, not_a, 1));
+  attacks
+      = bitboard_or (attacks, kogge_stone_right (sources, empty, not_h, 1));
 
-            // If we hit an obstacle, stop.
-            if (bitboard_get_bit (occupied, current_idx))
-              break;
+  // NE/NW/SE/SW
+  attacks = bitboard_or (attacks,
+                         kogge_stone_right (sources, empty, not_a, width - 1));
+  attacks = bitboard_or (attacks,
+                         kogge_stone_right (sources, empty, not_h, width + 1));
+  attacks = bitboard_or (attacks,
+                         kogge_stone_left (sources, empty, not_a, width + 1));
+  attacks = bitboard_or (attacks,
+                         kogge_stone_left (sources, empty, not_h, width - 1));
 
-            bitboard_set_bit (&reachable, current_idx);
-          }
-      }
-  return reachable;
+  return attacks;
 }
 
 /**

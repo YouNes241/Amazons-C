@@ -2,13 +2,21 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * @struct AI_RegistryEntry
+ * @brief Contains all AIs that exists and can be used.
+ * @var AI_RegistryEntry::name
+ * Name of the AI
+ * @var AI_RegistryEntry::create_func
+ * Function that creates the AI.
+ */
 typedef struct
 {
   const char *name;
   void (*create_func) (AI_Interface *);
 } AI_RegistryEntry;
 
-// Modify this table if you ever add an ai
+// Modify this table and add a method if you ever add an ai
 extern void create_random_ai (AI_Interface *ai);
 extern void create_minimax_ai (AI_Interface *ai);
 extern void create_mcts_ai (AI_Interface *ai);

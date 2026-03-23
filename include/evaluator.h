@@ -6,6 +6,8 @@
 
 typedef float (*Evaluator) (BitboardState *state);
 
+float eval_me (BitboardState *state);
+
 /**
  * @brief Retrieves an Evaluator function pointer based on the provided name.
  * @param name A string representing the name of the desired evaluator ("me",

@@ -3,6 +3,20 @@
 
 #include "game_types.h"
 
+/**
+ * @struct BitboardState
+ * @brief Contains a state of the game
+ * @var BitboardState::white_queens
+ * Bitboard containing only the white queens
+ * @var BitboardState::black_queens
+ * Bitboard containing only the black queens
+ * @var BitboardState::arrows
+ * Bitboard containing only the arrows
+ * @var BitboardState::size
+ * Size of the board
+ * @var BitboardState::white_to_move
+ * Is white the one to move currently ?
+ */
 typedef struct
 {
   Bitboard white_queens;
@@ -35,7 +49,7 @@ BitboardState sync_from_logic (GameState *gs);
  * @param move The Move to apply to the state.
  * @return A new BitboardState reflecting the changes from the move.
  */
-BitboardState apply_move_bitboard (BitboardState state, Move move);
+BitboardState apply_move_bitboard (BitboardState *state, Move move);
 
 /**
  * @brief Calculates the maximum number of moves possible in the current board
@@ -45,7 +59,7 @@ BitboardState apply_move_bitboard (BitboardState state, Move move);
  * @param state The current board state to evaluate.
  * @return Max number of legal moves possibles
  */
-int get_move_limit (BitboardState state);
+int get_move_limit (BitboardState *state);
 
 /**
  * @brief Generates all legal moves for the current player in the given
@@ -56,10 +70,11 @@ int get_move_limit (BitboardState state);
  * an array. Note that this will take a much longer time than is_game_over.
  * @return The total count of legal moves available for the current player.
  */
-int get_legal_moves (BitboardState state, Move *moves_array);
+int get_legal_moves (BitboardState *state, Move *moves_array);
 
 /**
- * @brief Prints a visual representation of the game board to standard output.
+ * @brief Prints a visual representation of the game board to standard
+ * output.
  * @param state Pointer to the BitboardState to be visualized.
  */
 void bitboard_state_print (const BitboardState *state);
@@ -70,5 +85,7 @@ void bitboard_state_print (const BitboardState *state);
  * @param state The current board state to evaluate.
  * @return true if the game is over (no legal moves), false otherwise.
  */
-bool bitboard_state_is_game_over (BitboardState state);
+bool bitboard_state_is_game_over (BitboardState *state);
+
+Move get_direct_random_move (BitboardState *state);
 #endif

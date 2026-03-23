@@ -38,7 +38,7 @@ TEST_F (MinimaxParamTest, UseDefaultValuesWhenNoParams)
   Minimax_Data *data = (Minimax_Data *)ai.context;
 
   EXPECT_EQ (data->max_depth, 3);
-  EXPECT_EQ (data->time_limit, 5);
+  EXPECT_EQ (data->time_limit, 5000); // ms
 }
 
 // Testing using parameters

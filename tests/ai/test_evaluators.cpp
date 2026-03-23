@@ -4,6 +4,7 @@ extern "C"
 #include "ai_factory.h"
 #include "bitboard.h"
 #include "evaluator.h"
+#include "utils.h"
 }
 
 typedef struct
@@ -91,7 +92,8 @@ apply_move (GameState *state, Move move)
   state->current_player
       = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
 
-  if (bitboard_state_is_game_over (sync_from_logic (state)))
+  BitboardState bs = sync_from_logic (state);
+  if (bitboard_state_is_game_over (&bs))
     {
       state->status = (state->current_player == PLAYER_WHITE)
                           ? GAME_OVER_BLACK_WINS
@@ -125,6 +127,7 @@ play_match (AI_Interface *white_ai, AI_Interface *black_ai, int board_size)
       bs = sync_from_logic (&state);
       bitboard_state_print (&bs);
     }
+  printf ("%d is the game state.\n", state.status);
 
   int winner = (state.status == GAME_OVER_WHITE_WINS) ? 1 : 2;
 
@@ -139,24 +142,32 @@ play_match (AI_Interface *white_ai, AI_Interface *black_ai, int board_size)
 TEST (TournamentTest, MinimaxVsMCTS)
 {
   // Configure Minimax
-  Param p_mini[] = { { (char *)"depth", (char *)"2" },
-                     { (char *)"evaluator", (char *)"qd&kd" } };
+  Param p_mini[] = { { (char *)"depth", (char *)"5" },
+                     { (char *)"evaluator", (char *)"me" } };
   ConfigMap cm_mini = { p_mini, 2 };
   AI_Interface minimax = create_ai ("minimax", cm_mini);
 
   // Configure Minimax
-  Param p_mini2[] = { { (char *)"depth", (char *)"2" },
-                      { (char *)"evaluator", (char *)"rth" } };
+  Param p_mini2[] = { { (char *)"depth", (char *)"5" },
+                      { (char *)"evaluator", (char *)"qd&kd" } };
   ConfigMap cm_mini2 = { p_mini2, 2 };
   AI_Interface minimax2 = create_ai ("minimax", cm_mini2);
 
   // Configure MCTS
-  Param p_mcts = { (char *)"time_limit", (char *)"500" };
-  ConfigMap cm_mcts = { &p_mcts, 1 };
+  Param p_mcts[] = { { (char *)"time_limit", (char *)"500" },
+                     { (char *)"max_iterations", (char *)"20000" } };
+  ConfigMap cm_mcts = { p_mcts, 2 };
   AI_Interface mcts = create_ai ("mcts", cm_mcts);
 
+  Param p_rd = {};
+  ConfigMap cm_rd = { &p_rd, 0 };
+  AI_Interface rd = create_ai ("random", cm_rd);
+  (void)rd;
+
+  seed_xoshiro (time (NULL));
+
   // Play two games (swap sides to ensure fairness)
-  GameResult r1 = play_match (&mcts, &minimax2, 10); // Minimax as White
+  GameResult r1 = play_match (&mcts, &mcts, 10); // Minimax as White
 
   printf ("Match 1 (Mini-W vs MCTS-B): Winner AI %d in %d turns\n", r1.winner,
           r1.turns);
@@ -368,8 +379,8 @@ TEST (EvaluatorTest, MiniMaxMove)
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
-
-  Param depth = { "depth", "3" };
+  printf ("EVALUATING DEPTH 5.\n");
+  Param depth = { "depth", "5" };
   Param evaluator = { "evaluator", "me" };
   Param params[] = { depth, evaluator };
   ConfigMap cm = { params, 2 };
