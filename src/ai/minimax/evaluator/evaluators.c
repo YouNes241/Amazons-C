@@ -9,6 +9,12 @@
 
 #define INF_DIST 255
 
+typedef enum
+{
+  QUEEN_SLIDE = 0,
+  KING_STEP = 1
+} SlideType;
+
 /**
  * @brief Puts all occupied squares (queens and arrows) into a single bitboard.
  * @param state A game state with pos of queens and arrows.
@@ -19,173 +25,6 @@ get_obstacles (const BitboardState *state)
 {
   Bitboard occ = bitboard_or (state->white_queens, state->black_queens);
   return bitboard_or (occ, state->arrows);
-}
-
-/**
- * @brief Generates all squares reachable by a "King" step from the 'sources'
- * bitboard.
- *
- * @param sources Bitboard with the starting positions (e.g., queens).
- * @param empty Bitboard with all empty squares (not occupied).
- * @param width The width of the board.
- * @return A Bitboard representing all valid reachable squares.
- */
-Bitboard
-expand_king_step (Bitboard sources, Bitboard empty, uint8_t width)
-{
-  Bitboard result = bitboard_create_empty ();
-
-  result = bitboard_or (result, bitboard_shift_right (sources, width)); // N
-  result = bitboard_or (result, bitboard_shift_left (sources, width));  // S
-
-  // Masks to remove edges for horizontal shifts
-  // TODO : optimize by pre-computing
-  Bitboard mask_not_a = bitboard_create_full ();
-  Bitboard mask_not_h = bitboard_create_full ();
-  for (int r = 0; r < width; r++)
-    {
-      bitboard_clear_bit (&mask_not_a, r * width); // Clear Col 0
-      bitboard_clear_bit (&mask_not_h,
-                          r * width + (width - 1)); // Clear Col (width-1)
-    }
-
-  Bitboard west_moves = bitboard_and (sources, mask_not_a);
-  Bitboard east_moves = bitboard_and (sources, mask_not_h);
-
-  result = bitboard_or (result, bitboard_shift_right (west_moves, 1)); // W
-  result = bitboard_or (result,
-                        bitboard_shift_right (west_moves, width + 1)); // NW
-  result = bitboard_or (result,
-                        bitboard_shift_left (west_moves, width - 1)); // SW
-  result = bitboard_or (result, bitboard_shift_left (east_moves, 1)); // E
-  result = bitboard_or (result,
-                        bitboard_shift_right (east_moves, width - 1)); // NE
-  result = bitboard_or (result,
-                        bitboard_shift_left (east_moves, width + 1)); // SE
-
-  return bitboard_and (result, empty);
-}
-
-/**
- * @brief Generates all squares reachable by "Queen" slides from the 'sources'
- * bitboard.
- *
- * @param sources Bitboard with the starting positions (e.g., queens).
- * @param empty Bitboard with all empty squares (not occupied).
- * @param width The width of the board.
- * @return A Bitboard representing all valid reachable squares.
- */
-static Bitboard
-expand_queen_slide (Bitboard sources, Bitboard empty, uint8_t width)
-{
-  Bitboard attacks = bitboard_create_empty ();
-  Bitboard prop;
-
-  // Pre-compute masks for the specific board width
-  Bitboard mask_not_a = bitboard_create_full ();
-  Bitboard mask_not_h = bitboard_create_full ();
-  for (int r = 0; r < width; r++)
-    {
-      bitboard_clear_bit (&mask_not_a, r * width);
-      bitboard_clear_bit (&mask_not_h, r * width + (width - 1));
-    }
-
-  // TODO : optimize
-  // 1: North - Vertical expansion
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_shift_right (prop, width);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 2: South - Vertical expansion
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_shift_left (prop, width);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 3: East - Horizontal expansion (mask last col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_h);
-      prop = bitboard_shift_left (prop, 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 4: West - Horizontal expansion (mask first col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_a);
-      prop = bitboard_shift_right (prop, 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 5: North-East (mask last col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_h);
-      prop = bitboard_shift_right (prop, width - 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 6: North-West (mask first col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_a);
-      prop = bitboard_shift_right (prop, width + 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 7: South-East (mask last col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_h);
-      prop = bitboard_shift_left (prop, width + 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  // 8: South-West (mask first col)
-  prop = sources;
-  for (int i = 0; i < width; i++)
-    {
-      prop = bitboard_and (prop, mask_not_a);
-      prop = bitboard_shift_left (prop, width - 1);
-      prop = bitboard_and (prop, empty);
-      if (bitboard_is_zero (prop))
-        break;
-      attacks = bitboard_or (attacks, prop);
-    }
-
-  return attacks;
 }
 
 /**
@@ -270,17 +109,11 @@ bfs_bitboard (Bitboard starts, Bitboard obstacles, uint8_t width, int mode,
 static int
 calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
 {
-  int total = 0;
-  while (!bitboard_is_zero (queens))
-    {
-      int idx = pop_lsb (&queens);
-      Bitboard single = bitboard_create_empty ();
-      bitboard_set_bit (&single, idx);
+  // Slide all queens
+  Bitboard attacks = expand_queen_slide (queens, empty, size);
 
-      Bitboard moves = expand_queen_slide (single, empty, size);
-      total += bitboard_count_bits (moves);
-    }
-  return total;
+  // Count the total unique squares they can reach
+  return bitboard_count_bits (attacks);
 }
 
 /**
@@ -291,7 +124,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
  * @return A float score representing the mobility advantage. Positive means
  * the current player has more mobility, negative means less.
  */
-static float
+float
 eval_me (BitboardState *state)
 {
   Bitboard empty = bitboard_masked_not (get_obstacles (state), state->size);
@@ -320,8 +153,10 @@ eval_rth (BitboardState *state)
   Bitboard obstacles = get_obstacles (state);
 
   // BFS for both
-  bfs_bitboard (state->white_queens, obstacles, state->size, 0, dist_white);
-  bfs_bitboard (state->black_queens, obstacles, state->size, 0, dist_black);
+  bfs_bitboard (state->white_queens, obstacles, state->size, QUEEN_SLIDE,
+                dist_white);
+  bfs_bitboard (state->black_queens, obstacles, state->size, QUEEN_SLIDE,
+                dist_black);
 
   float score = 0.0f;
   int total_squares = state->size * state->size;
@@ -348,43 +183,93 @@ eval_rth (BitboardState *state)
   return score;
 }
 
+static inline Bitboard
+expand_and_mask_front (Bitboard front, Bitboard empty, uint8_t width, int mode,
+                       Bitboard w_reached, Bitboard b_reached)
+{
+  if (bitboard_is_zero (front))
+    {
+      return bitboard_create_empty ();
+    }
+
+  Bitboard moves;
+  if (mode == 0)
+    moves = expand_queen_slide (front, empty, width);
+  else
+    moves = expand_king_step (front, empty, width);
+
+  Bitboard unreached_tiles
+      = bitboard_masked_not (bitboard_or (w_reached, b_reached), width);
+
+  return bitboard_and (moves, unreached_tiles);
+}
+
 /**
- * @brief Evaluates the board state based on a combination of Queen and King
- * distance to all squares (QDKD).
- * @note This heuristic considers both the number of moves (Queen distance) and
- * the positional advantage (King distance).
- * @param state The current board state to evaluate.
- * @return A float score representing the weighted sum between the queen and
- * king distance. Positive means the current player has better access to
- * squares, negative means worse.
+ * @brief Helper for simultaneous BFS using bitwise operations.
+ * Returns the territory score difference (White claims - Black claims).
  */
+// TODO : doc
+static float
+get_absolute_territory (Bitboard w_starts, Bitboard b_starts, Bitboard empty,
+                        uint8_t width, int mode)
+{
+  // w_reached/b_reached track everyone's territory so far
+  Bitboard w_reached = w_starts;
+  Bitboard b_reached = b_starts;
+
+  // w_front/b_front are the "active" edges of the expansion
+  Bitboard w_front = w_starts;
+  Bitboard b_front = b_starts;
+
+  float w_score = 0.0f;
+  float b_score = 0.0f;
+
+  while (!bitboard_is_zero (w_front) || !bitboard_is_zero (b_front))
+    {
+      Bitboard w_next = expand_and_mask_front (w_front, empty, width, mode,
+                                               w_reached, b_reached);
+      Bitboard b_next = expand_and_mask_front (b_front, empty, width, mode,
+                                               w_reached, b_reached);
+
+      // Remove ties
+      Bitboard w_exclusive
+          = bitboard_and (w_next, bitboard_masked_not (b_next, width));
+      Bitboard b_exclusive
+          = bitboard_and (b_next, bitboard_masked_not (w_next, width));
+
+      w_score += (float)bitboard_count_bits (w_exclusive);
+      b_score += (float)bitboard_count_bits (b_exclusive);
+
+      // We remove ties
+      w_reached = bitboard_or (w_reached, w_exclusive);
+      b_reached = bitboard_or (b_reached, b_exclusive);
+
+      // If it was a tie, that square is now an "obstacle" for everyone
+      Bitboard ties = bitboard_and (w_next, b_next);
+      empty = bitboard_and (empty, bitboard_masked_not (ties, width));
+
+      w_front = w_exclusive;
+      b_front = b_exclusive;
+    }
+
+  return w_score - b_score;
+}
+
 static float
 eval_qdkd (BitboardState *state)
 {
-  int max_moves_nb = state->size * state->size;
-  uint8_t q_white[max_moves_nb], q_black[max_moves_nb];
-  uint8_t k_white[max_moves_nb], k_black[max_moves_nb];
   Bitboard obstacles = get_obstacles (state);
 
-  // Run 4 BFS passes, to get the shortest paths using queen and king steps.
-  bfs_bitboard (state->white_queens, obstacles, state->size, 0, q_white);
-  bfs_bitboard (state->black_queens, obstacles, state->size, 0, q_black);
-  bfs_bitboard (state->white_queens, obstacles, state->size, 1, k_white);
-  bfs_bitboard (state->black_queens, obstacles, state->size, 1, k_black);
+  // Pre-calculate empty squares once
+  Bitboard empty = bitboard_masked_not (obstacles, state->size);
 
-  float t1 = 0.0f; // Territory (queen distance)
-  float t2 = 0.0f; // Positional (king distance)
-  int total_squares = state->size * state->size;
+  // t1: Queen distance territory (mode = 0)
+  float t1 = get_absolute_territory (state->white_queens, state->black_queens,
+                                     empty, state->size, QUEEN_SLIDE);
 
-  for (int i = 0; i < total_squares; i++)
-    {
-      if (bitboard_get_bit (obstacles, i))
-        continue;
-
-      // +1 / 0 / -1
-      t1 += (q_white[i] < q_black[i]) - (q_black[i] < q_white[i]);
-      t2 += (k_white[i] < k_black[i]) - (k_black[i] < k_white[i]);
-    }
+  // t2: King distance territory (mode = 1)
+  float t2 = get_absolute_territory (state->white_queens, state->black_queens,
+                                     empty, state->size, KING_STEP);
 
   return (1.0f * t1) + (0.5f * t2);
 }

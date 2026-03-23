@@ -5,8 +5,8 @@
 extern "C"
 {
 #include "../src/view/gui_pages.h"
-#include "../src/view/gui_utils.h"
 #include "gui_application.h"
+#include "gui_utils.h"
 }
 
 class GuiApplicationTest : public ::testing::Test
@@ -22,7 +22,7 @@ protected:
     g_setenv ("GTK_A11Y", "none", TRUE);
     g_setenv ("RUNNING_IN_TESTS", "1", TRUE);
 
-    chdir ("..");
+    ASSERT_EQ (chdir (".."), 0) << "Failed to change directory to ..";
 
     gtk_init ();
   }

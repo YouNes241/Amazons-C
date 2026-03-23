@@ -333,7 +333,7 @@ is_move_legal (const GameState *state, Move move)
 bool
 has_legal_move (Bitboard obstacles, uint8_t start_index, uint8_t board_size)
 {
-  uint8_t start_x, start_y;
+  uint8_t start_x = 0, start_y = 0;
   index_to_coords (start_index, board_size, &start_x, &start_y);
 
   // The 8 possible directions for a queen
@@ -435,7 +435,7 @@ get_reachable_squares (Bitboard obstacles, uint8_t start_index,
                        uint8_t board_size)
 {
   Bitboard reachable = bitboard_create_empty ();
-  uint8_t start_r, start_c;
+  uint8_t start_r = 0, start_c = 0;
   index_to_coords (start_index, board_size, &start_c, &start_r);
 
   // The 8 possible directions for a queen
@@ -506,6 +506,7 @@ generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
               if (out_moves != NULL)
                 {
                   uint8_t q_from_x, q_from_y, q_to_x, q_to_y, a_to_x, a_to_y;
+                  q_from_x = q_from_y = q_to_x = q_to_y = a_to_x = a_to_y = 0;
                   index_to_coords (q_from, board_size, &q_from_x, &q_from_y);
                   index_to_coords (q_to, board_size, &q_to_x, &q_to_y);
                   index_to_coords (arrow_to, board_size, &a_to_x, &a_to_y);

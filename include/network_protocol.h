@@ -1,14 +1,16 @@
-/**
- * @file network_protocol.h
- * @brief Handles the translation between game structures (Move) and network
- * text (Protocol).
+/* ==========================================================================
+ * network_protocol.h
+ * Header file for the network protocol used to communicate moves between the
+ * client and server. This file defines the functions for converting Move
+ * structures to and from their string representations as used in network
+ * messages.
+ * ==========================================================================
  */
 
 #ifndef NETWORK_PROTOCOL_H
 #define NETWORK_PROTOCOL_H
 
-#include "../include/game_types.h"
-#include <stdbool.h>
+#include "game_types.h"
 #include <stddef.h>
 
 /* ==========================================================================

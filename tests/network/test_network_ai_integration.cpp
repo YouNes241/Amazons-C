@@ -4,8 +4,8 @@
 
 extern "C"
 {
-#include "../../src/network/network_internal.h"
-#include "../../src/network/network_packet.h"
+#include "../../src/network/network_includes/network_internal.h"
+#include "../../src/network/network_includes/network_packet.h"
 #include "ai_factory.h"
 #include "network_protocol.h"
 }
@@ -67,11 +67,7 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { .size = 10,
-                      .board = cc,
-                      .current_player = PLAYER_WHITE,
-                      .status = GAME_IN_PROGRESS,
-                      .turn_count = 0 };
+  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
   // 3. AI generates a real hit
   ConfigMap empty_params = { nullptr, 0 };
@@ -85,18 +81,20 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   raw_move[strcspn (raw_move, "\n")] = 0;
 
   Packet move_pkt;
-  move_pkt.type = C2S_MOVE;
+
+  move_pkt.type = S2C_MOVE;
   strncpy (move_pkt.payload, raw_move, MAX_PAYLOAD_SIZE);
 
   char packet_buffer[256];
   SerializePacket (&move_pkt, packet_buffer, sizeof (packet_buffer));
-  printf ("[TEST] AI playing, packet sent : %s", packet_buffer);
+  printf ("[TEST] AI playing, packet sent : %s\n", packet_buffer);
 
-  // 5. TCP SEND: The client sends the PACKET to the server
-  ASSERT_EQ (NetworkManager_Send (&client_mgr, 0, packet_buffer), 0);
+  // 5. TCP SEND: Le Serveur envoie le paquet au Client 1
+  // (L'index 1 correspond au premier client connecté au serveur)
+  ASSERT_EQ (NetworkManager_Send (&server_mgr, 1, packet_buffer), 0);
 
-  // 6. TCP RECEPTION: The server ticks, deserializes, and calls callback
-  NetworkManager_Tick (&server_mgr);
+  // 6. TCP RECEPTION: Le Client tick, désérialise, et appelle le callback
+  NetworkManager_Tick (&client_mgr);
 
   // 7. VERIFICATION
   ASSERT_TRUE (g_move_received_flag) << "OnMoveReceived callback not called";

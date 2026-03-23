@@ -11,13 +11,23 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 static const int DEFAULT_MAX_DEPTH = 3;
-static const int DEFAULT_TIME_LIMIT = 5;
+static const int DEFAULT_TIME_LIMIT = 5000;
+static const bool DEFAULT_FORWARD_PRUNING_ACTIVATION = true;
+static const bool DEFAULT_ITERATIVE_DEEPENING_ACTIVATION = false;
 static const int NB_BEST_MOVES_PLAYER = 5;
 static const int NB_BEST_MOVES_OPPONENT = 20;
 static const float BOTTOM_SCORE = -1000000.0f;
 static const float TOP_SCORE = 1000000.0f;
 static const char *DEFAULT_EVALUATOR = "me";
 
+/**
+ * @struct ScoredMove
+ * @brief Structure used to compact moves with their score.
+ * @var ScoredMove::move
+ * The associated move
+ * @var ScoredMove::score
+ * Score of the move
+ */
 typedef struct
 {
   Move move;
@@ -106,14 +116,21 @@ minimax_init (AI_Interface *self, ConfigMap *params)
 
   data->max_depth = DEFAULT_MAX_DEPTH;
   data->time_limit = DEFAULT_TIME_LIMIT;
+  data->forward_pruning_enabled = DEFAULT_FORWARD_PRUNING_ACTIVATION;
+  data->iterative_deepening_enabled = DEFAULT_ITERATIVE_DEEPENING_ACTIVATION;
   char *evaluator = (char *)DEFAULT_EVALUATOR;
 
   if (params != NULL)
     {
       for (int i = 0; i < params->count; i++)
         {
+          printf ("%s\n", params->list[i].key);
           check_param (params->list[i], "depth", &data->max_depth);
-          check_param (params->list[i], "time_limit", &data->time_limit);
+          check_ul_param (params->list[i], "time_limit", &data->time_limit);
+          check_bool_param (params->list[i], "forward_pruning",
+                            &data->forward_pruning_enabled);
+          check_bool_param (params->list[i], "iterative_deepening",
+                            &data->iterative_deepening_enabled);
           check_str_param (params->list[i], "evaluator", &evaluator);
         }
     }
@@ -227,6 +244,91 @@ pick_top_moves (BitboardState *state, Move *raw_moves, int count,
   return best_count;
 }
 
+static bool
+alpha_beta_conditions (Minimax_Data *data, BitboardState *state, int depth,
+                       unsigned long start_time)
+{
+  return (get_time_ms () - start_time >= data->time_limit) || depth <= 0
+         || bitboard_state_is_game_over (state);
+}
+
+static int
+minimax_get_queen_moves (Bitboard player_queens, Bitboard occupied, int size,
+                         Move *moves)
+{
+  int queen_count = 0;
+  Bitboard test = player_queens;
+  while (!bitboard_is_zero (test))
+    {
+      uint8_t q_idx = pop_lsb (&test);
+      queen_count
+          += get_queen_moves (q_idx, occupied, size, &moves[queen_count]);
+    }
+  return queen_count;
+}
+
+static int
+get_top_moves (BitboardState *state, ScoredMove *top_moves, int beam_limit,
+               bool maximizing)
+{
+  Move queen_moves[get_move_limit (state)];
+
+  Bitboard player_queens
+      = state->white_to_move ? state->white_queens : state->black_queens;
+  Bitboard occupied = bitboard_or (
+      bitboard_or (state->white_queens, state->black_queens), state->arrows);
+
+  int queen_count = minimax_get_queen_moves (player_queens, occupied,
+                                             state->size, queen_moves);
+
+  if (queen_count == 0)
+    return 0;
+
+  ScoredMove filtered_queens[beam_limit];
+  int actual_q_count
+      = pick_top_moves (state, queen_moves, queen_count, filtered_queens,
+                        beam_limit, maximizing);
+
+  Move filtered_full_moves[get_move_limit (state)];
+  int total_full_moves = 0;
+
+  for (int i = 0; i < actual_q_count; i++)
+    {
+      total_full_moves += get_arrow_moves (
+          &filtered_queens[i].move, &filtered_full_moves[total_full_moves], 1,
+          occupied, state->size);
+    }
+
+  return pick_top_moves (state, filtered_full_moves, total_full_moves,
+                         top_moves, beam_limit, maximizing);
+}
+
+static void
+update_best_move (bool is_maximizing, float score, float *best_score,
+                  Move *best_move, Move candidate, float *alpha, float *beta)
+{
+  if (is_maximizing)
+    {
+      if (score > *best_score)
+        {
+          *best_score = score;
+          if (best_move)
+            *best_move = candidate;
+        }
+      *alpha = MAX (*alpha, *best_score);
+    }
+  else
+    {
+      if (score < *best_score)
+        {
+          *best_score = score;
+          if (best_move)
+            *best_move = candidate;
+        }
+      *beta = MIN (*beta, *best_score);
+    }
+}
+
 /**
  * @brief Implements the Minimax algorithm with alpha-beta pruning and forward
  * pruning to evaluate the best move for the current player.
@@ -240,52 +342,39 @@ pick_top_moves (BitboardState *state, Move *raw_moves, int count,
  * level or above.
  * @param maximizing A boolean indicating if the current player is the
  * maximizing player.
+ * @param start_time The starting time of the algorithm
  * @return The best score for the current player at this level of the search
  * tree.
  */
 static float
-alpha_beta_forward_regular (Minimax_Data *data, BitboardState state, int depth,
-                            float alpha, float beta, bool maximizing)
+alpha_beta_forward (Minimax_Data *data, BitboardState *state, int depth,
+                    float alpha, float beta, bool maximizing,
+                    unsigned long start_time)
 {
-  if (depth <= 0 || bitboard_state_is_game_over (state))
-    return data->evaluate (&state);
+  if (alpha_beta_conditions (data, state, depth, start_time))
+    return data->evaluate (state);
 
-  Move raw_moves[get_move_limit (state)];
-  int total_count = get_legal_moves (state, raw_moves);
+  int beam_limit = data->forward_pruning_enabled
+                       ? get_beam_width (maximizing, depth, data->max_depth)
+                       : get_move_limit (state);
 
-  if (total_count == 0)
+  ScoredMove top_moves[beam_limit];
+  int actual_count = get_top_moves (state, top_moves, beam_limit, maximizing);
+
+  if (actual_count == 0)
     return maximizing ? BOTTOM_SCORE : TOP_SCORE;
-
-  int limit = get_beam_width (maximizing, depth, data->max_depth);
-  int moves_to_scan = (total_count < limit) ? total_count : limit;
-  ScoredMove best_moves[moves_to_scan];
-
-  int actual_count = pick_top_moves (&state, raw_moves, total_count,
-                                     best_moves, moves_to_scan, maximizing);
 
   float best_score = maximizing ? BOTTOM_SCORE : TOP_SCORE;
 
   for (int i = 0; i < actual_count; i++)
     {
       BitboardState next_state
-          = apply_move_bitboard (state, best_moves[i].move);
-      float score = alpha_beta_forward_regular (data, next_state, depth - 1,
-                                                alpha, beta, !maximizing);
+          = apply_move_bitboard (state, top_moves[i].move);
+      float score = alpha_beta_forward (data, &next_state, depth - 1, alpha,
+                                        beta, !maximizing, start_time);
 
-      if (maximizing)
-        {
-          if (score > best_score)
-            best_score = score;
-          if (best_score > alpha)
-            alpha = best_score;
-        }
-      else
-        {
-          if (score < best_score)
-            best_score = score;
-          if (best_score < beta)
-            beta = best_score;
-        }
+      update_best_move (maximizing, score, &best_score, NULL,
+                        top_moves[i].move, &alpha, &beta);
 
       if (beta <= alpha)
         break;
@@ -294,162 +383,74 @@ alpha_beta_forward_regular (Minimax_Data *data, BitboardState state, int depth,
   return best_score;
 }
 
-static float
-alpha_beta_forward (Minimax_Data *data, BitboardState state, int depth,
-                    float alpha, float beta, bool maximizing)
+static Move
+run_root_search (Minimax_Data *data, BitboardState *state, int depth,
+                 unsigned long start_time)
 {
-  if (depth <= 0 || bitboard_state_is_game_over (state))
-    return data->evaluate (&state);
+  float alpha = BOTTOM_SCORE;
+  float beta = TOP_SCORE;
+  bool root_is_white = state->white_to_move;
 
-  static int max_moves_for_queen = -1;
-  if (max_moves_for_queen == -1)
-    // 4 directions * (size-1) max moves per queen * number of queens
-    max_moves_for_queen
-        = 4 * (state.size - 1) * bitboard_count_bits (state.white_queens);
+  Move best_move = { 0 };
+  float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
 
-  // Getting and pruning queen moves for all queens
-  Move queen_moves[max_moves_for_queen];
-  int queen_count = 0;
+  Move available_moves[get_move_limit (state)];
+  int count = get_legal_moves (state, available_moves);
 
-  Bitboard my_queens
-      = state.white_to_move ? state.white_queens : state.black_queens;
-  Bitboard occupied = bitboard_or (
-      bitboard_or (state.white_queens, state.black_queens), state.arrows);
-  Bitboard test = my_queens;
-  while (!bitboard_is_zero (test))
+  for (int i = 0; i < count; i++)
     {
-      uint8_t q_idx = pop_lsb (&test);
-      queen_count += get_queen_moves (q_idx, occupied, state.size,
-                                      &queen_moves[queen_count]);
-    }
+      if (get_time_ms () - start_time >= data->time_limit)
+        break;
 
-  if (queen_count == 0)
-    return maximizing ? BOTTOM_SCORE : TOP_SCORE;
-
-  // Pick top queen moves
-  int beam_limit = get_beam_width (maximizing, depth, data->max_depth);
-  ScoredMove top_queens[beam_limit];
-  int actual_q_count = pick_top_moves (&state, queen_moves, queen_count,
-                                       top_queens, beam_limit, maximizing);
-
-  Move filtered_full_moves[actual_q_count * (state.size * 4)];
-  int total_full_moves = 0;
-
-  for (int i = 0; i < actual_q_count; i++)
-    {
-      total_full_moves += get_arrow_moves (
-          &top_queens[i].move, &filtered_full_moves[total_full_moves], 1,
-          occupied, state.size);
-    }
-
-  int final_limit = get_beam_width (maximizing, depth, data->max_depth);
-  ScoredMove final_best_moves[final_limit];
-
-  int actual_final_count
-      = pick_top_moves (&state, filtered_full_moves, total_full_moves,
-                        final_best_moves, final_limit, maximizing);
-
-  float best_score = maximizing ? BOTTOM_SCORE : TOP_SCORE;
-
-  for (int j = 0; j < actual_final_count; j++)
-    {
       BitboardState next_state
-          = apply_move_bitboard (state, final_best_moves[j].move);
-      float score = alpha_beta_forward (data, next_state, depth - 1, alpha,
-                                        beta, !maximizing);
+          = apply_move_bitboard (state, available_moves[i]);
+      float score = alpha_beta_forward (data, &next_state, depth - 1, alpha,
+                                        beta, !root_is_white, start_time);
 
-      if (maximizing)
-        {
-          if (score > best_score)
-            best_score = score;
-          if (best_score > alpha)
-            alpha = best_score;
-        }
-      else
-        {
-          if (score < best_score)
-            best_score = score;
-          if (best_score < beta)
-            beta = best_score;
-        }
+      update_best_move (root_is_white, score, &best_score, &best_move,
+                        available_moves[i], &alpha, &beta);
 
       if (beta <= alpha)
         break;
     }
 
-  return best_score;
+  return best_move;
 }
 
-/**
- * @brief Gets the best move for the current player using the Minimax algorithm
- * with alpha-beta pruning and forward pruning.
- * @param self The AI_Interface instance containing the context for the Minimax
- * algorithm.
- * @param state The current GameState to evaluate and find the best move for.
- * @return The best Move for the current player based on the Minimax
- * evaluation.
- */
 static Move
 minimax_get_best_move (AI_Interface *self, GameState state)
 {
   Minimax_Data *data = (Minimax_Data *)self->context;
+  BitboardState root_state = sync_from_logic (&state);
+  unsigned long start_time = get_time_ms ();
 
-  bool root_is_white = (state.current_player == PLAYER_WHITE);
+  Move best_move_overall = { 0 };
 
-  printf ("[Minimax] Searching a move (Depth=%d)...\n", data->max_depth);
-
-  BitboardState fast_state = sync_from_logic (&state);
-
-  float alpha = BOTTOM_SCORE;
-  float beta = TOP_SCORE;
-
-  Move best_move = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
-  float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
-
-  Move available_moves[get_move_limit (fast_state)];
-  int count = get_legal_moves (fast_state, available_moves);
-
-  for (int i = 0; i < count; i++)
+  if (!data->iterative_deepening_enabled)
     {
-      BitboardState next_state
-          = apply_move_bitboard (fast_state, available_moves[i]);
-
-      /*
-       * the next player to move is the opposite colour of the root.
-       * pass that information as the `maximizing` flag.
-       */
-      bool next_is_white = !root_is_white;
-      float score = alpha_beta_forward (data, next_state, data->max_depth - 1,
-                                        alpha, beta, next_is_white);
-
-      if (root_is_white)
+      // regular
+      best_move_overall
+          = run_root_search (data, &root_state, data->max_depth, start_time);
+    }
+  else
+    {
+      for (int d = 1; d <= data->max_depth; d++)
         {
-          if (score > best_score)
-            {
-              best_score = score;
-              best_move = available_moves[i];
-            }
-          alpha = MAX (alpha, best_score);
-        }
-      else
-        {
-          if (score < best_score)
-            {
-              best_score = score;
-              best_move = available_moves[i];
-            }
-          beta = MIN (beta, best_score);
-        }
+          if (get_time_ms () - start_time >= data->time_limit)
+            break;
 
-      if (beta <= alpha)
-        break; /* cut off at root as well */
+          Move move_at_depth
+              = run_root_search (data, &root_state, d, start_time);
+
+          if (get_time_ms () - start_time < data->time_limit)
+            {
+              // depth finished
+              best_move_overall = move_at_depth;
+            }
+        }
     }
 
-  printf ("[MINIMAX] Best move : (%d, %d) -> (%d, %d) +-> (%d, %d)\n",
-          best_move.queen_src.row, best_move.queen_src.col,
-          best_move.queen_dst.row, best_move.queen_dst.col,
-          best_move.arrow_dst.row, best_move.arrow_dst.col);
-  return best_move;
+  return best_move_overall;
 }
 
 const AI_VTable minimax_vtable = { .init = minimax_init,

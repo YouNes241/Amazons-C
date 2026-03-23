@@ -2,6 +2,8 @@
 #define UTILS_H
 
 #include "game_types.h"
+#include <stddef.h>
+#include <stdio.h>
 
 /**
  * @brief Retrieves the current time in milliseconds since the Unix epoch.
@@ -24,4 +26,9 @@ Position idx_to_pos (uint8_t index, uint8_t size);
  * @return true if the moves are identical in terms of queen source, queen
  */
 bool moves_are_equal (Move a, Move b);
+
+void pos_to_string (Position pos, char *out, size_t out_size);
+
+uint64_t random_uint (uint64_t limit);
+void seed_xoshiro (uint64_t seed);
 #endif

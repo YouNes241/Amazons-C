@@ -2,11 +2,13 @@
 #include "controller.h"
 #include "gui_application.h"
 #include "input.h"
+#include "utils.h"
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int
 parse_options (int argc, char *argv[], game_config_t *config)
@@ -149,6 +151,7 @@ int
 main (int argc, char *argv[])
 {
   game_config_t *config = malloc (sizeof (game_config_t));
+  seed_xoshiro (time (NULL));
 
   int result = parse_options (argc, argv, config);
 
@@ -166,8 +169,7 @@ main (int argc, char *argv[])
     }
   else if (config->mode == MODE_GUI)
     {
-      GtkApplication *app = createApplication (config);
-      status = runApplication (app, 0, NULL);
+      run_gui_mode (config);
     }
 
   free (config);

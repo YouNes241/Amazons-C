@@ -4,7 +4,7 @@
 
 extern "C"
 {
-#include "../../src/network/tcp_buffer.h"
+#include "../../src/network/network_includes/tcp_buffer.h"
 }
 
 class TcpBufferTest : public ::testing::Test
