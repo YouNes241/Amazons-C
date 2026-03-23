@@ -3,17 +3,16 @@ file(GLOB_RECURSE ALL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
 # --- GRESOURCE (GTK) ---
 set(GRESOURCE_XML "${CMAKE_CURRENT_SOURCE_DIR}/view/ui/gresource.xml")
-set(GRESOURCE_C "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
+set(GRESOURCE_BIN "${CMAKE_BINARY_DIR}/resources.gresource")
 add_custom_command(
-    OUTPUT ${GRESOURCE_C}
+    OUTPUT ${GRESOURCE_BIN}
     COMMAND ${GLIB_COMPILE_RESOURCES}
-            --generate-source
             --sourcedir="${CMAKE_CURRENT_SOURCE_DIR}/view/ui"
-            --target=${GRESOURCE_C}
+            --target=${GRESOURCE_BIN}
             ${GRESOURCE_XML}
     DEPENDS ${GRESOURCE_XML}
 )
-list(APPEND ALL_SRC ${GRESOURCE_C})
+add_custom_target(ui_resources ALL DEPENDS ${GRESOURCE_BIN})
 
 # --- 2. PREPARE EXPORTS FOR TESTS ---
 set(MAIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/main.c")

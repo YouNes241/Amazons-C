@@ -2,6 +2,7 @@
 #include "config.h"
 #include "gui_pages.h"
 #include "gui_utils.h"
+#include <gio/gio.h>
 #include <gtk/gtk.h>
 
 static void initWindow (GtkApplication *app, gpointer userData);
@@ -9,6 +10,19 @@ static void initWindow (GtkApplication *app, gpointer userData);
 GtkApplication *
 createApplication (game_config_t *config)
 {
+  GError *error = NULL;
+  GResource *resource = g_resource_load ("resources.gresource", &error);
+
+  if (error != NULL)
+    {
+      g_printerr ("Error while loading GUI resources : %s\n", error->message);
+      g_error_free (error);
+      exit (EXIT_FAILURE);
+    }
+
+  g_resources_register (resource);
+  g_resource_unref (resource);
+
   AppContext *ctx = initAppContext (config);
   GtkApplication *app
       = gtk_application_new ("fr.bordeaux.amazons", G_APPLICATION_NON_UNIQUE);
