@@ -9,6 +9,7 @@
  * handling and supports both local and networked gameplay.
  */
 
+#include "cli_controller.h"
 #include "ai_factory.h"
 #include "ai_interface.h"
 #include "cli_commands.h"
@@ -18,8 +19,6 @@
 #include "game_engine.h"
 #include "input.h"
 #include "network_common.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>
