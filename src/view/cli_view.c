@@ -1,4 +1,4 @@
-#include "../include/cli_view.h"
+#include "cli_view.h"
 #include <stdio.h>
 
 void

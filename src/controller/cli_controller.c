@@ -18,11 +18,11 @@
 #include "game_engine.h"
 #include "input.h"
 #include "network_common.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>

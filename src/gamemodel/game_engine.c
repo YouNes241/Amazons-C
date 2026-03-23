@@ -1,4 +1,4 @@
-#include "../../include/game_engine.h"
+#include "game_engine.h"
 #include <stddef.h>
 
 static void
