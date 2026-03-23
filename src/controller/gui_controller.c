@@ -58,7 +58,8 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
           g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
 
 #if GTK_CHECK_VERSION(4, 10, 0)
-          GtkAlertDialog *dialog = gtk_alert_dialog_new ("GAME OVER ! \n%s won !", winnerStr);
+          GtkAlertDialog *dialog
+              = gtk_alert_dialog_new ("GAME OVER ! \n%s won !", winnerStr);
           gtk_alert_dialog_show (dialog, GTK_WINDOW (ctx->mainWindow));
           g_object_unref (dialog);
 #else
