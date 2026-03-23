@@ -130,7 +130,7 @@ rollout (BitboardState state)
 
       m = get_direct_random_move (&current);
 
-      if (is_move_null (&m))
+      if (!is_move_null (&m))
         {
           current = apply_move_bitboard (&current, m);
           current_depth++;
