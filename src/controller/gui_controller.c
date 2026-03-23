@@ -39,7 +39,6 @@ guiAIPlayTurn (gpointer user_data)
 
   return G_SOURCE_REMOVE;
 }
-
 void
 guiHandlePlayerMove (AppContext *ctx, Move move)
 {
@@ -58,6 +57,11 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
 
           g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
 
+#if GTK_CHECK_VERSION(4, 10, 0)
+          GtkAlertDialog *dialog = gtk_alert_dialog_new ("GAME OVER ! \n%s won !", winnerStr);
+          gtk_alert_dialog_show (dialog, GTK_WINDOW (ctx->mainWindow));
+          g_object_unref (dialog);
+#else
           GtkWidget *dialog = gtk_message_dialog_new (
               ctx->mainWindow,
               GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -67,6 +71,8 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
           g_signal_connect_swapped (dialog, "response",
                                     G_CALLBACK (gtk_window_destroy), dialog);
           gtk_window_present (GTK_WINDOW (dialog));
+#endif
+
           return;
         }
 
@@ -84,7 +90,6 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
       ctx->currentPhase = PHASE_MOVE_QUEEN;
     }
 }
-
 void
 guiStartNewGame (AppContext *ctx)
 {
