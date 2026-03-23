@@ -31,3 +31,8 @@ compile-check:
     - make
     - xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" make test
     - make coverage
+  artifacts:
+    when: always
+    paths:
+      - coverage/Testing/Temporary/LastTest.log
+    expire_in: 1 week

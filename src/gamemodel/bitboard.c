@@ -1,4 +1,4 @@
-#include "../../include/bitboard.h"
+#include "bitboard.h"
 #include <stdio.h>
 
 static Bitboard MASK_NOT_A[12];

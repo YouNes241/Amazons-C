@@ -38,6 +38,9 @@ typedef struct
   bool ai_black;
   bool verbose; // Pour le debug
   lang_t language;
+  bool start_server;
+  bool daemon_mode;
+  int server_port;
 } game_config_t;
 
 void init_default_config (game_config_t *config);

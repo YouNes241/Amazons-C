@@ -9,6 +9,7 @@
  * handling and supports both local and networked gameplay.
  */
 
+#include "cli_controller.h"
 #include "ai_factory.h"
 #include "ai_interface.h"
 #include "cli_commands.h"
@@ -21,8 +22,6 @@
 #include <poll.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -116,9 +115,33 @@ run_interactive_mode (game_config_t *config)
 
   rl_attempted_completion_function = amazons_completion;
   cli_clear_screen ();
-  cli_display_main_menu ();
-  rl_callback_handler_install ("[MENU] >> ", linehandler);
-  update_prompt_string (g_cli_ctx);
+
+  // 1. Démarrage
+  if (config->start_server)
+    {
+      if (NetworkManager_ServerStart (ctx->net_manager, config->server_port)
+          == 0)
+        {
+          ctx->in_main_menu = false; // On passe en mode Lobby
+          printf (
+              "[INFO] Server started directly from command line on port %d.\n",
+              config->server_port);
+        }
+      else
+        {
+          printf ("[ERROR] Failed to start server from command line.\n");
+          ctx->in_main_menu = true;
+          cli_display_main_menu ();
+        }
+    }
+  else
+    {
+      cli_display_main_menu (); // Mode normal
+    }
+
+  rl_callback_handler_install ("", linehandler);
+  refresh_prompt (ctx);
+
   struct pollfd fds[STDIN_FD_COUNT];
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
