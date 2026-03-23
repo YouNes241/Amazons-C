@@ -37,8 +37,13 @@ static void updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec,
                                  gpointer user_data);
 static void updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec,
                                  gpointer user_data);
+#if GTK_CHECK_VERSION(4, 10, 0)
+static void updateConfigLanguage (GObject *object, GParamSpec *pspec,
+                                  gpointer user_data);
+#else
 static void updateConfigLanguage (GtkComboBoxText *combo_box,
                                   gpointer user_data);
+#endif
 static gboolean shortcutNewGame (GtkWidget *widget, GVariant *args,
                                  gpointer user_data);
 static gboolean shortcutInfo (GtkWidget *widget, GVariant *args,
@@ -182,8 +187,9 @@ createConfigPage (AppContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
   aiBlackSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
-  langDropdown
-      = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
+
+  GtkWidget *langDropdownContainer = GTK_WIDGET (
+      gtk_builder_get_object (builder, "lang_dropdown_container"));
 
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
@@ -224,9 +230,6 @@ createConfigPage (AppContext *ctx)
   if (aiBlackSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
                            ctx->gameConfig->ai_black);
-  if (langDropdown)
-    gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
-                              ctx->gameConfig->language);
 
   if (verboseSwitch)
     g_signal_connect (verboseSwitch, "notify::active",
@@ -246,9 +249,33 @@ createConfigPage (AppContext *ctx)
   if (aiBlackSwitch)
     g_signal_connect (aiBlackSwitch, "notify::active",
                       G_CALLBACK (updateConfigAiBlack), ctx);
-  if (langDropdown)
-    g_signal_connect (langDropdown, "changed",
-                      G_CALLBACK (updateConfigLanguage), ctx);
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+  const char *langs[] = { "English", "Français", NULL };
+  GtkStringList *stringList = gtk_string_list_new (langs);
+  langDropdown = gtk_drop_down_new (G_LIST_MODEL (stringList), NULL);
+  gtk_drop_down_set_selected (GTK_DROP_DOWN (langDropdown),
+                              ctx->gameConfig->language);
+
+  g_signal_connect (langDropdown, "notify::selected",
+                    G_CALLBACK (updateConfigLanguage), ctx);
+#else
+  langDropdown = gtk_combo_box_text_new ();
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
+                                  "English");
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
+                                  "Français");
+  gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
+                            ctx->gameConfig->language);
+
+  g_signal_connect (langDropdown, "changed", G_CALLBACK (updateConfigLanguage),
+                    ctx);
+#endif
+
+  if (langDropdownContainer)
+    {
+      gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
+    }
 
   setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
   setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
@@ -415,8 +442,11 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
   GtkWidget *aiBlackSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
-  GtkWidget *langDropdown
-      = GTK_WIDGET (gtk_builder_get_object (builder, "lang_dropdown"));
+
+  GtkWidget *langDropdownContainer = GTK_WIDGET (
+      gtk_builder_get_object (builder, "lang_dropdown_container"));
+  GtkWidget *langDropdown;
+
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
   GtkWidget *bindLoadBtn
@@ -456,9 +486,6 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   if (aiBlackSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
                            ctx->gameConfig->ai_black);
-  if (langDropdown)
-    gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
-                              ctx->gameConfig->language);
 
   if (verboseSwitch)
     g_signal_connect (verboseSwitch, "notify::active",
@@ -478,9 +505,33 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   if (aiBlackSwitch)
     g_signal_connect (aiBlackSwitch, "notify::active",
                       G_CALLBACK (updateConfigAiBlack), ctx);
-  if (langDropdown)
-    g_signal_connect (langDropdown, "changed",
-                      G_CALLBACK (updateConfigLanguage), ctx);
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+  const char *langs[] = { "English", "Français", NULL };
+  GtkStringList *stringList = gtk_string_list_new (langs);
+  langDropdown = gtk_drop_down_new (G_LIST_MODEL (stringList), NULL);
+  gtk_drop_down_set_selected (GTK_DROP_DOWN (langDropdown),
+                              ctx->gameConfig->language);
+
+  g_signal_connect (langDropdown, "notify::selected",
+                    G_CALLBACK (updateConfigLanguage), ctx);
+#else
+  langDropdown = gtk_combo_box_text_new ();
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
+                                  "English");
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
+                                  "Français");
+  gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
+                            ctx->gameConfig->language);
+
+  g_signal_connect (langDropdown, "changed", G_CALLBACK (updateConfigLanguage),
+                    ctx);
+#endif
+
+  if (langDropdownContainer)
+    {
+      gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
+    }
 
   setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
   setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
@@ -912,6 +963,18 @@ updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
       = gtk_switch_get_active (widget);
 }
 
+#if GTK_CHECK_VERSION(4, 10, 0)
+static void
+updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
+{
+  (void)pspec;
+  guint active = gtk_drop_down_get_selected (GTK_DROP_DOWN (object));
+  if (active == 0 || active == 1)
+    {
+      ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
+    }
+}
+#else
 static void
 updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
 {
@@ -921,6 +984,7 @@ updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
       ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
     }
 }
+#endif
 
 static gboolean
 shortcutNewGame (GtkWidget *widget, GVariant *args, gpointer user_data)
