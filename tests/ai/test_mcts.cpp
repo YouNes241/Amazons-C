@@ -103,7 +103,7 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
 // 3. Stress Test: Deterministic Consistency
 TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
 {
-  srand (12345); // Set seed for reproducibility
+  seed_xoshiro (0);
 
   CellContent **cc = (CellContent **)malloc (sizeof (CellContent *) * 10);
   for (int i = 0; i < 10; i++)
@@ -119,15 +119,16 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
 
   GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
 
-  Param p = { (char *)"time_limit", (char *)"500" };
-  ConfigMap cm = { &p, 1 };
+  Param p[] = { { (char *)"time_limit", (char *)"1000" },
+                { (char *)"max_iterations", (char *)"5000" } };
+  ConfigMap cm = { p, 2 };
 
   AI_Interface ai1 = create_ai ("mcts", cm);
   Move m1 = ai1.vtable->get_best_move (&ai1, state);
   ai1.vtable->clean (&ai1);
 
   // Reset seed to same value
-  srand (12345);
+  seed_xoshiro (0);
   AI_Interface ai2 = create_ai ("mcts", cm);
   Move m2 = ai2.vtable->get_best_move (&ai2, state);
   ai2.vtable->clean (&ai2);

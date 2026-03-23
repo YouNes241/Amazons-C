@@ -87,5 +87,5 @@ void bitboard_state_print (const BitboardState *state);
  */
 bool bitboard_state_is_game_over (BitboardState *state);
 
-Move get_random_move_mcts (BitboardState *state);
+Move get_direct_random_move (BitboardState *state);
 #endif

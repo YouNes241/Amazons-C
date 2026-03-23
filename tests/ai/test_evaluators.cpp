@@ -4,6 +4,7 @@ extern "C"
 #include "ai_factory.h"
 #include "bitboard.h"
 #include "evaluator.h"
+#include "utils.h"
 }
 
 typedef struct
@@ -153,12 +154,20 @@ TEST (TournamentTest, MinimaxVsMCTS)
   AI_Interface minimax2 = create_ai ("minimax", cm_mini2);
 
   // Configure MCTS
-  Param p_mcts = { (char *)"time_limit", (char *)"500" };
-  ConfigMap cm_mcts = { &p_mcts, 1 };
+  Param p_mcts[] = { { (char *)"time_limit", (char *)"500" },
+                     { (char *)"max_iterations", (char *)"20000" } };
+  ConfigMap cm_mcts = { p_mcts, 2 };
   AI_Interface mcts = create_ai ("mcts", cm_mcts);
 
+  Param p_rd = {};
+  ConfigMap cm_rd = { &p_rd, 0 };
+  AI_Interface rd = create_ai ("random", cm_rd);
+  (void)rd;
+
+  seed_xoshiro (time (NULL));
+
   // Play two games (swap sides to ensure fairness)
-  GameResult r1 = play_match (&minimax2, &mcts, 10); // Minimax as White
+  GameResult r1 = play_match (&mcts, &mcts, 10); // Minimax as White
 
   printf ("Match 1 (Mini-W vs MCTS-B): Winner AI %d in %d turns\n", r1.winner,
           r1.turns);

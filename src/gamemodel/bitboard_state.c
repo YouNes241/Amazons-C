@@ -237,47 +237,58 @@ get_legal_moves (BitboardState *state, Move *moves_array)
 }
 
 Move
-get_random_move_mcts (BitboardState *state)
+get_direct_random_move (BitboardState *state)
 {
-  int size = state->size;
+  uint8_t size = (uint8_t)state->size;
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
   Bitboard my_queens = bitboard_state_get_current_queens (state);
-
   int q_count = bitboard_count_bits (my_queens);
-  if (q_count == 0)
-    return (Move){ 0 };
 
-  int target_q = rand () % q_count;
-  for (int i = 0; i < target_q; i++)
-    pop_lsb (&my_queens);
-  uint8_t q_from = pop_lsb (&my_queens);
+  while (q_count != 0)
+    {
+      uint32_t target_q = (uint32_t)random_uint ((uint32_t)q_count);
 
-  Bitboard q_dests = bitboard_get_reachable (q_from, occupied, size);
-  int q_dest_count = bitboard_count_bits (q_dests);
-  if (q_dest_count == 0)
-    return (Move){ 0 };
+      Bitboard temp_q_bits = my_queens;
+      for (uint32_t i = 0; i < target_q; i++)
+        {
+          pop_lsb (&temp_q_bits);
+        }
+      uint8_t q_from = (uint8_t)pop_lsb (&temp_q_bits);
 
-  int target_qd = rand () % q_dest_count;
-  for (int i = 0; i < target_qd; i++)
-    pop_lsb (&q_dests);
-  uint8_t q_to = pop_lsb (&q_dests);
+      Bitboard q_dests = bitboard_get_reachable (q_from, occupied, size);
+      int q_dest_count = bitboard_count_bits (q_dests);
 
-  Bitboard arrow_occ = occupied;
-  bitboard_clear_bit (&arrow_occ, q_from);
-  bitboard_set_bit (&arrow_occ, q_to);
+      if (q_dest_count > 0)
+        {
+          uint32_t target_qd = (uint32_t)random_uint ((uint32_t)q_dest_count);
+          for (uint32_t i = 0; i < target_qd; i++)
+            {
+              pop_lsb (&q_dests);
+            }
+          uint8_t q_to = (uint8_t)pop_lsb (&q_dests);
 
-  Bitboard a_dests = bitboard_get_reachable (q_to, arrow_occ, size);
-  int a_dest_count = bitboard_count_bits (a_dests);
-  if (a_dest_count == 0)
-    return (Move){ 0 };
+          Bitboard arrow_occ = occupied;
+          bitboard_clear_bit (&arrow_occ, q_from);
+          bitboard_set_bit (&arrow_occ, q_to);
 
-  int target_ad = rand () % a_dest_count;
-  for (int i = 0; i < target_ad; i++)
-    pop_lsb (&a_dests);
-  uint8_t arrow_to = pop_lsb (&a_dests);
+          Bitboard a_dests = bitboard_get_reachable (q_to, arrow_occ, size);
+          int a_dest_count = bitboard_count_bits (a_dests);
 
-  Move m = { .queen_src = idx_to_pos (q_from, size),
-             .queen_dst = idx_to_pos (q_to, size),
-             .arrow_dst = idx_to_pos (arrow_to, size) };
-  return m;
+          uint32_t target_ad = (uint32_t)random_uint ((uint32_t)a_dest_count);
+          for (uint32_t i = 0; i < target_ad; i++)
+            {
+              pop_lsb (&a_dests);
+            }
+          uint8_t arrow_to = (uint8_t)pop_lsb (&a_dests);
+
+          return (Move){ .queen_src = idx_to_pos (q_from, size),
+                         .queen_dst = idx_to_pos (q_to, size),
+                         .arrow_dst = idx_to_pos (arrow_to, size) };
+        }
+
+      bitboard_clear_bit (&my_queens, q_from);
+      q_count = bitboard_count_bits (my_queens);
+    }
+
+  return (Move){ 0 }; // Truly no moves for ANY queen
 }

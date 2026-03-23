@@ -128,7 +128,7 @@ rollout (BitboardState state)
       if (bitboard_state_is_game_over (&current))
         break;
 
-      m = get_random_move_mcts (&current);
+      m = get_direct_random_move (&current);
 
       if (is_move_null (&m))
         {
@@ -287,8 +287,11 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 
   unsigned long start_time = get_time_ms ();
   unsigned long time_limit = data->time_constraint;
+  int max_iters = data->max_iterations;
+  int current_iterations = 0;
 
-  while ((get_time_ms () - start_time) < time_limit)
+  while (((get_time_ms () - start_time) < time_limit)
+         && (current_iterations < max_iters))
     {
       MCTS_Node *picked = select_node (root, data->strategy_select);
 
@@ -300,15 +303,17 @@ mcts_get_best_move (AI_Interface *self, GameState state)
       float result = rollout (current_state);
 
       backpropagate (picked, 1.0f - result);
+
+      current_iterations++;
     }
 
   MCTS_Node *best_node = get_child_with_max_visits (root);
   Move final_move = best_node->move_from_parent;
 
-  printf ("[MCTS] Best move : (%d, %d) -> (%d, %d) +-> (%d, %d)\n",
-          final_move.queen_src.row, final_move.queen_src.col,
-          final_move.queen_dst.row, final_move.queen_dst.col,
-          final_move.arrow_dst.row, final_move.arrow_dst.col);
+  printf ("[MCTS] Iterations: %d | Best move : (%d, %d) -> (%d, %d)\n",
+          current_iterations, final_move.queen_src.row,
+          final_move.queen_src.col, final_move.queen_dst.row,
+          final_move.queen_dst.col);
 
   free_mcts_tree (root);
   return final_move;
@@ -364,7 +369,7 @@ mcts_init (AI_Interface *self, ConfigMap *params)
 
   data->time_constraint = 5000;
   // TODO : Finish implementing missing parameters
-  data->max_iterations = 100000;
+  data->max_iterations = INT32_MAX;
   data->max_workers = 1;
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));

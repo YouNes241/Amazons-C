@@ -24,16 +24,8 @@ static Move
 random_get_best_move (AI_Interface *self, GameState state)
 {
   (void)self;
-  Move best_move = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
-  BitboardState bs = sync_from_logic (&state);
-  Move moves_array[get_move_limit (&bs)];
-  int count = get_legal_moves (&bs, moves_array);
-  if (count > 0)
-    {
-      int random_index = rand () % count;
-      best_move = moves_array[random_index];
-    }
-  return best_move;
+  BitboardState bstate = sync_from_logic (&state);
+  return get_direct_random_move (&bstate);
 }
 
 const AI_VTable random_vtable = { .init = random_init,
