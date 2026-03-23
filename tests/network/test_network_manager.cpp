@@ -20,7 +20,7 @@ TEST_F (NetworkManagerTest, ConnectionLifecycleSuccess)
 {
   ASSERT_EQ (NetworkManager_ServerStart (&server_mgr, test_port), NET_SUCCESS);
   EXPECT_EQ (server_mgr.current_mode, NET_MODE_SERVER);
-  sleep (1000); // Give the server a moment to start up
+  sleep (1); // Give the server a moment to start up
   int res = NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port);
   EXPECT_EQ (res, NET_SUCCESS);
   EXPECT_EQ (client_mgr.current_mode, NET_MODE_CLIENT);
