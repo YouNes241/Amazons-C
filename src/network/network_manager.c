@@ -398,13 +398,12 @@ NetworkManager_Tick (NetworkManager *manager)
                           && manager->discovery_ctx->servers[i].port == port)
                         {
                           manager->discovery_ctx->servers[i].last_seen = now;
-                          // Petit fix de sécurité : strncpy ne met pas
-                          // toujours le \0 à la fin si ça dépasse
-                          strncpy (manager->discovery_ctx->servers[i].name,
-                                   name_start, MAX_SERVER_NAME_LEN - 1);
-                          manager->discovery_ctx->servers[i]
-                              .name[MAX_SERVER_NAME_LEN - 1]
-                              = '\0';
+                          int max_len_1 = sizeof (
+                              manager->discovery_ctx->servers[i].name);
+                          snprintf (manager->discovery_ctx->servers[i].name,
+                                    max_len_1, "%.*s", max_len_1 - 1,
+                                    name_start);
+
                           found = true;
                           break;
                         }
@@ -415,21 +414,17 @@ NetworkManager_Tick (NetworkManager *manager)
                              < MAX_DISCOVERED_SERVERS)
                     {
                       int idx = manager->discovery_ctx->server_count;
-                      strncpy (manager->discovery_ctx->servers[idx].ip, ip,
-                               INET_ADDRSTRLEN - 1);
-                      manager->discovery_ctx->servers[idx]
-                          .ip[INET_ADDRSTRLEN - 1]
-                          = '\0';
 
-                      strncpy (manager->discovery_ctx->servers[idx].name,
-                               name_start, MAX_SERVER_NAME_LEN - 1);
-                      manager->discovery_ctx->servers[idx]
-                          .name[MAX_SERVER_NAME_LEN - 1]
-                          = '\0';
+                      snprintf (manager->discovery_ctx->servers[idx].ip,
+                                INET_ADDRSTRLEN, "%s", ip);
+
+                      int max_len_2
+                          = sizeof (manager->discovery_ctx->servers[idx].name);
+                      snprintf (manager->discovery_ctx->servers[idx].name,
+                                max_len_2, "%.*s", max_len_2 - 1, name_start);
 
                       manager->discovery_ctx->servers[idx].port = port;
                       manager->discovery_ctx->servers[idx].last_seen = now;
-
                       manager->discovery_ctx->server_count++;
                     }
                 }

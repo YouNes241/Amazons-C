@@ -284,16 +284,19 @@ handle_command (char *input_buffer, CliContext *ctx)
               if (colon)
                 {
                   *colon = '\0';
-                  strncpy (ip, arg1, MAX_IP_LEN);
+                  snprintf (ip, MAX_IP_LEN + 1, "%.*s", MAX_IP_LEN, arg1);
                   port = atoi (colon + 1);
                 }
               else
                 {
-                  strncpy (ip, arg1, MAX_IP_LEN);
+                  snprintf (ip, MAX_IP_LEN + 1, "%.*s", MAX_IP_LEN, arg1);
                 }
             }
           if (parsed == 2)
-            strncpy (username, arg2, MAX_USERNAME_LEN);
+            {
+              snprintf (username, MAX_USERNAME_LEN, "%.*s",
+                        MAX_USERNAME_LEN - 1, arg2);
+            }
         }
 
       if (NetworkManager_ClientJoin (ctx->net_manager, ip, port) == 0)
