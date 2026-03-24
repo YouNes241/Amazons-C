@@ -2,8 +2,14 @@
 #include "config.h"
 #include "game_engine.h"
 #include "game_types.h"
+#include "gui_callbacks.h"
 #include <assert.h>
 #include <gtk/gtk.h>
+
+static void bindingButtonAnimate (GtkToggleButton *button, gpointer user_data);
+static gboolean bindingKeyPressed (GtkEventControllerKey *controller,
+                                   guint keyval, guint keycode,
+                                   GdkModifierType state, gpointer user_data);
 
 AppContext *
 initAppContext (game_config_t *config)
@@ -138,4 +144,228 @@ highlightReachableSquares (AppContext *ctx, int srcX, int srcY)
                              GINT_TO_POINTER (0));
         }
     }
+}
+
+void
+setupBoard (AppContext *ctx, GtkWidget *boardGrid)
+{
+  int size = ctx->gameConfig->board_size;
+
+  if (ctx->gameState)
+    {
+      game_cleanup (ctx->gameState);
+      free (ctx->gameState);
+      ctx->gameState = NULL;
+    }
+  if (ctx->gameBoard)
+    {
+      free (ctx->gameBoard);
+      ctx->gameBoard = NULL;
+    }
+
+  GtkWidget *child = gtk_widget_get_first_child (boardGrid);
+  while (child != NULL)
+    {
+      GtkWidget *next = gtk_widget_get_next_sibling (child);
+      gtk_grid_remove (GTK_GRID (boardGrid), child);
+      child = next;
+    }
+
+  ctx->gameState = malloc (sizeof (GameState));
+  ctx->gameState->size = size;
+  game_init (ctx->gameState);
+
+  ctx->gameBoard = malloc (size * size * sizeof (GtkWidget *));
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  for (unsigned int i = 0; i < size * size; i++)
+    {
+      unsigned int x = i % size;
+      unsigned int y = i / size;
+
+      GtkWidget *cellBox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+      gtk_widget_set_size_request (cellBox, 80, 80);
+
+      GtkWidget *label = gtk_label_new ("");
+      gtk_widget_set_halign (label, GTK_ALIGN_CENTER);
+      gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
+      gtk_widget_set_hexpand (label, TRUE);
+      gtk_widget_set_vexpand (label, TRUE);
+      gtk_box_append (GTK_BOX (cellBox), label);
+
+      g_object_set_data (G_OBJECT (cellBox), "cell_label", label);
+
+      if ((x + y) % 2 == 0)
+        gtk_widget_add_css_class (cellBox, "cell-light");
+      else
+        gtk_widget_add_css_class (cellBox, "cell-dark");
+
+      ctx->gameBoard[i] = cellBox;
+
+      g_object_set_data (G_OBJECT (cellBox), "cell_x", GINT_TO_POINTER (x));
+      g_object_set_data (G_OBJECT (cellBox), "cell_y", GINT_TO_POINTER (y));
+      g_object_set_data (G_OBJECT (cellBox), "cell_index",
+                         GINT_TO_POINTER (i));
+
+      GtkGesture *leftClick = gtk_gesture_click_new ();
+      gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (leftClick),
+                                     GDK_BUTTON_PRIMARY);
+      g_signal_connect (leftClick, "pressed", G_CALLBACK (onCellClicked), ctx);
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (leftClick));
+
+      GtkDragSource *dragSource = gtk_drag_source_new ();
+      g_signal_connect (dragSource, "prepare", G_CALLBACK (onDrag), ctx);
+      g_signal_connect (dragSource, "drag-end", G_CALLBACK (onDragEnd), ctx);
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dragSource));
+
+      GtkDropTarget *dropTarget
+          = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+      g_signal_connect (dropTarget, "drop", G_CALLBACK (onDrop), ctx);
+      gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dropTarget));
+
+      gtk_grid_attach (GTK_GRID (boardGrid), cellBox, x, size - 1 - y, 1, 1);
+    }
+
+  drawBoard (ctx);
+}
+
+void
+setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx)
+{
+  if (!btn)
+    return;
+
+  gtk_button_set_label (GTK_BUTTON (btn), target_str);
+
+  g_object_set_data (G_OBJECT (btn), "target_str", target_str);
+
+  g_signal_connect (btn, "toggled", G_CALLBACK (bindingButtonAnimate), NULL);
+
+  GtkEventController *key_ctrl = gtk_event_controller_key_new ();
+  g_signal_connect (key_ctrl, "key-pressed", G_CALLBACK (bindingKeyPressed),
+                    ctx);
+  gtk_widget_add_controller (btn, key_ctrl);
+}
+
+void
+bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
+{
+  (void)user_data;
+  if (gtk_toggle_button_get_active (button))
+    {
+      gtk_button_set_label (GTK_BUTTON (button), "Press...");
+    }
+  else
+    {
+      char *target_str
+          = (char *)g_object_get_data (G_OBJECT (button), "target_str");
+      if (target_str)
+        gtk_button_set_label (GTK_BUTTON (button), target_str);
+    }
+}
+
+gboolean
+bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
+                   guint keycode, GdkModifierType state, gpointer user_data)
+{
+  (void)keycode;
+  GtkWidget *button
+      = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller));
+
+  if (!gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button)))
+    return FALSE;
+
+  if (keyval == GDK_KEY_Shift_L || keyval == GDK_KEY_Shift_R
+      || keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R
+      || keyval == GDK_KEY_Alt_L || keyval == GDK_KEY_Alt_R)
+    return FALSE;
+
+  state &= gtk_accelerator_get_default_mod_mask ();
+
+  char *accel_name = gtk_accelerator_name (keyval, state);
+
+  if (accel_name && accel_name[0] != '\0')
+    {
+      char *target_str
+          = (char *)g_object_get_data (G_OBJECT (button), "target_str");
+      if (target_str)
+        {
+          strncpy (target_str, accel_name, SHORTCUTS_SIZE - 1);
+          target_str[SHORTCUTS_SIZE - 1] = '\0';
+        }
+
+      gtk_button_set_label (GTK_BUTTON (button), accel_name);
+      g_free (accel_name);
+    }
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), FALSE);
+
+  AppContext *ctx = (AppContext *)user_data;
+  if (ctx)
+    {
+      updateGameShortcuts (ctx);
+    }
+
+  return TRUE;
+}
+
+void
+updateGameShortcuts (AppContext *ctx)
+{
+  if (!ctx || !ctx->mainStack)
+    return;
+
+  GtkWidget *game_box
+      = GTK_WIDGET (g_object_get_data (G_OBJECT (ctx->mainStack), "game_box"));
+  if (!game_box)
+    return;
+
+  GtkEventController *old_ctrl = GTK_EVENT_CONTROLLER (
+      g_object_get_data (G_OBJECT (game_box), "shortcut_controller"));
+  if (old_ctrl)
+    {
+      gtk_widget_remove_controller (game_box, old_ctrl);
+    }
+
+  GtkShortcutController *shortcutController
+      = GTK_SHORTCUT_CONTROLLER (gtk_shortcut_controller_new ());
+  gtk_shortcut_controller_set_scope (shortcutController,
+                                     GTK_SHORTCUT_SCOPE_MANAGED);
+
+  struct
+  {
+    const char *key;
+    GtkShortcutFunc func;
+  } shortcuts[] = { { ctx->keyBindings.key_new_game, shortcutNewGame },
+                    { ctx->keyBindings.key_config, shortcutConfig },
+                    { ctx->keyBindings.key_info, shortcutInfo },
+                    { ctx->keyBindings.key_quit, shortcutQuit },
+                    { ctx->keyBindings.key_load_game, shortcutDummy },
+                    { ctx->keyBindings.key_save_game, shortcutDummy },
+                    { ctx->keyBindings.key_undo, shortcutUndo },
+                    { ctx->keyBindings.key_redo, shortcutRedo },
+                    { ctx->keyBindings.key_pause, shortcutDummy },
+                    { ctx->keyBindings.key_hint, shortcutDummy } };
+
+  for (int i = 0; i < SHORTCUTS_COUNT; i++)
+    {
+      if (shortcuts[i].key != NULL && shortcuts[i].key[0] != '\0')
+        {
+          GtkShortcutTrigger *trigger
+              = gtk_shortcut_trigger_parse_string (shortcuts[i].key);
+          if (trigger)
+            {
+              GtkShortcutAction *action
+                  = gtk_callback_action_new (shortcuts[i].func, ctx, NULL);
+              GtkShortcut *shortcut = gtk_shortcut_new (trigger, action);
+              gtk_shortcut_controller_add_shortcut (shortcutController,
+                                                    shortcut);
+            }
+        }
+    }
+
+  g_object_set_data (G_OBJECT (game_box), "shortcut_controller",
+                     shortcutController);
+  gtk_widget_add_controller (game_box,
+                             GTK_EVENT_CONTROLLER (shortcutController));
 }

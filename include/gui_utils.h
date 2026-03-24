@@ -47,5 +47,8 @@ void drawPiece (AppContext *ctx, int x, int y, CellContent content);
 void drawBoard (AppContext *ctx);
 void clearHighlights (AppContext *ctx);
 void highlightReachableSquares (AppContext *ctx, int srcX, int srcY);
+void setupBoard (AppContext *ctx, GtkWidget *boardGrid);
+void setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx);
+void updateGameShortcuts (AppContext *ctx);
 
 #endif // GUI_UTILS_H
