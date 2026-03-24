@@ -10,15 +10,19 @@
 #include <string.h>
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-static const int DEFAULT_MAX_DEPTH = 3;
-static const int DEFAULT_TIME_LIMIT = 5000;
-static const bool DEFAULT_FORWARD_PRUNING_ACTIVATION = true;
-static const bool DEFAULT_ITERATIVE_DEEPENING_ACTIVATION = false;
+
+// PARAMS
+const int DEFAULT_MAX_DEPTH = 3;
+const int DEFAULT_TIME_LIMIT = 5000;
+const bool DEFAULT_FORWARD_PRUNING_ACTIVATION = true;
+const bool DEFAULT_ITERATIVE_DEEPENING_ACTIVATION = false;
+const char *DEFAULT_EVALUATOR = "me";
+
+// INTERNAL CONSTANTS
 static const int NB_BEST_MOVES_PLAYER = 5;
 static const int NB_BEST_MOVES_OPPONENT = 20;
 static const float BOTTOM_SCORE = -1000000.0f;
 static const float TOP_SCORE = 1000000.0f;
-static const char *DEFAULT_EVALUATOR = "me";
 
 /**
  * @struct ScoredMove
@@ -83,22 +87,6 @@ get_arrow_moves (Move *queen_moves, Move *final_moves, int queen_move_count,
 }
 
 /**
- * @brief Checks if a given parameter key matches the expected key and, if so,
- * parses its value as a string and assigns it to the target variable.
- * @param p The parameter to check, containing a key and a value.
- * @param key The expected key to match against the parameter's key.
- * @param target The value to set based on the parameter's valuation. *
- */
-static void
-check_str_param (Param p, const char *key, char **target)
-{
-  if (strcmp (p.key, key) == 0)
-    {
-      *target = strdup (p.value);
-    }
-}
-
-/**
  * @brief Initializes the Minimax AI with the provided configuration
  * parameters.
  * @note Parameters available : "depth" (int), "time_limit" (int), "evaluator"
@@ -118,7 +106,7 @@ minimax_init (AI_Interface *self, ConfigMap *params)
   data->time_limit = DEFAULT_TIME_LIMIT;
   data->forward_pruning_enabled = DEFAULT_FORWARD_PRUNING_ACTIVATION;
   data->iterative_deepening_enabled = DEFAULT_ITERATIVE_DEEPENING_ACTIVATION;
-  char *evaluator = (char *)DEFAULT_EVALUATOR;
+  const char *evaluator = DEFAULT_EVALUATOR;
 
   if (params != NULL)
     {
@@ -126,12 +114,12 @@ minimax_init (AI_Interface *self, ConfigMap *params)
         {
           printf ("%s\n", params->list[i].key);
           check_param (params->list[i], "depth", &data->max_depth);
-          check_ul_param (params->list[i], "time_limit", &data->time_limit);
-          check_bool_param (params->list[i], "forward_pruning",
-                            &data->forward_pruning_enabled);
-          check_bool_param (params->list[i], "iterative_deepening",
-                            &data->iterative_deepening_enabled);
-          check_str_param (params->list[i], "evaluator", &evaluator);
+          check_param (params->list[i], "time_limit", &data->time_limit);
+          check_param (params->list[i], "forward_pruning",
+                       &data->forward_pruning_enabled);
+          check_param (params->list[i], "iterative_deepening",
+                       &data->iterative_deepening_enabled);
+          check_param (params->list[i], "evaluator", &evaluator);
         }
     }
 

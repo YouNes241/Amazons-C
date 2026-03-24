@@ -3,10 +3,68 @@
 #include "bitboard.h"
 #include "evaluator.h"
 #include "i_selector.h"
+#include "mcts_types.h"
 #include "uct.h"
 #include "utils.h"
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+const uint64_t DEFAULT_TIME_CONSTRAINT = 5;
+const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
+const int DEFAULT_MAX_WORKERS = 1;
+
+/**
+ * @brief Aggregates search results found using MCTS, by simply taking the move
+ * that has been explored the most between multiple threads, if any.
+ *
+ * @param data The MCTS config and memory
+ * @param num_threads Number of threads used for the calculation
+ * @return Move Best move found in that iteration
+ */
+static Move
+merge_and_get_best (MCTS_Data *data, int num_threads)
+{
+  // TODO : change to use all nodes instead (though, if a node has been
+  // explored a lot on one thread, it *should* most likely had been explored
+  // once by another thread), especially due to sorting thanks to UCT (and ML
+  // doesn't need it)
+
+  MCTS_Node *master_root = data->roots[0];
+  MCTS_Node *best_child = NULL;
+  long max_total_visits = -1;
+
+  // Iterate through moves found by the first thread
+  for (MCTS_Node *curr = master_root->first_child; curr != NULL;
+       curr = curr->next_sibling)
+    {
+      long combined_visits = curr->visit_count;
+
+      // Look for this same move in other threads
+      for (int i = 1; i < num_threads; i++)
+        {
+          MCTS_Node *other_root = data->roots[i];
+          for (MCTS_Node *other_c = other_root->first_child; other_c != NULL;
+               other_c = other_c->next_sibling)
+            {
+              if (moves_are_equal (curr->move_from_parent,
+                                   other_c->move_from_parent))
+                {
+                  combined_visits += other_c->visit_count;
+                  break;
+                }
+            }
+        }
+
+      if (combined_visits > max_total_visits)
+        {
+          max_total_visits = combined_visits;
+          best_child = curr;
+        }
+    }
+
+  return best_child ? best_child->move_from_parent : (Move){ 0 };
+}
 
 /**
  * @brief Select a node to expand from the given root node using the provided
@@ -26,25 +84,6 @@ select_node (MCTS_Node *root, ISelector *selector)
     }
 
   return node;
-}
-
-/**
- * @brief Plays the move sequence from the root to the given node to derive the
- * resulting BitboardState.
- * @param root_state The initial BitboardState corresponding to the root of the
- * MCTS tree.
- * @param node The MCTS_Node for which to derive the resulting state.
- * @return The BitboardState resulting from applying the move sequence from the
- * root to the given node.
- */
-static BitboardState
-derive_state (BitboardState root_state, MCTS_Node *node)
-{
-  if (node->parent == NULL)
-    return root_state;
-
-  BitboardState state = derive_state (root_state, node->parent);
-  return apply_move_bitboard (&state, node->move_from_parent);
 }
 
 /**
@@ -69,7 +108,13 @@ backpropagate (MCTS_Node *node, float result)
     }
 }
 
-// TODO : doc
+/**
+ * @brief Gets the win probability of a current bitboard state configuration.
+ * @param state The game state.
+ * @param starting_player_was_white True if the starting player is white, False
+ * otherwise.
+ * @param result The probability of win in that configuration.
+ */
 static float
 get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
 {
@@ -79,11 +124,8 @@ get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
     {
       raw_score = -raw_score;
     }
-
-  // TODO : calculate using board size (state->size) for more
-  // accurate results within different board sizes.
-  const float MAX_MOBILITY_DIFF = 40.0f;
-
+  // Simply is 4*(n-1)
+  const float MAX_MOBILITY_DIFF = ((state->size - 1) << 2);
   float win_probability = 0.5f + (raw_score / (2.0f * MAX_MOBILITY_DIFF));
 
   if (win_probability > 1.0f)
@@ -94,12 +136,16 @@ get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
   return win_probability;
 }
 
-// TODO : doc
+/**
+ * @brief Checks if a move is null.
+ *
+ * @param m A move.
+ * @return true
+ * @return false
+ */
 static inline bool
 is_move_null (Move *m)
 {
-  // If the source and destination are the same, it's not a legal move in
-  // Amazons
   return m->queen_src.col == m->queen_dst.col
          && m->queen_src.row == m->queen_dst.row;
 }
@@ -148,79 +194,89 @@ rollout (BitboardState state)
   return get_mcts_win_probability (&current, starting_player);
 }
 
+/**
+ * @brief Allocates a node in MCTS. It is a bit costly (calloc) : avoid calling
+ * it more than necessary.
+ *
+ * @param parent The parent node.
+ * @param move The move to be played. (Can be nulled out)
+ * @param current_state The state of the board before the move was played.
+ * @return MCTS_Node* The MCTS node.
+ */
 static MCTS_Node *
-alloc_mcts_node (MCTS_Node *parent, Move *move)
+alloc_mcts_node (MCTS_Node *parent, Move *move, BitboardState *current_state)
 {
   MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
   if (!node)
     return NULL;
 
   node->parent = parent;
-  node->move_from_parent = *move;
   node->visit_count = 0;
   node->score = 0.0f;
   node->first_child = NULL;
   node->next_sibling = NULL;
   node->is_fully_expanded = false;
-
+  node->move_from_parent = move ? *move : (Move){ 0 };
+  node->state
+      = parent ? apply_move_bitboard (&parent->state, *move) : *current_state;
   return node;
 }
 
 /**
  * @brief Expands the given MCTS node by adding a new child node for an untried
- * move.
+ * move. If there aren't any, it will free the untried moves.
  * @param parent The MCTS node to expand.
- * @param state The current BitboardState corresponding to the parent node,
- * used to determine legal moves.
  * @return The newly created child node corresponding to an untried move, or
- * the parent node if all moves have already been tried.
+ * the parent node if all moves have already been tried (fully expanded).
  */
 static MCTS_Node *
-expand (MCTS_Node *parent, BitboardState *state)
+expand (MCTS_Node *parent)
 {
-  if (bitboard_state_is_game_over (state))
+  if (parent->is_fully_expanded
+      || bitboard_state_is_game_over (&parent->state))
     return parent;
 
-  // Generate the moves
-  Move moves[get_move_limit (state)];
-  int total_possible_moves = get_legal_moves (state, moves);
-
-  if (total_possible_moves == 0)
-    return parent;
-
-  // Count the number of children
-  int num_existing_children = 0;
-  MCTS_Node *current = parent->first_child;
-  MCTS_Node *last_child = NULL;
-
-  while (current != NULL)
+  // Cache moves into the parent
+  if (parent->untried_moves == NULL)
     {
-      num_existing_children++;
-      last_child = current;
-      current = current->next_sibling;
-    }
+      Move temp_moves[get_move_limit (&parent->state)];
+      int total = get_legal_moves (&parent->state, temp_moves);
 
-  // If there are unexplored children, take the next available one and
-  // initialize it
-  if (num_existing_children < total_possible_moves)
-    {
-      Move new_move = moves[num_existing_children];
-      MCTS_Node *new_node = alloc_mcts_node (parent, &new_move);
-
-      if (last_child == NULL)
-        parent->first_child = new_node;
-      else
-        last_child->next_sibling = new_node;
-
-      if (num_existing_children + 1 == total_possible_moves)
+      if (total == 0)
         {
           parent->is_fully_expanded = true;
+          return parent;
         }
 
-      return new_node;
+      // Allocate exactly what we need
+      parent->untried_moves = (Move *)malloc (total * sizeof (Move));
+      memcpy (parent->untried_moves, temp_moves, total * sizeof (Move));
+      parent->num_untried = total;
     }
 
-  return parent;
+  // Take the next untried move.
+  parent->num_untried--;
+  Move next_move = parent->untried_moves[parent->num_untried];
+
+  // Create the new child
+  MCTS_Node *new_node = alloc_mcts_node (parent, &next_move, NULL);
+  if (!new_node)
+    {
+      parent->num_untried++;
+      return NULL;
+    }
+  new_node->next_sibling = parent->first_child;
+  parent->first_child = new_node;
+
+  // Free if we've reached the end to free space during computation
+  if (parent->num_untried == 0)
+    {
+      parent->is_fully_expanded = true;
+      free (parent->untried_moves);
+      parent->untried_moves = NULL;
+    }
+
+  return new_node;
 }
 
 /**
@@ -235,6 +291,11 @@ free_mcts_tree (MCTS_Node *node)
   if (node == NULL)
     return;
 
+  if (node->untried_moves != NULL) // in case computation was cut off by time
+    {
+      free (node->untried_moves);
+    }
+
   MCTS_Node *curr = node->first_child;
   while (curr != NULL)
     {
@@ -246,32 +307,14 @@ free_mcts_tree (MCTS_Node *node)
 }
 
 /**
- * @brief Gets the child node with the highest visit count from the given
- * root node.
- * @param root The root node of the MCTS tree to search through.
- * @return The child node with the highest visit count, or NULL if there are
- * no children.
- */
-static MCTS_Node *
-get_child_with_max_visits (MCTS_Node *root)
-{
-  MCTS_Node *best_node = NULL;
-  int max_visits = -1;
-
-  for (MCTS_Node *curr = root->first_child; curr != NULL;
-       curr = curr->next_sibling)
-    {
-      if (curr->visit_count > max_visits)
-        {
-          max_visits = curr->visit_count;
-          best_node = curr;
-        }
-    }
-  return best_node;
-}
-
-/**
- * @brief Gets the best move using MCTS.
+ * @brief MAIN MCTS FUNCTION
+ * MCTS is simply :
+ * - Select : Select a path direction to explore (a node)
+ * - Expand : Expand the tree by adding the selected node (if it didn't exist)
+ * - Rollout : Simulate a game until you reach a certain depth, from which you
+ * calculate a score
+ * - Backpropagate : Update visits and scores of the nodes of the path you
+ * explored
  * @param self The AI_Interface instance containing the context for the MCTS
  * algorithm.
  * @param state The current GameState to evaluate and find the best move for.
@@ -282,41 +325,68 @@ mcts_get_best_move (AI_Interface *self, GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);
-  MCTS_Node *root = calloc (1, sizeof (MCTS_Node));
-  root->visit_count = 1;
-
+  int num_threads = data->max_workers;
   unsigned long start_time = get_time_ms ();
-  unsigned long time_limit = data->time_constraint;
-  int max_iters = data->max_iterations;
-  int current_iterations = 0;
 
-  while (((get_time_ms () - start_time) < time_limit)
-         && (current_iterations < max_iters))
+  // Allocate roots and data for each thread
+  data->roots = calloc (num_threads, sizeof (MCTS_Node *));
+
+  int thread_iterations[num_threads];
+  for (int i = 0; i < num_threads; i++)
+    thread_iterations[i] = 0;
+
+#pragma omp parallel num_threads(num_threads)
+  {
+    int tid = omp_get_thread_num ();
+
+    // Each thread creates its own independent root
+    data->roots[tid] = alloc_mcts_node (NULL, NULL, &root_state);
+    data->roots[tid]->visit_count = 1;
+    // Local iteration counter
+    int local_iterations = 0;
+
+    // Main MCTS Loop
+    while (((get_time_ms () - start_time) < data->time_constraint)
+           && (local_iterations < (data->max_iterations / num_threads)))
+      {
+        MCTS_Node *picked
+            = select_node (data->roots[tid], data->strategy_select);
+        MCTS_Node *expanded_child = expand (picked);
+
+        if (!expanded_child)
+          break;
+
+        float result = rollout (expanded_child->state);
+        backpropagate (expanded_child, 1.0f - result);
+
+        local_iterations++;
+      }
+    thread_iterations[tid] = local_iterations;
+  }
+
+  int total_iterations = 0;
+  for (int i = 0; i < num_threads; i++)
     {
-      MCTS_Node *picked = select_node (root, data->strategy_select);
-
-      BitboardState current_state = derive_state (root_state, picked);
-      picked = expand (picked, &current_state);
-
-      current_state
-          = apply_move_bitboard (&current_state, picked->move_from_parent);
-      float result = rollout (current_state);
-
-      backpropagate (picked, 1.0f - result);
-
-      current_iterations++;
+      total_iterations += thread_iterations[i];
     }
 
-  MCTS_Node *best_node = get_child_with_max_visits (root);
-  Move final_move = best_node->move_from_parent;
+  // Merge threads results
+  Move best_move = merge_and_get_best (data, num_threads);
 
-  printf ("[MCTS] Iterations: %d | Best move : (%d, %d) -> (%d, %d)\n",
-          current_iterations, final_move.queen_src.row,
-          final_move.queen_src.col, final_move.queen_dst.row,
-          final_move.queen_dst.col);
+  printf ("[MCTS] Threads: %d | Total Iterations: %d | Best move : (%d, %d) "
+          "-> (%d, %d)\n",
+          num_threads, total_iterations, best_move.queen_src.row,
+          best_move.queen_src.col, best_move.queen_dst.row,
+          best_move.queen_dst.col);
 
-  free_mcts_tree (root);
-  return final_move;
+  // Cleanup
+  for (int i = 0; i < num_threads; i++)
+    {
+      free_mcts_tree (data->roots[i]);
+    }
+  free (data->roots);
+
+  return best_move;
 }
 
 /**
@@ -356,7 +426,7 @@ mcts_clean (AI_Interface *self)
  * @note time_limit: Time in milliseconds for the MCTS search (default
  * 5000ms).
  * @note max_iterations: Maximum number of iterations for the MCTS search
- * (default 100000).
+ * (default inf).
  * @note max_workers: Maximum number of worker threads for parallel MCTS
  * (default 1).
  */
@@ -367,10 +437,9 @@ mcts_init (AI_Interface *self, ConfigMap *params)
   if (!data)
     return;
 
-  data->time_constraint = 5000;
-  // TODO : Finish implementing missing parameters
-  data->max_iterations = INT32_MAX;
-  data->max_workers = 1;
+  data->time_constraint = DEFAULT_TIME_CONSTRAINT;
+  data->max_iterations = DEFAULT_MAX_ITERATIONS;
+  data->max_workers = DEFAULT_MAX_WORKERS;
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
   create_select_uct (data->strategy_select, 1.414f);
@@ -388,7 +457,7 @@ mcts_init (AI_Interface *self, ConfigMap *params)
     }
 
   self->context = data;
-  printf ("[MCTS] Init OK (Time: %dms)\n", data->time_constraint);
+  printf ("[MCTS] Init OK (Time: %ldms)\n", data->time_constraint);
 }
 
 const AI_VTable mcts_vtable = { .init = mcts_init,

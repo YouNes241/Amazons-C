@@ -1,8 +1,22 @@
+/**
+ * @file minimah.h
+ * @author tdecabrat
+ * @brief This file defines all types necessary to a MINIMAX ai and gives the
+ * method to factory a MINIMAX AI
+ */
 #ifndef MINIMAX_H
 #define MINIMAX_H
 
 #include "ai_interface.h"
 #include "evaluator.h"
+
+// Constants and names
+extern const int DEFAULT_MAX_DEPTH;                   // depth
+extern const int DEFAULT_TIME_LIMIT;                  // time_limit
+extern const bool DEFAULT_FORWARD_PRUNING_ACTIVATION; // forward_pruning
+extern const bool
+    DEFAULT_ITERATIVE_DEEPENING_ACTIVATION; // iterative_deepening
+extern const char *DEFAULT_EVALUATOR;       // evaluator (me, qd&kd, rth)
 
 /**
  * @struct Minimax_Data
@@ -23,7 +37,7 @@
 typedef struct
 {
   int max_depth;
-  long unsigned int time_limit;
+  uint64_t time_limit;
   bool forward_pruning_enabled;
   bool iterative_deepening_enabled;
   Evaluator evaluate;

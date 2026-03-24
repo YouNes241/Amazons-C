@@ -138,6 +138,9 @@ apply_move_bitboard (BitboardState *state, Move move)
 /**
  * @brief Calculates the maximum number of moves possible in the current board
  * state.
+ * @note The formula is number of queens * numbers of possible moves * number
+ * of possible arrows. The -2 comes from burned tiles (a diagonal will always
+ * loses 2 tiles)
  * @param state The current board state to evaluate.
  * @return Max number of legal moves possibles
  */
@@ -146,7 +149,7 @@ get_move_limit (BitboardState *state)
 {
   int k = bitboard_count_bits (state->white_queens);
   int reach = (state->size - 1) << 2;
-  return k * reach * reach;
+  return k * reach * (reach - 2);
 }
 
 Bitboard

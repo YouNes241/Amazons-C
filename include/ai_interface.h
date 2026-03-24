@@ -4,6 +4,12 @@
 #include "game_types.h"
 #include <stdlib.h>
 #include <string.h>
+#define check_param(p, key, target)                                           \
+  _Generic ((target),                                                         \
+      int *: _check_param_int,                                                \
+      unsigned long *: _check_param_ul,                                       \
+      bool *: _check_param_bool,                                              \
+      const char **: _check_param_char) (p, key, target)
 
 typedef struct AI_Interface AI_Interface;
 
@@ -11,8 +17,8 @@ typedef struct AI_Interface AI_Interface;
  * @struct AI_VTable
  * @brief Contains the different functions usable with any AI.
  * @var AI_VTable::init
- * Initialisation function, takes parameters and itself in order to initialize
- * itself.
+ * Initialisation function, takes parameters and itself in order to
+ * initialize itself.
  * @var AI_VTable::clean
  * Cleans the memory of the AI.
  * @var AI_VTable::get_best_move
@@ -40,14 +46,15 @@ struct AI_Interface
 };
 
 /**
- * @brief Checks if a given parameter key matches the expected key and, if so,
- * parses its value as an integer and assigns it to the target variable.
+ * @brief Checks if a given parameter key matches the expected key and, if
+ * so, parses its value as an integer and assigns it to the target
+ * variable.
  * @param p The parameter to check, containing a key and a value.
  * @param key The expected key to match against the parameter's key.
  * @param target The value to set based on the parameter's valuation. *
  */
 static inline void
-check_param (Param p, const char *key, int *target)
+_check_param_int (Param p, const char *key, int *target)
 {
   if (strcmp (p.key, key) == 0)
     {
@@ -56,7 +63,7 @@ check_param (Param p, const char *key, int *target)
 }
 
 static inline void
-check_ul_param (Param p, const char *key, unsigned long *target)
+_check_param_ul (Param p, const char *key, unsigned long *target)
 {
   if (strcmp (p.key, key) == 0)
     {
@@ -65,12 +72,30 @@ check_ul_param (Param p, const char *key, unsigned long *target)
 }
 
 static inline void
-check_bool_param (Param p, const char *key, _Bool *target)
+_check_param_bool (Param p, const char *key, bool *target)
 {
   if (strcmp (p.key, key) == 0)
     {
       int val = atoi (p.value);
       *target = (val != 0);
+    }
+}
+
+static inline void
+_check_param_u64 (Param p, const char *key, uint64_t *target)
+{
+  if (strcmp (p.key, key) == 0)
+    {
+      *target = (uint64_t)strtoull (p.value, NULL, 10);
+    }
+}
+
+static inline void
+_check_param_char (Param p, const char *key, const char **target)
+{
+  if (strcmp (p.key, key) == 0)
+    {
+      *target = p.value;
     }
 }
 

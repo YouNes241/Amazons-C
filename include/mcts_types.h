@@ -1,6 +1,12 @@
+/**
+ * @file mcts_types.h
+ * @author tdecabrat
+ * @brief Describes types used in MCTS calculation.
+ */
 #ifndef MCTS_TYPES_H
 #define MCTS_TYPES_H
 
+#include "bitboard_state.h"
 #include "game_types.h"
 #include "i_selector.h"
 
@@ -30,6 +36,11 @@ typedef struct MCTS_Node
   struct MCTS_Node *first_child;
   struct MCTS_Node *next_sibling;
   Move move_from_parent;
+  BitboardState state;
+
+  Move *untried_moves;
+  int num_untried;
+
   int visit_count;
   float score;
   bool is_fully_expanded;
@@ -51,10 +62,12 @@ typedef struct MCTS_Node
  */
 typedef struct MCTS_Data
 {
-  int time_constraint;
+  uint64_t time_constraint;
   int max_iterations;
   int max_workers;
   ISelector *strategy_select;
+
+  MCTS_Node **roots;
 } MCTS_Data;
 
 #endif

@@ -183,6 +183,19 @@ eval_rth (BitboardState *state)
   return score;
 }
 
+/**
+ * @brief Helper function used in get_absolute_territory that expands the
+ * blocked accessible tiles.
+ * Kind of similar to the game of life x flood-fill.
+ *
+ * @param front Border (Frontier) of occupied tiles
+ * @param empty Empty tiles of the board
+ * @param width Width of the board
+ * @param mode QUEEN_SLIDE/KING_STEP
+ * @param w_reached Occupied tiles // Blocked tiles for whites
+ * @param b_reached Occupied tiles // Blocked tiles for blacks
+ * @return Bitboard
+ */
 static inline Bitboard
 expand_and_mask_front (Bitboard front, Bitboard empty, uint8_t width, int mode,
                        Bitboard w_reached, Bitboard b_reached)
@@ -207,8 +220,16 @@ expand_and_mask_front (Bitboard front, Bitboard empty, uint8_t width, int mode,
 /**
  * @brief Helper for simultaneous BFS using bitwise operations.
  * Returns the territory score difference (White claims - Black claims).
+ * Can be used in two modes :
+ * - Queen slide : Different using queen moves
+ * - King step : Different using king moves
+ * @param w_starts Starting white positions
+ * @param b_starts Starting black positions
+ * @param empty Empty tiles of the board
+ * @param width Width of the board
+ * @param mode QUEEN_SLIDE/KING_STEP
+ * @return float Territory score
  */
-// TODO : doc
 static float
 get_absolute_territory (Bitboard w_starts, Bitboard b_starts, Bitboard empty,
                         uint8_t width, int mode)
