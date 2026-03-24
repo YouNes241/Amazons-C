@@ -7,6 +7,7 @@
 #include "controller.h"
 #include "game_engine.h"
 #include "gui_application.h"
+#include "gui_network_events.h"
 #include "gui_utils.h"
 #include <gtk/gtk.h>
 
@@ -14,6 +15,9 @@
  */
 ///@{
 void guiHandlePlayerMove (AppContext *ctx, Move move);
+static gboolean guiAIPlayTurn (gpointer user_data);
+static gboolean gui_network_tick_loop (gpointer user_data);
+static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
 ///@}
 
 /** @name Global Variables
@@ -62,6 +66,12 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
     {
       apply_move (ctx->gameState, move);
 
+      if (ctx->isNetworkMatch
+          && ctx->gameState->current_player != ctx->selfPlayerColor)
+        {
+          NetworkManager_SendMove (ctx->networkManager, move);
+        }
+
       clearHighlights (ctx);
       drawBoard (ctx);
       ctx->currentPhase = PHASE_MOVE_QUEEN;
@@ -72,6 +82,13 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
           const char *winnerStr = (winner == PLAYER_WHITE) ? "White" : "Black";
 
           g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
+
+          if (ctx->isNetworkMatch)
+            {
+              bool i_won = (winner == ctx->selfPlayerColor);
+              NetworkManager_SendGameOver (ctx->networkManager, i_won);
+              ctx->isNetworkMatch = false;
+            }
 
 #if GTK_CHECK_VERSION(4, 10, 0)
           GtkAlertDialog *dialog
@@ -172,6 +189,18 @@ void
 run_gui_mode (game_config_t *config)
 {
   GtkApplication *app = createApplication (config);
+
+  AppContext *ctx
+      = (AppContext *)g_object_get_data (G_OBJECT (app), "AppContext");
+
+  ctx->networkManager = malloc (sizeof (NetworkManager));
+  ctx->isNetworkMatch = false;
+  ctx->selfPlayerColor = PLAYER_WHITE;
+
+  NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
+
+  g_timeout_add (33, gui_network_tick_loop, ctx);
+
   runApplication (app, 0, NULL);
 
   if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
@@ -184,4 +213,41 @@ run_gui_mode (game_config_t *config)
     {
       g_gui_ai_black.vtable->clean (&g_gui_ai_black);
     }
+
+  NetworkManager_Cleanup (ctx->networkManager);
+  free (ctx->networkManager);
+}
+
+static bool
+is_it_ai_turn (game_config_t *config, PlayerColor current_p)
+{
+  if (current_p == PLAYER_WHITE)
+    return config->ai_white;
+  if (current_p == PLAYER_BLACK)
+    return config->ai_black;
+  return false;
+}
+
+static gboolean
+gui_network_tick_loop (gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+  if (ctx && ctx->networkManager)
+    {
+      NetworkManager_Tick (ctx->networkManager);
+    }
+  return G_SOURCE_CONTINUE;
+}
+
+static gboolean
+guiAIPlayTurn (gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+
+  g_print ("\n[AI] Thinking...\n");
+  Move ai_move = g_gui_ai.vtable->get_best_move (&g_gui_ai, *(ctx->gameState));
+
+  guiHandlePlayerMove (ctx, ai_move);
+
+  return G_SOURCE_REMOVE;
 }

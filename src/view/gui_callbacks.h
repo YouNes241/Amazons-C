@@ -1,7 +1,7 @@
 #ifndef GUI_CALLBACKS_H
 #define GUI_CALLBACKS_H
 
-#include "gui_utils.h" // Contient la définition de AppContext
+#include "gui_utils.h"
 #include <gtk/gtk.h>
 
 void navigationClick (GtkButton *button, gpointer user_data);

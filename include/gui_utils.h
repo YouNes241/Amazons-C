@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "game_types.h"
+#include "network_common.h"
 #include <gtk/gtk.h>
 
 #define SHORTCUTS_SIZE 16
@@ -39,6 +40,9 @@ typedef struct
   GuiPhase currentPhase;
   Position tmpQueenSrc;
   Position tmpQueenDst;
+  NetworkManager *networkManager;
+  bool isNetworkMatch;
+  PlayerColor selfPlayerColor;
 } AppContext;
 
 AppContext *initAppContext (game_config_t *config);

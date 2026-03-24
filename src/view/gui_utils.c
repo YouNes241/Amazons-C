@@ -22,8 +22,9 @@ initAppContext (game_config_t *config)
   ctx->mainWindow = NULL;
   ctx->mainStack = NULL;
   ctx->gameBoard = NULL;
-
+  ctx->networkManager = NULL;
   ctx->currentPhase = PHASE_MOVE_QUEEN;
+  ctx->isNetworkMatch = false;
 
   memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
   strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);

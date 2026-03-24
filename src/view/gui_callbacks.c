@@ -36,7 +36,7 @@ infoPopupButtonClick (GtkButton *button, gpointer user_data)
   AppContext *ctx = (AppContext *)user_data;
 
   GtkBuilder *builder
-      = gtk_builder_new_from_resource ("/amazons/ui/game_pages/info_popup.ui");
+      = gtk_builder_new_from_resource ("/amazons/ui/popups/info_popup.ui");
   GtkWindow *infoWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
 
@@ -52,8 +52,8 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   (void)button;
   AppContext *ctx = (AppContext *)user_data;
 
-  GtkBuilder *builder = gtk_builder_new_from_resource (
-      "/amazons/ui/game_pages/config_popup.ui");
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/popups/config_popup.ui");
   GtkWindow *configWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "config_window"));
 
@@ -250,7 +250,9 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 
   AppContext *ctx = (AppContext *)user_data;
 
-  if (ctx->currentPhase != PHASE_MOVE_QUEEN)
+  if (ctx->currentPhase != PHASE_MOVE_QUEEN
+      || (ctx->isNetworkMatch
+          && ctx->gameState->current_player != ctx->selfPlayerColor))
     {
       return NULL;
     }
@@ -383,7 +385,9 @@ fireArrow (GtkWidget *button, gpointer user_data)
 {
   AppContext *ctx = (AppContext *)user_data;
 
-  if (ctx->currentPhase != PHASE_SHOOT_ARROW)
+  if (ctx->currentPhase != PHASE_SHOOT_ARROW
+      || (ctx->isNetworkMatch
+          && ctx->gameState->current_player != ctx->selfPlayerColor))
     return;
 
   int targetX
