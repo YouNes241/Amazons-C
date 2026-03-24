@@ -7,8 +7,8 @@
     <file>config.ui</file>
     <file>info.ui</file>
     <file>game.ui</file>
-    <file>game_pages/info_popup.ui</file>
-    <file>game_pages/config_popup.ui</file>
+    <file>popups/info_popup.ui</file>
+    <file>popups/config_popup.ui</file>
     <file>style.css</file>
   </gresource>
 </gresources>
