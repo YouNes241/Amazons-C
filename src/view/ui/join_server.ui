@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="join_server_box">
+    <property name="orientation">vertical</property>
+    
+    <child>
+      <object class="GtkButton" id="return_btn">
+        <property name="icon-name">go-previous-symbolic</property>
+        <property name="halign">start</property> 
+        <property name="valign">start</property>
+        <property name="margin-top">30</property>
+        <property name="margin-start">30</property> 
+        <property name="css-classes">circular flat</property>
+        <property name="tooltip-text">Retour</property>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property> 
+        
+        <child>
+          <object class="GtkLabel">
+            <property name="label">JOIN A SERVER</property>
+            <property name="css-classes">title-2</property>
+            <property name="margin-bottom">30</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkEntry" id="ip_entry">
+            <property name="placeholder-text">Adresse IP</property>
+            <property name="width-request">250</property>
+            <property name="text">127.0.0.1</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkEntry" id="port_entry">
+            <property name="placeholder-text">Port</property>
+            <property name="width-request">250</property>
+            <property name="text">12345</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkEntry" id="username_entry">
+            <property name="placeholder-text">Pseudo</property>
+            <property name="width-request">250</property>
+            <property name="text">JoueurGUI</property>
+            <property name="margin-bottom">20</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkButton" id="connect_btn">
+            <property name="label">Se connecter</property>
+            <property name="width-request">250</property>
+            <property name="height-request">50</property>
+            <property name="css-classes">pill suggested-action</property>
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

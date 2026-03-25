@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="client_panel_box">
+    <property name="orientation">vertical</property>
+    <property name="spacing">20</property>
+    <property name="margin-top">20</property>
+    <property name="margin-bottom">30</property>
+    <property name="margin-start">30</property>
+    <property name="margin-end">30</property>
+
+    <child>
+      <object class="GtkButton" id="disconnect_btn">
+        <property name="label">Disconnect</property>
+        <property name="halign">start</property>
+        <property name="css-classes">destructive-action</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkLabel">
+        <property name="label">CLIENT_PANEL</property>
+        <property name="css-classes">title-1</property>
+        <property name="margin-bottom">30</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkBox">
+        <property name="vexpand">true</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkButton" id="create_game_btn">
+        <property name="label">Create game</property>
+        <property name="halign">center</property>
+        <property name="width-request">250</property>
+        <property name="height-request">50</property>
+        <property name="css-classes">pill suggested-action</property>
+      </object>
+    </child>
+  </object>
+</interface>

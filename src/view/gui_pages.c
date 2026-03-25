@@ -77,15 +77,26 @@ createMultiplayerMenuPage (AppContext *ctx)
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
+  GtkWidget *joinServerBtn;
 
   builder = gtk_builder_new_from_resource ("/amazons/ui/multiplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
 
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  joinServerBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_btn"));
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
 
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+
+  if (joinServerBtn)
+    {
+      g_object_set_data (G_OBJECT (joinServerBtn), "target_page",
+                         "join_server_page");
+      g_signal_connect (joinServerBtn, "clicked", G_CALLBACK (navigationClick),
+                        ctx);
+    }
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -301,6 +312,65 @@ createGamePage (AppContext *ctx)
   g_signal_connect (redoBtn, "clicked", G_CALLBACK (redoButtonClick), ctx);
 
   updateGameShortcuts (ctx);
+
+  g_object_ref (box);
+  g_object_unref (builder);
+
+  return box;
+}
+
+GtkWidget *
+createJoinServerPage (AppContext *ctx)
+{
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/join_server.ui");
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_box"));
+
+  GtkWidget *returnBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  GtkWidget *ipEntry
+      = GTK_WIDGET (gtk_builder_get_object (builder, "ip_entry"));
+  GtkWidget *portEntry
+      = GTK_WIDGET (gtk_builder_get_object (builder, "port_entry"));
+  GtkWidget *usernameEntry
+      = GTK_WIDGET (gtk_builder_get_object (builder, "username_entry"));
+  GtkWidget *connectBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "connect_btn"));
+
+  g_object_set_data (G_OBJECT (returnBtn), "target_page", "multiplayer_page");
+  g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+
+  g_object_set_data (G_OBJECT (connectBtn), "ip_entry", ipEntry);
+  g_object_set_data (G_OBJECT (connectBtn), "port_entry", portEntry);
+  g_object_set_data (G_OBJECT (connectBtn), "username_entry", usernameEntry);
+
+  g_signal_connect (connectBtn, "clicked",
+                    G_CALLBACK (connectToServerButtonClick), ctx);
+
+  g_object_ref (box);
+  g_object_unref (builder);
+
+  return box;
+}
+
+GtkWidget *
+createClientPanelPage (AppContext *ctx)
+{
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/client_panel.ui");
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "client_panel_box"));
+
+  GtkWidget *disconnectBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "disconnect_btn"));
+  GtkWidget *createGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "create_game_btn"));
+
+  g_signal_connect (disconnectBtn, "clicked",
+                    G_CALLBACK (disconnectFromServerButtonClick), ctx);
+  g_signal_connect (createGameBtn, "clicked",
+                    G_CALLBACK (createGameButtonClick), ctx);
 
   g_object_ref (box);
   g_object_unref (builder);

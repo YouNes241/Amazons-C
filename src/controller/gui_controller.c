@@ -186,6 +186,19 @@ guiStartNewGame (AppContext *ctx)
 }
 
 void
+guiDisconnectAndRestartNetwork (AppContext *ctx)
+{
+  if (ctx && ctx->networkManager)
+    {
+      NetworkManager_Cleanup (ctx->networkManager);
+      NetworkManager_Init (ctx->networkManager,
+                           create_gui_network_events (ctx));
+    }
+
+  ctx->isNetworkMatch = false;
+}
+
+void
 run_gui_mode (game_config_t *config)
 {
   GtkApplication *app = createApplication (config);

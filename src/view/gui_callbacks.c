@@ -225,6 +225,128 @@ redoButtonClick (GtkButton *button, gpointer user_data)
 }
 
 void
+connectToServerButtonClick (GtkButton *button, gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+
+  GtkEditable *ip_entry
+      = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "ip_entry"));
+  GtkEditable *port_entry
+      = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "port_entry"));
+  GtkEditable *username_entry
+      = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "username_entry"));
+
+  const char *ip_str = gtk_editable_get_text (ip_entry);
+  const char *port_str = gtk_editable_get_text (port_entry);
+  const char *username_str = gtk_editable_get_text (username_entry);
+
+  int port = atoi (port_str);
+
+  g_print ("[GUI] Tentative de connexion à %s:%d avec le pseudo %s...\n",
+           ip_str, port, username_str);
+
+  if (NetworkManager_ClientJoin (ctx->networkManager, ip_str, port) == 0)
+    {
+      NetworkManager_SendJoin (ctx->networkManager, username_str);
+
+      if (ctx->mainStack != NULL)
+        {
+          gtk_stack_set_visible_child_name (ctx->mainStack,
+                                            "client_panel_page");
+        }
+    }
+  else
+    {
+      g_print ("[GUI ERREUR] Impossible de joindre le serveur.\n");
+    }
+}
+
+void
+disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
+
+  g_print ("\n[GUI NETWORK] Déconnexion manuelle du serveur...\n");
+
+  guiDisconnectAndRestartNetwork (ctx);
+
+  if (ctx->mainStack != NULL)
+    {
+      gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
+    }
+}
+
+void
+createGameButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  AppContext *ctx = (AppContext *)user_data;
+
+  GtkBuilder *builder = gtk_builder_new_from_resource (
+      "/amazons/ui/popups/create_game_popup.ui");
+  GtkWindow *createGameWindow
+      = GTK_WINDOW (gtk_builder_get_object (builder, "create_game_window"));
+
+  gtk_window_set_transient_for (createGameWindow,
+                                GTK_WINDOW (ctx->mainWindow));
+
+  GtkWidget *targetIdEntry
+      = GTK_WIDGET (gtk_builder_get_object (builder, "target_id_entry"));
+  GtkWidget *boardSizeSpin
+      = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_spin"));
+  GtkWidget *cancelBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "cancel_btn"));
+  GtkWidget *inviteBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "invite_btn"));
+
+  g_object_set_data (G_OBJECT (inviteBtn), "target_id_entry", targetIdEntry);
+  g_object_set_data (G_OBJECT (inviteBtn), "board_size_spin", boardSizeSpin);
+  g_object_set_data (G_OBJECT (inviteBtn), "popup_window", createGameWindow);
+
+  g_signal_connect_swapped (cancelBtn, "clicked",
+                            G_CALLBACK (gtk_window_destroy), createGameWindow);
+  g_signal_connect (inviteBtn, "clicked", G_CALLBACK (sendInviteButtonClick),
+                    ctx);
+
+  gtk_window_present (createGameWindow);
+  g_object_unref (builder);
+}
+
+void
+sendInviteButtonClick (GtkButton *button, gpointer user_data)
+{
+  AppContext *ctx = (AppContext *)user_data;
+
+  GtkEditable *target_id_entry = GTK_EDITABLE (
+      g_object_get_data (G_OBJECT (button), "target_id_entry"));
+  GtkSpinButton *board_size_spin = GTK_SPIN_BUTTON (
+      g_object_get_data (G_OBJECT (button), "board_size_spin"));
+  GtkWindow *popup_window
+      = GTK_WINDOW (g_object_get_data (G_OBJECT (button), "popup_window"));
+
+  const char *id_str = gtk_editable_get_text (target_id_entry);
+  int target_id = atoi (id_str);
+  int board_size = gtk_spin_button_get_value_as_int (board_size_spin);
+
+  if (target_id <= 0)
+    {
+      g_print ("[GUI] Erreur : L'ID du joueur doit être un nombre valide.\n");
+      return;
+    }
+
+  g_print ("[LOBBY] Envoi d'une invitation au joueur %d (Plateau: %dx%d)...\n",
+           target_id, board_size, board_size);
+
+  if (ctx->networkManager)
+    {
+      NetworkManager_SendInvite (ctx->networkManager, target_id, board_size);
+    }
+
+  gtk_window_destroy (popup_window);
+}
+
+void
 newGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;

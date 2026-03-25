@@ -10,7 +10,10 @@ void infoPopupButtonClick (GtkButton *button, gpointer user_data);
 void configPopupButtonClick (GtkButton *button, gpointer user_data);
 void undoButtonClick (GtkButton *button, gpointer user_data);
 void redoButtonClick (GtkButton *button, gpointer user_data);
-
+void connectToServerButtonClick (GtkButton *button, gpointer user_data);
+void disconnectFromServerButtonClick (GtkButton *button, gpointer user_data);
+void createGameButtonClick (GtkButton *button, gpointer user_data);
+void sendInviteButtonClick (GtkButton *button, gpointer user_data);
 void newGameButtonClick (GtkButton *button, gpointer user_data);
 
 GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,

@@ -10,5 +10,7 @@ GtkWidget *createMultiplayerMenuPage (AppContext *ctx);
 GtkWidget *createConfigPage (AppContext *ctx);
 GtkWidget *createInfoPage (AppContext *ctx);
 GtkWidget *createGamePage (AppContext *ctx);
+GtkWidget *createJoinServerPage (AppContext *ctx);
+GtkWidget *createClientPanelPage (AppContext *ctx);
 
 #endif // GUI_PAGES_H
