@@ -100,13 +100,13 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->server_ctx != NULL)
     {
-      printf ("[NETWORK] Manager is already active!\n");
+      printf (_ ("[NETWORK] Manager is already active!\n"));
       return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      perror ("Server socket creation error");
+      perror (_ ("Server socket creation error"));
       return NET_ERROR;
     }
 
@@ -129,7 +129,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   // queue.
   if (listen (sock, MAX_PENDING_CONNECTIONS) < 0)
     {
-      perror ("Listen error");
+      perror (_ ("Listen error"));
       close (sock);
       return NET_ERROR;
     }
@@ -140,7 +140,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   manager->server_ctx = malloc (sizeof (ServerContext));
   if (manager->server_ctx == NULL)
     {
-      perror ("Server memory allocation error");
+      perror (_ ("Server memory allocation error"));
       close (sock);
       return NET_ERROR;
     }
@@ -187,10 +187,10 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     }
   else
     {
-      printf ("[WARNING] Could not create UDP discovery socket.\n");
+      printf (_ ("[WARNING] Could not create UDP discovery socket.\n"));
     }
 
-  printf ("[NETWORK] Server started on port %d\n", port);
+  printf (_ ("[NETWORK] Server started on port %d\n"), port);
   return NET_SUCCESS;
 }
 
@@ -213,13 +213,13 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->client_ctx != NULL)
     {
-      printf ("[NETWORK] Already connected or active!\n");
+      printf (_ ("[NETWORK] Already connected or active!\n"));
       return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      perror ("Client socket creation error");
+      perror (_ ("Client socket creation error"));
       return NET_ERROR;
     }
 
@@ -231,7 +231,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   // convert text IP to binary
   if (inet_pton (AF_INET, ip, &addr.sin_addr) <= 0)
     {
-      printf ("[NETWORK] Invalid IP : %s\n", ip);
+      printf (_ ("[NETWORK] Invalid IP : %s\n"), ip);
       close (sock);
       return NET_ERROR;
     }
@@ -240,7 +240,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   // this call is blocking until the handshake is complete or fails.
   if (connect (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
-      perror ("Server connection error");
+      perror (_ ("Server connection error"));
       close (sock);
       return NET_ERROR;
     }
@@ -250,7 +250,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   manager->client_ctx = malloc (sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
-      perror ("Client memory allocation error");
+      perror (_ ("Client memory allocation error"));
       close (sock);
       return NET_ERROR;
     }
@@ -259,7 +259,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   manager->client_ctx->fd_info.fd = sock;
   manager->client_ctx->fd_info.events = POLLIN;
   tcp_buffer_init (&manager->client_ctx->buffer);
-  printf ("[NETWORK] Connected to the server %s:%d\n", ip, port);
+  printf (_ ("[NETWORK] Connected to the server %s:%d\n"), ip, port);
   return NET_SUCCESS;
 }
 
@@ -291,14 +291,14 @@ NetworkManager_Cleanup (NetworkManager *manager)
       close (manager->server_ctx->listen_socket);
       free (manager->server_ctx);
       manager->server_ctx = NULL;
-      printf ("\n[NETWORK] Server down.\n");
+      printf (_ ("\n[NETWORK] Server down.\n"));
     }
   else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
       close (manager->client_ctx->server_socket);
       free (manager->client_ctx);
       manager->client_ctx = NULL;
-      printf ("\n[NETWORK] Disconnected from the server.\n");
+      printf (_ ("\n[NETWORK] Disconnected from the server.\n"));
     }
 
   // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
@@ -470,7 +470,7 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
   // 2. Check if a valid recipient has been found
   if (target_socket == INVALID_SOCKET)
     {
-      printf ("%s Error: Invalid target.\n", log_prefix);
+      printf (_ ("%s Error: Invalid target.\n"), log_prefix);
       return NET_ERROR;
     }
 
@@ -570,8 +570,8 @@ handle_server_new_connection (ServerContext *ctx)
               ctx->num_clients++;
               accepted = true;
 
-              printf ("\n[SERVER] TCP Connection established (Slot %d) - "
-                      "Waiting for JOIN packet...\n",
+              printf (_ ("\n[SERVER] TCP Connection established (Slot %d) - "
+                         "Waiting for JOIN packet...\n"),
                       i);
 
               break;
@@ -580,7 +580,7 @@ handle_server_new_connection (ServerContext *ctx)
 
       if (!accepted)
         {
-          printf ("\n[SERVER] Full! Connection refused.\n");
+          printf (_ ("\n[SERVER] Full! Connection refused.\n"));
           close (client_fd);
         }
     }
@@ -608,7 +608,8 @@ handle_server_client_data (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[client_index].last_activity = time (NULL);
   if (status == NET_BUFFER_FULL)
     {
-      printf ("\n[SERVER] Error: Buffer full for client %d.\n", client_index);
+      printf (_ ("\n[SERVER] Error: Buffer full for client %d.\n"),
+              client_index);
       return;
     }
 
@@ -650,13 +651,14 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 
       if (difftime (now, ctx->clients[i].last_activity) >= CLIENT_TIMEOUT_SEC)
         {
-          printf ("\n[SERVER] Client %d timed out (no activity for %d sec).\n",
-                  i, CLIENT_TIMEOUT_SEC);
+          printf (
+              _ ("\n[SERVER] Client %d timed out (no activity for %d sec).\n"),
+              i, CLIENT_TIMEOUT_SEC);
 
           Packet pkt;
           pkt.type = S2C_ERROR;
           snprintf (pkt.payload, MAX_PAYLOAD_SIZE,
-                    "Kicked for inactivity (%d sec).", CLIENT_TIMEOUT_SEC);
+                    _ ("Kicked for inactivity (%d sec)."), CLIENT_TIMEOUT_SEC);
 
           char out_buf[MAX_FORMATTED_PKT_SIZE];
           if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
@@ -683,7 +685,7 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
               Packet pkt_target;
               pkt_target.type = S2C_ERROR;
               strncpy (pkt_target.payload,
-                       "The invitation has expired (5 minutes).",
+                       _ ("The invitation has expired (5 minutes)."),
                        MAX_PAYLOAD_SIZE - 1);
               char out_buf_target[MAX_FORMATTED_PKT_SIZE];
               if (SerializePacket (&pkt_target, out_buf_target,
@@ -705,7 +707,7 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
                   Packet pkt_challenger;
                   pkt_challenger.type = S2C_ERROR;
                   strncpy (pkt_challenger.payload,
-                           "Your invitation expired without an answer.",
+                           _ ("Your invitation expired without an answer."),
                            MAX_PAYLOAD_SIZE - 1);
                   char out_buf_chal[MAX_FORMATTED_PKT_SIZE];
                   if (SerializePacket (&pkt_challenger, out_buf_chal,
@@ -738,7 +740,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 
   if (status == NET_ERROR)
     {
-      printf ("\n[CLIENT] The server has cut the connection.\n");
+      printf (_ ("\n[CLIENT] The server has cut the connection.\n"));
       NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
         manager->callbacks.OnPlayerDisconnected ("");
@@ -748,7 +750,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 
   if (status == NET_BUFFER_FULL)
     {
-      printf ("\n[CLIENT] Error: Buffer full.\n");
+      printf (_ ("\n[CLIENT] Error: Buffer full.\n"));
       return;
     }
 
@@ -777,7 +779,7 @@ NetworkManager_ShutdownServer (NetworkManager *manager)
   // 1. we create a shutdown packet to inform clients about the server shutdown
   Packet pkt;
   pkt.type = S2C_ERROR;
-  strncpy (pkt.payload, "Server is shutting down.", MAX_PAYLOAD_SIZE - 1);
+  strncpy (pkt.payload, _ ("Server is shutting down."), MAX_PAYLOAD_SIZE - 1);
   pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
 
   char out_buffer[MAX_FORMATTED_PKT_SIZE];

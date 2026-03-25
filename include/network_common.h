@@ -12,6 +12,7 @@
 #define NETWORK_COMMON_H
 
 #include "game_types.h"
+#include "i18n.h"
 #include <stddef.h>
 
 /* ==========================================================================

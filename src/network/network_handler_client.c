@@ -46,7 +46,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       break;
       /** @brief Processes a REJECT packet received from the server. */
     case S2C_REJECT:
-      printf ("[CLIENT] Connection rejected: %s\n", pkt->payload);
+      printf (_ ("[CLIENT] Connection rejected: %s\n"), pkt->payload);
       NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
         {
@@ -67,7 +67,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
           {
             // Fin de la liste, on redessine proprement le prompt
-            printf ("[LOBBY] >> ");
+            printf (_ ("[LOBBY] >> "));
             fflush (stdout);
           }
         else
@@ -88,9 +88,9 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         long long sent_time = atoll (pkt->payload); // On lit l'heure de départ
         long long rtt = now_ms - sent_time;         // Round-Trip Time
 
-        printf ("\nServer: PONG TIME=%lldms\n", rtt);
+        printf (_ ("\nServer: PONG TIME=%lldms\n"), rtt);
 
-        printf ("[LOBBY] >> ");
+        printf (_ ("[LOBBY] >> "));
         fflush (stdout);
       }
       break;
@@ -103,7 +103,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       else
         {
 
-          printf ("\n[CLIENT] Server Error: %s\n", pkt->payload);
+          printf (_ ("\n[CLIENT] Server Error: %s\n"), pkt->payload);
         }
       break;
       /** @brief Processes a DECLINE packet received from the server. */
@@ -131,7 +131,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       break;
       /** @brief Processes a GAME_START packet received from the server. */
     case S2C_GAME_START:
-      printf ("[CLIENT] Game is starting!\n");
+      printf (_ ("[CLIENT] Game is starting!\n"));
       int color_val = 0, board_size = 10;
       sscanf (pkt->payload, "%d %d", &color_val, &board_size);
       PlayerColor my_color
@@ -155,9 +155,10 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
             }
           else
             {
-              printf ("[CLIENT] Error: Received unreadable move format from "
-                      "server: %s\n",
-                      pkt->payload);
+              printf (
+                  _ ("[CLIENT] Error: Received unreadable move format from "
+                     "server: %s\n"),
+                  pkt->payload);
             }
         }
       break;
@@ -171,7 +172,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       break;
       /** @brief Processes an unknown packet received from the server. */
     default:
-      printf ("[CLIENT] Unmanaged package (Type: %d)\n", pkt->type);
+      printf (_ ("[CLIENT] Unmanaged package (Type: %d)\n"), pkt->type);
       break;
     }
 }
