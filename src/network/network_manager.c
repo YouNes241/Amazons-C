@@ -100,7 +100,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->server_ctx != NULL)
     {
-      printf (_ ("[NETWORK] Manager is already active!\n"));
+      printf ("%s", _ ("[NETWORK] Manager is already active!\n"));
       return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -187,7 +187,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
     }
   else
     {
-      printf (_ ("[WARNING] Could not create UDP discovery socket.\n"));
+      printf ("%s", _ ("[WARNING] Could not create UDP discovery socket.\n"));
     }
 
   printf (_ ("[NETWORK] Server started on port %d\n"), port);
@@ -213,7 +213,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
     return NET_ERROR;
   if (manager->current_mode != NET_MODE_NONE || manager->client_ctx != NULL)
     {
-      printf (_ ("[NETWORK] Already connected or active!\n"));
+      printf ("%s", _ ("[NETWORK] Already connected or active!\n"));
       return NET_ERROR;
     }
   int sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -291,14 +291,14 @@ NetworkManager_Cleanup (NetworkManager *manager)
       close (manager->server_ctx->listen_socket);
       free (manager->server_ctx);
       manager->server_ctx = NULL;
-      printf (_ ("\n[NETWORK] Server down.\n"));
+      printf ("%s", _ ("\n[NETWORK] Server down.\n"));
     }
   else if (manager->current_mode == NET_MODE_CLIENT && manager->client_ctx)
     {
       close (manager->client_ctx->server_socket);
       free (manager->client_ctx);
       manager->client_ctx = NULL;
-      printf (_ ("\n[NETWORK] Disconnected from the server.\n"));
+      printf ("%s", _ ("\n[NETWORK] Disconnected from the server.\n"));
     }
 
   // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
@@ -580,7 +580,7 @@ handle_server_new_connection (ServerContext *ctx)
 
       if (!accepted)
         {
-          printf (_ ("\n[SERVER] Full! Connection refused.\n"));
+          printf ("%s", _ ("\n[SERVER] Full! Connection refused.\n"));
           close (client_fd);
         }
     }
@@ -740,7 +740,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 
   if (status == NET_ERROR)
     {
-      printf (_ ("\n[CLIENT] The server has cut the connection.\n"));
+      printf ("%s", _ ("\n[CLIENT] The server has cut the connection.\n"));
       NetworkManager_Cleanup (manager);
       if (manager->callbacks.OnPlayerDisconnected)
         manager->callbacks.OnPlayerDisconnected ("");
@@ -750,7 +750,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 
   if (status == NET_BUFFER_FULL)
     {
-      printf (_ ("\n[CLIENT] Error: Buffer full.\n"));
+      printf ("%s", _ ("\n[CLIENT] Error: Buffer full.\n"));
       return;
     }
 

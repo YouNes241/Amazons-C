@@ -580,7 +580,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         {
           ctx->clients[client_index].status = CLIENT_STATUS_AWAY;
           printf (_ ("[SERVER] Player %d is now AWAY.\n"), client_index);
-          printf (_ ("[LOBBY] >> "));
+          printf ("%s", _ ("[LOBBY] >> "));
           fflush (stdout);
         }
       break;
@@ -590,7 +590,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         {
           ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
           printf (_ ("[SERVER] Player %d is BACK.\n"), client_index);
-          printf (_ ("[LOBBY] >> "));
+          printf ("%s", _ ("[LOBBY] >> "));
           fflush (stdout);
         }
       break;
@@ -612,7 +612,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
             }
           printf (_ ("[SERVER] Player %d cancelled their invitation.\n"),
                   client_index);
-          printf (_ ("[LOBBY] >> "));
+          printf ("%s", _ ("[LOBBY] >> "));
           fflush (stdout);
         }
       break;
@@ -653,7 +653,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
 
         // Un petit message "clé" pour dire au client que l'affichage est fini
         send_server_message (manager, client_index, S2C_SCOREBOARD,
-                             _ ("END_OF_SCOREBOARD"));
+                             "END_OF_SCOREBOARD");
       }
       break;
       /** @brief Processes a GAME_OVER packet received from a client. */

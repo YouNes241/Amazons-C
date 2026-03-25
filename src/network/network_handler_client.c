@@ -67,7 +67,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
           {
             // Fin de la liste, on redessine proprement le prompt
-            printf (_ ("[LOBBY] >> "));
+            printf ("%s", _ ("[LOBBY] >> "));
             fflush (stdout);
           }
         else
@@ -90,7 +90,7 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
 
         printf (_ ("\nServer: PONG TIME=%lldms\n"), rtt);
 
-        printf (_ ("[LOBBY] >> "));
+        printf ("%s", _ ("[LOBBY] >> "));
         fflush (stdout);
       }
       break;
