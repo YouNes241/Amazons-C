@@ -363,7 +363,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendCancel (ctx->net_manager, ctx->last_invited_id);
+          NetworkManager_SendCancel (ctx->net_manager);
           printf ("Invitation to player %d canceled.\n", ctx->last_invited_id);
         }
       return;
@@ -419,7 +419,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf ("Error: You are not running a server.\n");
+          printf ("[CLIENT] Error: You are not running a server.\n");
         }
       return;
     }

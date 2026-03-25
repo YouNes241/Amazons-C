@@ -610,26 +610,27 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         {
           ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
 
-          int target_index = atoi (pkt->payload);
-          if (target_index >= FIRST_CLIENT_INDEX && target_index <= MAX_CLIENTS
-              && ctx->fds[target_index].fd != INVALID_SOCKET)
+          for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
             {
-
-              ctx->clients[target_index].status = CLIENT_STATUS_IDLE;
-
-              send_server_message (manager, target_index, S2C_CANCEL,
-                                   _ ("Invitation canceled by challenger."));
+              if (ctx->clients[i].pending_invite_from == client_index)
+                {
+                  ctx->clients[i].pending_invite_from = -1;
+                  ctx->clients[i].status = CLIENT_STATUS_IDLE;
+                  send_server_message (
+                      manager, i, S2C_CANCEL,
+                      _ ("Invitation canceled by challenger."));
+                  break;
+                }
             }
-          printf (_ ("[SERVER] Player %d cancelled their invitation.\n"),
+          printf (_ ("\n[SERVER] Player %d cancelled their invitation.\n"),
                   client_index);
           printf ("%s", _ ("[LOBBY] >> "));
-          fflush (stdout);
         }
       break;
       /** @brief Processes a SCOREBOARD packet received from a client. */
     case C2S_SCOREBOARD:
       {
-        // On envoie l'en-tête
+
         send_server_message (manager, client_index, S2C_SCOREBOARD,
                              _ ("Name | Wins | Losses | Played"));
         send_server_message (manager, client_index, S2C_SCOREBOARD,
@@ -643,7 +644,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
             char line[128];
             char name[32];
             int w, l, g;
-            // On envoie chaque joueur ligne par ligne
+
             while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
               {
                 snprintf (line, sizeof (line), "%-10s | %4d | %6d | %6d", name,
@@ -661,7 +662,6 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
                                  _ ("No scores recorded yet."));
           }
 
-        // Un petit message "clé" pour dire au client que l'affichage est fini
         send_server_message (manager, client_index, S2C_SCOREBOARD,
                              "END_OF_SCOREBOARD");
       }
@@ -669,7 +669,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       /** @brief Processes a GAME_OVER packet received from a client. */
     case C2S_GAME_OVER:
       {
-        // On récupère le client qui a envoyé le message
+
         ConnectedClient *client = &manager->server_ctx->clients[client_index];
 
         if (strcmp (pkt->payload, "WIN") == 0)
@@ -681,7 +681,6 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
             NetworkManager_UpdatePlayerStats (client->username, false);
           }
 
-        // On remet le statut du joueur à IDLE pour qu'il puisse rejouer
         client->status = CLIENT_STATUS_IDLE;
         client->game_id = NO_GAME_ID;
       }

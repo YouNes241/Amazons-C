@@ -67,7 +67,7 @@ TEST_F (NetworkManagerTest, MissingSendersHappyPath)
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendAway (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendBack (&client_mgr), NET_SUCCESS);
-  EXPECT_EQ (NetworkManager_SendCancel (&client_mgr, 2), NET_SUCCESS);
+  EXPECT_EQ (NetworkManager_SendCancel (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendPing (&client_mgr), NET_SUCCESS);
 
   // Game over dans les deux sens (victoire/défaite)
@@ -90,7 +90,7 @@ TEST_F (NetworkManagerTest, SendersRobustnessNullPointers)
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (nullptr), NET_ERROR);
-  EXPECT_EQ (NetworkManager_SendCancel (nullptr, 1), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendCancel (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendPing (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendGameOver (nullptr, true), NET_ERROR);
 }
@@ -113,7 +113,7 @@ TEST_F (NetworkManagerTest, SendersRobustnessInvalidState)
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (&server_mgr), NET_ERROR);
-  EXPECT_EQ (NetworkManager_SendCancel (&server_mgr, 1), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendCancel (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendPing (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendGameOver (&server_mgr, true), NET_ERROR);
 
@@ -121,7 +121,7 @@ TEST_F (NetworkManagerTest, SendersRobustnessInvalidState)
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (&none_mgr), NET_ERROR);
-  EXPECT_EQ (NetworkManager_SendCancel (&none_mgr, 1), NET_ERROR);
+  EXPECT_EQ (NetworkManager_SendCancel (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendPing (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendGameOver (&none_mgr, false), NET_ERROR);
 

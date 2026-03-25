@@ -301,15 +301,14 @@ NetworkManager_SendBack (NetworkManager *manager)
  * @return int NET_SUCCESS on success, NET_ERROR on failure.
  */
 int
-NetworkManager_SendCancel (NetworkManager *manager, int target_id)
+NetworkManager_SendCancel (NetworkManager *manager)
 {
   if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
     return NET_ERROR;
 
   Packet pkt;
   pkt.type = C2S_CANCEL;
-  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%d", target_id);
-
+  pkt.payload[0] = '\0';
   char formatted_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;

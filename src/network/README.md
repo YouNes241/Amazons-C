@@ -17,7 +17,7 @@ Lancez le jeu normalement, puis testez la découverte UDP.
 ./src/amazons-c
 [MENU] >> server list
 # Doit afficher le serveur local (UDP broadcast toutes les 10s).
-[MENU] >> join 127.0.0.1:12345 Alice
+[MENU] >> join <IP_DU_SERVER>:<PORT_DU_SERVER> Alice
 [LOBBY] >> ping
 # Doit afficher le PONG avec le calcul du RTT en millisecondes.
 Terminal 3 (Client Bob) :
