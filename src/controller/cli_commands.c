@@ -482,7 +482,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       return;
     }
-  else if (strncmp (input_buffer, "accept ", CMD_LEN_ACCEPT) == 0)
+  else if (strncmp (input_buffer, "accept", CMD_LEN_ACCEPT) == 0)
     {
       if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
         return;
@@ -519,7 +519,7 @@ handle_command (char *input_buffer, CliContext *ctx)
                                          ctx->config->board_size)
               == 0)
             {
-              ctx->last_invited_id = target_id; // <-- ON MÉMORISE L'ID ICI
+              ctx->last_invited_id = target_id;
               printf ("Invitation sent to player %d.\n", target_id);
             }
         }

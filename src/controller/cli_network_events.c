@@ -118,8 +118,7 @@ on_player_disconnected (const char *reason)
     {
       if (g_net_ctx->in_network_match)
         {
-          printf (
-              "\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+          printf ("\n[LOBBY] %s\n", reason);
         }
       g_net_ctx->in_network_match = false;
     }

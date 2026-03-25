@@ -40,13 +40,20 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
           if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
               && ctx->clients[i].game_id == game_id)
             {
+
+              NetworkManager_UpdatePlayerStats (ctx->clients[i].username,
+                                                true);
+              NetworkManager_UpdatePlayerStats (
+                  ctx->clients[client_index].username, false);
+
               // we send him back to the lobby
               ctx->clients[i].status = CLIENT_STATUS_IDLE;
               ctx->clients[i].game_id = NO_GAME_ID;
 
               Packet pkt;
               pkt.type = S2C_OPPONENT_LEFT;
-              strncpy (pkt.payload, _ ("Opponent disconnected."),
+              strncpy (pkt.payload,
+                       _ ("Opponent disconnected. You win by forfeit!"),
                        MAX_PAYLOAD_SIZE - 1);
               char out_buf[MAX_FORMATTED_PKT_SIZE];
               if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
@@ -624,7 +631,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       {
         // On envoie l'en-tête
         send_server_message (manager, client_index, S2C_SCOREBOARD,
-                             _ ("Name        | Wins | Losses | Played"));
+                             _ ("Name | Wins | Losses | Played"));
         send_server_message (manager, client_index, S2C_SCOREBOARD,
                              "-----------------------------------");
 
