@@ -84,8 +84,10 @@ typedef enum
   S2C_SCOREBOARD = 24,
   /** @brief Client -> Server: Inform the server that the game is over. */
   C2S_GAME_OVER = 25,
+  /** @brief Client -> Server: Send a heartbeat message. */
+  C2S_HEARTBEAT = 26,
   /** @brief Maximum value for packet types (used in validation). */
-  PKT_TYPE_MAX = 26
+  PKT_TYPE_MAX = 27
 } PacketType;
 
 /* ==========================================================================

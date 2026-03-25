@@ -302,6 +302,7 @@ handle_command (char *input_buffer, CliContext *ctx)
       if (NetworkManager_ClientJoin (ctx->net_manager, ip, port) == 0)
         {
           ctx->in_main_menu = false;
+          ctx->is_away = false;
           cli_clear_screen ();
           NetworkManager_SendJoin (ctx->net_manager, username);
         }
@@ -375,6 +376,7 @@ handle_command (char *input_buffer, CliContext *ctx)
           NetworkManager_Cleanup (ctx->net_manager);
           ctx->in_main_menu = true;
           ctx->in_network_match = false;
+          ctx->is_away = false;
           printf ("\n[NETWORK] Disconnected. Returned to local menu.\n");
         }
       else

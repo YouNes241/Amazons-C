@@ -564,6 +564,9 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
     case C2S_ACCEPT:
       process_accept_packet (manager, ctx, client_index, pkt->payload);
       break;
+      /** @brief Processes a HEARTBEAT packet received from a client. */
+    case C2S_HEARTBEAT:
+      break;
       /** @brief Processes a PING packet received from a client. */
     case C2S_PING:
       {

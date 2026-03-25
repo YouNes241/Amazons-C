@@ -257,6 +257,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   manager->current_mode = NET_MODE_CLIENT;
   manager->client_ctx->server_socket = sock;
   manager->client_ctx->fd_info.fd = sock;
+  manager->client_ctx->last_heartbeat = time (NULL);
   manager->client_ctx->fd_info.events = POLLIN;
   tcp_buffer_init (&manager->client_ctx->buffer);
   printf (_ ("[NETWORK] Connected to the server %s:%d\n"), ip, port);
@@ -730,6 +731,21 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
 static void
 handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 {
+
+  time_t now = time (NULL);
+  if (difftime (now, ctx->last_heartbeat) >= 30.0) // Toutes les 30 secondes
+    {
+      Packet pkt;
+      pkt.type = C2S_HEARTBEAT;
+      pkt.payload[0] = '\0'; // Pas de texte
+
+      char out_buf[MAX_FORMATTED_PKT_SIZE];
+      if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
+        {
+          NetworkManager_Send (manager, TARGET_SERVER, out_buf);
+        }
+      ctx->last_heartbeat = now; // On remet le chrono à zéro
+    }
   int poll_count
       = poll (&ctx->fd_info, SINGLE_FD_COUNT, POLL_TIMEOUT_IMMEDIATE);
   if (poll_count <= 0

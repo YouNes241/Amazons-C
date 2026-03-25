@@ -107,6 +107,7 @@ on_player_disconnected (const char *reason)
 
       g_net_ctx->in_network_match = false;
       g_net_ctx->in_main_menu = true;
+      g_net_ctx->is_away = false;
 
       if (reason && strlen (reason) > 0)
         {
