@@ -244,9 +244,6 @@ connectToServerButtonClick (GtkButton *button, gpointer user_data)
 
   int port = atoi (port_str);
 
-  g_print ("[GUI] Tentative de connexion à %s:%d avec le pseudo %s...\n",
-           ip_str, port, username_str);
-
   if (NetworkManager_ClientJoin (ctx->networkManager, ip_str, port) == 0)
     {
       NetworkManager_SendJoin (ctx->networkManager, username_str);
@@ -257,10 +254,6 @@ connectToServerButtonClick (GtkButton *button, gpointer user_data)
                                             "client_panel_page");
         }
     }
-  else
-    {
-      g_print ("[GUI ERREUR] Impossible de joindre le serveur.\n");
-    }
 }
 
 void
@@ -268,8 +261,6 @@ disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
   AppContext *ctx = (AppContext *)user_data;
-
-  g_print ("\n[GUI NETWORK] Déconnexion manuelle du serveur...\n");
 
   guiDisconnectAndRestartNetwork (ctx);
 
@@ -333,12 +324,8 @@ sendInviteButtonClick (GtkButton *button, gpointer user_data)
 
   if (target_id <= 0)
     {
-      g_print ("[GUI] Erreur : L'ID du joueur doit être un nombre valide.\n");
       return;
     }
-
-  g_print ("[LOBBY] Envoi d'une invitation au joueur %d (Plateau: %dx%d)...\n",
-           target_id, board_size, board_size);
 
   if (ctx->networkManager)
     {
