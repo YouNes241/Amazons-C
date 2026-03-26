@@ -67,7 +67,9 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {}, false,
+          0.0, 0.0, 0.0 };
 
   // 3. AI generates a real hit
   ConfigMap empty_params = { nullptr, 0 };

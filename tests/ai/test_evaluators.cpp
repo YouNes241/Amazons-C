@@ -66,8 +66,17 @@ setup_standard_start (int board_size)
       cc[board_size - 1][board_size - 1] = CONTENT_WHITE_QUEEN;
     }
 
-  GameState new_game
-      = { (uint8_t)board_size, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState new_game = { (uint8_t)board_size,
+                         cc,
+                         PLAYER_WHITE,
+                         GAME_IN_PROGRESS,
+                         0,
+                         {},
+                         {},
+                         false,
+                         0,
+                         0,
+                         0 };
   return new_game;
 }
 
@@ -332,7 +341,9 @@ TEST (EvaluatorTest, RandomMove)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {}, false,
+          0.0, 0.0, 0.0 };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
@@ -375,8 +386,9 @@ TEST (EvaluatorTest, MiniMaxMove)
   cc[9][3] = CONTENT_WHITE_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
-
+  GameState state = {
+    10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {}, false, 0.0, 0.0, 0
+  };
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
   printf ("EVALUATING DEPTH 5.\n");
@@ -425,8 +437,9 @@ TEST (EvaluatorTest, MiniMaxWin)
   cc[8][9] = CONTENT_EMPTY;
   cc[7][9] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
-
+  GameState state
+      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {}, false,
+          0.0, 0.0, 0.0 };
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 

@@ -73,7 +73,9 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
   cc[0][0] = CONTENT_BLACK_QUEEN;
   cc[0][1] = CONTENT_EMPTY;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {} };
+  GameState state
+      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {}, false,
+          0.0, 0.0, 0.0 };
 
   // Give MCTS 1 second to explore
   Param p = { (char *)"time_limit", (char *)"1000" };
@@ -117,7 +119,9 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {}, false,
+          0.0, 0.0, 0.0 };
 
   Param p[] = { { (char *)"time_limit", (char *)"1000" },
                 { (char *)"max_iterations", (char *)"5000" } };
@@ -167,7 +171,9 @@ TEST (MCTSCoverageTest, TriggerChildLoop)
   cc[0][0] = CONTENT_WHITE_QUEEN;
   cc[3][3] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { 4, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 4,   cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {}, false,
+          0.0, 0.0, 0.0 };
 
   Param p = { (char *)"time_limit", (char *)"3000" };
   ConfigMap cm = { &p, 1 };
