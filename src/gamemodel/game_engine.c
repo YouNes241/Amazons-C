@@ -1,5 +1,34 @@
 #include "game_engine.h"
 #include <stddef.h>
+#include <time.h>
+
+static double
+get_time_now (void)
+{
+  return (double)time (NULL);
+}
+
+static void
+update_blitz_timer (GameState *state)
+{
+  if (!state->blitz_mode)
+    return;
+
+  double now = get_time_now ();
+  double elapsed = now - state->blitz_turn_start;
+
+  if (state->current_player == PLAYER_WHITE)
+    state->white_time_left -= elapsed;
+  else
+    state->black_time_left -= elapsed;
+
+  state->blitz_turn_start = now;
+
+  if (state->white_time_left <= 0)
+    state->status = GAME_OVER_BLACK_WINS;
+  else if (state->black_time_left <= 0)
+    state->status = GAME_OVER_WHITE_WINS;
+}
 
 static void
 push_move (MoveStack *stack, Move m)
@@ -141,7 +170,9 @@ game_init (GameState *state)
   state->current_player = PLAYER_WHITE;
   state->status = GAME_IN_PROGRESS;
   state->turn_count = 0;
-
+  state->blitz_mode = false;
+  state->white_time_left = 0;
+  state->black_time_left = 0;
   int max_possible_moves = 2000; // Largement suffisant pour une partie
 
   state->undo_stack.capacity = max_possible_moves;
@@ -211,7 +242,7 @@ apply_move (GameState *state, Move move)
   state->turn_count++;
   push_move (&state->undo_stack, move);
   clear_stack (&state->redo_stack);
-
+  update_blitz_timer (state);
   if (state->current_player == PLAYER_WHITE)
     {
       state->current_player = PLAYER_BLACK;
@@ -567,6 +598,8 @@ undo_move (GameState *state)
   state->status = GAME_IN_PROGRESS;
 
   push_move (&state->redo_stack, last_move);
+  if (state->blitz_mode)
+    state->blitz_turn_start = get_time_now ();
   return true;
 }
 
@@ -584,6 +617,7 @@ apply_redo (GameState *state, Move move)
   state->turn_count++;
   push_move (&state->undo_stack, move);
 
+  update_blitz_timer (state);
   state->current_player
       = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
 }
@@ -597,6 +631,5 @@ redo_move (GameState *state)
   if (!success)
     return false;
   apply_redo (state, next_move);
-
   return true;
 }
