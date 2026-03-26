@@ -27,11 +27,14 @@
 #include <time.h>
 #include <unistd.h>
 
-/* ---Static variables (Global game context) --- */
-
-static CliContext *g_cli_ctx = NULL;
-
-static bool
+#ifdef UNIT_TESTING
+#define TEST_STATIC
+#else
+#define TEST_STATIC static
+#endif
+/* --- Variables globales --- */
+TEST_STATIC CliContext *g_cli_ctx = NULL;
+TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
@@ -45,8 +48,7 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
    LINEHANDLER (Readline)
    ==========================================================================
  */
-
-static void
+TEST_STATIC void
 linehandler (char *line)
 {
   if (line == NULL || !g_cli_ctx)
@@ -93,7 +95,7 @@ run_interactive_mode (game_config_t *config)
   game_init (&current_game);
 
   NetworkManager net_manager;
-  CliContext *ctx = calloc (1, sizeof (CliContext));
+  CliContext *ctx = (CliContext *)calloc (1, sizeof (CliContext));
   if (!ctx)
     {
       fprintf (stderr, "Failed to allocate memory for CLI context.\n");
