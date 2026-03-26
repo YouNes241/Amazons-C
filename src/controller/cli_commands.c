@@ -193,6 +193,57 @@ execute_hint (CliContext *ctx)
   printf (" - Shoot the arrow at %s\n", arr);
 }
 
+/**
+ * @brief Updates a configuration parameter based on a key and value.
+ */
+static void
+update_config (game_config_t *config, const char *key, const char *val)
+{
+  if (strcmp (key, "verbose") == 0)
+    {
+      config->verbose = (strcmp (val, "true") == 0);
+    }
+  else if (strcmp (key, "blitz") == 0)
+    {
+      config->blitz_mode = (strcmp (val, "true") == 0);
+    }
+  else if (strcmp (key, "ai_white") == 0)
+    {
+      config->ai_white = (strcmp (val, "true") == 0);
+    }
+  else if (strcmp (key, "ai_black") == 0)
+    {
+      config->ai_black = (strcmp (val, "true") == 0);
+    }
+  else if (strcmp (key, "board_size") == 0)
+    {
+      int new_size = atoi (val);
+      if (new_size >= 3 && new_size <= 26)
+        config->board_size = new_size;
+      else
+        printf (_ ("[ERROR] Invalid board size (3-26).\n"));
+    }
+  else if (strcmp (key, "time") == 0)
+    {
+      config->time_per_player = atoi (val);
+    }
+  else if (strcmp (key, "port") == 0)
+    {
+      config->server_port = atoi (val);
+    }
+  else if (strcmp (key, "language") == 0)
+    {
+      config->language = (strcmp (val, "fr") == 0) ? LANG_FR : LANG_EN;
+    }
+  else
+    {
+      printf (_ ("[ERROR] Unknown parameter: %s\n"), key);
+      return;
+    }
+
+  printf (_ ("[CONFIG] %s updated to %s\n"), key, val);
+}
+
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
@@ -683,6 +734,22 @@ handle_command (char *input_buffer, CliContext *ctx)
           cli_display_board (ctx->current_game);
           return;
         }
+    }
+  else if (strncmp (input_buffer, "set ", CMD_LEN_SET + CMD_SPACE_OFFSET) == 0)
+    {
+      char key[MAX_KEY_LEN], val[MAX_VAL_LEN];
+      if (sscanf (input_buffer + CMD_LEN_SET + CMD_SPACE_OFFSET,
+                  "%63[^=]=%63s", key, val)
+          == 2)
+        {
+          update_config (ctx->config, key, val);
+        }
+      else
+        {
+          printf (
+              _ ("[ERROR] Usage: set PARAM=VALUE (e.g., set verbose=true)\n"));
+        }
+      return;
     }
 
   // 6. GAME LOGIC (MOVES)
