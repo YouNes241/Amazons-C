@@ -1,6 +1,7 @@
 #include "config.h"
 #include "controller.h"
 #include "gui_application.h"
+#include "i18n.h"
 #include "input.h"
 #include "network_common.h"
 #include "utils.h"
@@ -215,6 +216,24 @@ parse_options (int argc, char *argv[], game_config_t *config)
 int
 main (int argc, char *argv[])
 {
+  char *env_lang = getenv ("LANG");
+  if (env_lang != NULL)
+    {
+      if (strncmp (env_lang, "fr", 2) != 0 && strncmp (env_lang, "en", 2) != 0
+          && strncmp (env_lang, "C", 1) != 0)
+        {
+          printf ("Warning: The requested language '%s' is not supported.\n",
+                  env_lang);
+          printf ("The game will start in English (default).\n\n");
+        }
+    }
+
+  setlocale (LC_ALL, "");
+
+  bindtextdomain ("amazons", "./locale");
+
+  textdomain ("amazons");
+
   game_config_t *config = malloc (sizeof (game_config_t));
   config->start_server = false;
   config->daemon_mode = false;
