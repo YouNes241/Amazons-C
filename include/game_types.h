@@ -73,6 +73,10 @@ typedef struct
   uint32_t turn_count; // Counter of the number of turns played
   MoveStack undo_stack;
   MoveStack redo_stack;
+  bool blitz_mode;
+  double blitz_turn_start;
+  double white_time_left; // seconds
+  double black_time_left;
 } GameState;
 
 #endif
