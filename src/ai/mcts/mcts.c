@@ -373,6 +373,14 @@ mcts_get_best_move (AI_Interface *self, GameState state)
   // Merge threads results
   Move best_move = merge_and_get_best (data, num_threads);
 
+  if (best_move.queen_src.col == 0 && best_move.queen_src.row == 0
+      && best_move.queen_dst.col == 0 && best_move.queen_dst.row == 0
+      && best_move.arrow_dst.col == 0 && best_move.arrow_dst.row == 0)
+    {
+      best_move = get_direct_random_move (
+          &root_state); // Fallback to avoid illegal moves.
+    }
+
   printf ("[MCTS] Threads: %d | Total Iterations: %d | Best move : (%d, %d) "
           "-> (%d, %d)\n",
           num_threads, total_iterations, best_move.queen_src.row,
