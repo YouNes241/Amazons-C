@@ -24,12 +24,33 @@
 #include <string.h>
 
 // --- Autocomplete ---
-static char *commands_list[]
-    = { "new",   "help",    "quit",         "load",          "save",
-        "pause", "hint",    "undo",         "redo",          "show",
-        "set",   "details", "start server", "server status", "server stop",
-        "join",  "players", "accept",       "decline",       "away",
-        "back",  "cancel",  "ping",         "scoreboard",    NULL };
+static char *commands_list[] = { "new",
+                                 "help",
+                                 "quit",
+                                 "load",
+                                 "save",
+                                 "pause",
+                                 "hint",
+                                 "undo",
+                                 "redo",
+                                 "show board",
+                                 "show history",
+                                 "show time",
+                                 "show configuration",
+                                 "set",
+                                 "start server",
+                                 "server status",
+                                 "server stop",
+                                 "join",
+                                 "players",
+                                 "accept",
+                                 "decline",
+                                 "away",
+                                 "back",
+                                 "cancel",
+                                 "ping",
+                                 "scoreboard",
+                                 NULL };
 
 static char *
 command_generator (const char *text, int state)
@@ -188,7 +209,7 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  undo/redo   : Cancel or replay a move\n"));
       printf (_ ("  save/load   : Save or load a game state\n"));
       printf (_ ("  hint        : Get AI assistance\n"));
-      printf (_ ("  set/details : Configure game options\n"));
+      printf (_ ("  set : Configure game options\n"));
 
       printf (_ ("\n--- Network (Server) ---\n"));
       printf (_ ("  server start [port]  : Host a new server\n"));
@@ -217,11 +238,6 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ (
           "  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
       printf (_ ("====================\n\n"));
-      return;
-    }
-  else if (strncmp (input_buffer, "details", CMD_LEN_DETAILS) == 0)
-    {
-      display_config (ctx->config);
       return;
     }
 
@@ -611,10 +627,8 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else if (strncmp (input_buffer, "load ", CMD_LEN_LOAD) == 0)
     {
-      // 1. On récupère le nom du fichier tapé par le joueur
       const char *filename = input_buffer + CMD_LEN_LOAD;
 
-      // 2. On appelle notre nouvelle fonction de lecture
       if (load_game (filename, ctx->config, ctx->current_game) == 0)
         {
           printf ("Game loaded successfully from: %s\n", filename);
@@ -634,10 +648,41 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       execute_hint (ctx);
     }
-  else if (strncmp (input_buffer, "show", CMD_LEN_SHOW) == 0)
+  else if (strncmp (input_buffer, "show ", 5) == 0)
     {
-      cli_display_board (ctx->current_game);
-      return;
+      char *sub = input_buffer + 5;
+      if (strcmp (sub, "history") == 0)
+        {
+          printf (_ ("=== MOVE HISTORY ===\n"));
+          for (int i = 0; i <= ctx->current_game->undo_stack.top; i++)
+            {
+              Move m = ctx->current_game->undo_stack.data[i];
+              printf ("%d: %c%d-%c%d(%c%d)\n", i + 1, m.queen_src.col + 'a',
+                      m.queen_src.row + 1, m.queen_dst.col + 'a',
+                      m.queen_dst.row + 1, m.arrow_dst.col + 'a',
+                      m.arrow_dst.row + 1);
+            }
+          return;
+        }
+      else if (strcmp (sub, "time") == 0)
+        {
+          printf (_ ("Remaining time for %s: %d seconds\n"),
+                  (ctx->current_game->current_player == PLAYER_WHITE
+                       ? _ ("White")
+                       : _ ("Black")),
+                  ctx->config->time_per_player);
+          return;
+        }
+      else if (strcmp (sub, "configuration") == 0)
+        {
+          display_config (ctx->config);
+          return;
+        }
+      else if (strcmp (sub, "board") == 0)
+        {
+          cli_display_board (ctx->current_game);
+          return;
+        }
     }
 
   // 6. GAME LOGIC (MOVES)
