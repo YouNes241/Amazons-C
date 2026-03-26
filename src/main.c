@@ -30,6 +30,7 @@ handle_shutdown_signal (int sig)
 int
 parse_options (int argc, char *argv[], game_config_t *config)
 {
+  bool time_arg_passed = false;
   int opt;
   int option_index = 0;
   bool d_short_passed = false;
@@ -82,11 +83,14 @@ parse_options (int argc, char *argv[], game_config_t *config)
           break;
 
         case 't':
-          config->time_per_player = atoi (optarg);
-          if (config->time_per_player <= 0 || config->time_per_player > 1800)
+          time_arg_passed = true;
+          int minutes = atoi (optarg);
+          config->time_per_player = minutes * 60;
+
+          if (minutes <= 0 || minutes > 60)
             {
-              fprintf (stderr, "Erreur : Le temps par joueur doit etre un "
-                               "entier positif entre 1 et 1800 secondes.\n");
+              fprintf (stderr,
+                       _ ("ERROR : Time must be between 1 and 60 minutes.\n"));
               return EXIT_FAILURE;
             }
           break;
@@ -173,7 +177,8 @@ parse_options (int argc, char *argv[], game_config_t *config)
           printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n",
                   MIN_BOARD_SIZE, MAX_BOARD_SIZE, DEFAULT_BOARD_SIZE);
           printf ("  -b, --blitz     Activer le mode blitz\n");
-          printf ("  -t, --time T    Temps par joueur en secondes\n");
+          printf ("  -t, --time T     Temps de réflexion par joueur en "
+                  "minutes (défaut: 30)\n");
           printf ("  -c, --contest   Lancer en mode contest\n");
           printf ("  -g, --gui       Lancer en mode graphique\n");
           printf ("  -a, --ai [C]    Activer l'IA\n");
@@ -190,6 +195,13 @@ parse_options (int argc, char *argv[], game_config_t *config)
         default:
           return EXIT_FAILURE;
         }
+    }
+
+  if (time_arg_passed && !config->blitz_mode)
+    {
+      printf (
+          _ ("Warning: --time ignored because blitz mode is not active.\n"));
+      config->time_per_player = DEFAULT_TIME_BLITZ;
     }
 
   if (optind < argc)
