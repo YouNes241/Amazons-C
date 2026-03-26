@@ -598,8 +598,7 @@ undo_move (GameState *state)
   state->status = GAME_IN_PROGRESS;
 
   push_move (&state->redo_stack, last_move);
-  if (state->blitz_mode)
-    state->blitz_turn_start = get_time_now ();
+  update_blitz_timer (state);
   return true;
 }
 

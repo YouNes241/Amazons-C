@@ -603,6 +603,12 @@ handle_command (char *input_buffer, CliContext *ctx)
           // Pas d'ID ? Alors c'est une partie locale !
           printf (_ ("New local game.\n"));
           game_init (ctx->current_game);
+          ctx->current_game->blitz_mode = ctx->config->blitz_mode;
+          ctx->current_game->white_time_left
+              = (double)ctx->config->time_per_player;
+          ctx->current_game->black_time_left
+              = (double)ctx->config->time_per_player;
+          ctx->current_game->blitz_turn_start = (double)time (NULL);
           ctx->turn_start_time = time (NULL);
           ctx->in_main_menu = false;
           cli_clear_screen ();
@@ -783,6 +789,17 @@ handle_command (char *input_buffer, CliContext *ctx)
       if (is_move_legal (ctx->current_game, player_move))
         {
           apply_move (ctx->current_game, player_move);
+          if (ctx->current_game->blitz_mode
+              && ctx->current_game->status != GAME_IN_PROGRESS)
+            {
+              cli_display_board (ctx->current_game);
+              printf (_ ("\n[!] TIME ELAPSED ! Player %s lost.\n"),
+                      (ctx->current_game->status == GAME_OVER_BLACK_WINS
+                           ? _ ("White")
+                           : _ ("Black")));
+              ctx->game_running = false;
+              return;
+            }
 
           if (ctx->net_manager->current_mode != NET_MODE_NONE)
             {
