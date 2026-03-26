@@ -244,6 +244,48 @@ update_config (game_config_t *config, const char *key, const char *val)
   printf (_ ("[CONFIG] %s updated to %s\n"), key, val);
 }
 
+/**
+ * @brief Manages the "quit" command, ensuring proper cleanup and offering to
+ * save the game
+ * @param ctx CLI context.
+ */
+
+static void
+execute_quit (CliContext *ctx)
+{
+  if (ctx->net_manager->current_mode != NET_MODE_NONE)
+    {
+      NetworkManager_Cleanup (ctx->net_manager);
+      ctx->in_main_menu = true;
+      ctx->in_network_match = false;
+      ctx->is_away = false;
+      printf (_ ("\n[NETWORK] Disconnected. Returned to local menu.\n"));
+      return;
+    }
+
+  if (!ctx->in_main_menu && ctx->current_game->undo_stack.top >= 0)
+    {
+      printf (_ ("You are about to quit. Save current game? [y/N]: "));
+      char *ans = readline (">> ");
+
+      if (ans && (ans[0] == 'y' || ans[0] == 'Y'))
+        {
+          char *path = readline (_ ("Enter filename: "));
+          if (path && strlen (path) > 0)
+            {
+              if (save_game (path, ctx->config, ctx->current_game) == 0)
+                printf (_ ("Game saved successfully.\n"));
+              else
+                printf (_ ("[ERROR] Failed to save. Exit cancelled.\n"));
+            }
+          free (path);
+        }
+      free (ans);
+    }
+  ctx->game_running = false;
+  printf (_ ("Goodbye!\n"));
+}
+
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
@@ -444,19 +486,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   if (strcmp (input_buffer, "quit") == 0)
     {
-      if (ctx->net_manager->current_mode != NET_MODE_NONE)
-        {
-
-          NetworkManager_Cleanup (ctx->net_manager);
-          ctx->in_main_menu = true;
-          ctx->in_network_match = false;
-          ctx->is_away = false;
-          printf (_ ("\n[NETWORK] Disconnected. Returned to local menu.\n"));
-        }
-      else
-        {
-          ctx->game_running = false;
-        }
+      execute_quit (ctx);
       return;
     }
   // 3. NETWORK: SERVER STOP
