@@ -570,6 +570,24 @@ undo_move (GameState *state)
   return true;
 }
 
+void
+apply_redo (GameState *state, Move move)
+{
+  if (state == NULL || state->board == NULL)
+    return;
+
+  CellContent moving_queen
+      = state->board[move.queen_src.row][move.queen_src.col];
+  state->board[move.queen_src.row][move.queen_src.col] = CONTENT_EMPTY;
+  state->board[move.queen_dst.row][move.queen_dst.col] = moving_queen;
+  state->board[move.arrow_dst.row][move.arrow_dst.col] = CONTENT_ARROW;
+  state->turn_count++;
+  push_move (&state->undo_stack, move);
+
+  state->current_player
+      = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
+}
+
 bool
 redo_move (GameState *state)
 {
@@ -578,7 +596,7 @@ redo_move (GameState *state)
 
   if (!success)
     return false;
-  apply_move (state, next_move);
+  apply_redo (state, next_move);
 
   return true;
 }
