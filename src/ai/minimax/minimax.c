@@ -35,7 +35,7 @@ static const float TOP_SCORE = 1000000.0f;
 typedef struct
 {
   Move move;
-  int score;
+  double score;
 } ScoredMove;
 
 int
@@ -176,7 +176,7 @@ get_beam_width (int maximizing_player, int current_depth, int max_depth)
 static float
 score_move (BitboardState state, Move move)
 {
-  int8_t center = state.size / 2;
+  int center = state.size / 2;
   int dist_to_center
       = abs (move.queen_dst.row - center) + abs (move.queen_dst.col - center);
 

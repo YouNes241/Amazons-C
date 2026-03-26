@@ -9,6 +9,7 @@
       int *: _check_param_int,                                                \
       unsigned long *: _check_param_ul,                                       \
       bool *: _check_param_bool,                                              \
+      uint32_t *: _check_param_u32i,                                          \
       const char **: _check_param_char) (p, key, target)
 
 typedef struct AI_Interface AI_Interface;
@@ -82,11 +83,20 @@ _check_param_bool (Param p, const char *key, bool *target)
 }
 
 static inline void
-_check_param_u64 (Param p, const char *key, uint64_t *target)
+_check_param_u32i (Param p, const char *key, uint32_t *target)
 {
   if (strcmp (p.key, key) == 0)
     {
-      *target = (uint64_t)strtoull (p.value, NULL, 10);
+      unsigned long long val = strtoull (p.value, NULL, 10);
+
+      if (val > UINT32_MAX)
+        {
+          *target = UINT32_MAX;
+        }
+      else
+        {
+          *target = (uint32_t)val;
+        }
     }
 }
 

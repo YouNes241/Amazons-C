@@ -12,7 +12,7 @@
  */
 typedef struct
 {
-  float exploration_constant;
+  double exploration_constant;
 } UCT_Data;
 
 /**
@@ -36,9 +36,9 @@ uct_select_child (ISelector *self, MCTS_Node *parent)
   UCT_Data *data = (UCT_Data *)self->context;
   MCTS_Node *current = parent->first_child;
   MCTS_Node *best_child = NULL;
-  float best_uct_score = -INFINITY;
-  float parent_score = data->exploration_constant
-                       * sqrtf (logf ((float)parent->visit_count + 1.0f));
+  double best_uct_score = -INFINITY;
+  double parent_score = data->exploration_constant
+                        * sqrt (log ((double)parent->visit_count + 1.0f));
 
   while (current != NULL)
     {
@@ -47,10 +47,12 @@ uct_select_child (ISelector *self, MCTS_Node *parent)
           return current;
         }
 
-      float exploitation = (float)current->score / (float)current->visit_count;
-      float exploration = (parent_score * sqrt (1.0 / (current->visit_count)));
+      double exploitation
+          = (double)current->score / (double)current->visit_count;
+      double exploration
+          = (parent_score * sqrt (1.0 / (current->visit_count)));
 
-      float uct_score = exploitation + exploration;
+      double uct_score = exploitation + exploration;
 
       if (uct_score > best_uct_score)
         {
@@ -77,7 +79,7 @@ static const ISelector_VTable uct_vtable
     = { .select_child = uct_select_child, .clean = uct_clean };
 
 void
-create_select_uct (ISelector *selector, float c)
+create_select_uct (ISelector *selector, double c)
 {
   UCT_Data *data = malloc (sizeof (UCT_Data));
   data->exploration_constant = c;

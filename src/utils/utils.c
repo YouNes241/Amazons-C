@@ -43,7 +43,7 @@ rotl (const uint64_t x, int k)
 }
 
 uint64_t
-next (void)
+next_xoshiro (void)
 {
   const uint64_t result = rotl (s[1] * 5, 7) * 9;
   const uint64_t t = s[1] << 17;
@@ -74,5 +74,5 @@ random_uint (uint64_t limit)
 {
   if (limit == 0)
     return 0;
-  return next () % limit;
+  return next_xoshiro () % limit;
 }

@@ -125,7 +125,7 @@ get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
       raw_score = -raw_score;
     }
   // Simply is 4*(n-1)
-  const float MAX_MOBILITY_DIFF = ((state->size - 1) << 2);
+  const float MAX_MOBILITY_DIFF = (float)((state->size - 1) << 2);
   float win_probability = 0.5f + (raw_score / (2.0f * MAX_MOBILITY_DIFF));
 
   if (win_probability > 1.0f)
@@ -343,7 +343,7 @@ mcts_get_best_move (AI_Interface *self, GameState state)
     data->roots[tid] = alloc_mcts_node (NULL, NULL, &root_state);
     data->roots[tid]->visit_count = 1;
     // Local iteration counter
-    int local_iterations = 0;
+    uint32_t local_iterations = 0;
 
     // Main MCTS Loop
     while (((get_time_ms () - start_time) < data->time_constraint)

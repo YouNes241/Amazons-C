@@ -63,7 +63,7 @@ typedef struct MCTS_Node
 typedef struct MCTS_Data
 {
   uint64_t time_constraint;
-  int max_iterations;
+  uint32_t max_iterations;
   int max_workers;
   ISelector *strategy_select;
 
