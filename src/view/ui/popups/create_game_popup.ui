@@ -25,7 +25,7 @@
 
         <child>
           <object class="GtkEntry" id="target_id_entry">
-            <property name="placeholder-text">ID du joueur (ex: 2)</property>
+            <property name="placeholder-text">Player ID</property>
             <property name="input-purpose">digits</property>
           </object>
         </child>
@@ -36,15 +36,15 @@
             <property name="spacing">10</property>
             <child>
               <object class="GtkLabel">
-                <property name="label">Taille du plateau :</property>
+                <property name="label">Board size :</property>
               </object>
             </child>
             <child>
               <object class="GtkSpinButton" id="board_size_spin">
                 <property name="adjustment">
                   <object class="GtkAdjustment">
-                    <property name="lower">6</property>
-                    <property name="upper">15</property>
+                    <property name="lower">4</property>
+                    <property name="upper">11</property>
                     <property name="value">10</property>
                     <property name="step-increment">1</property>
                   </object>
@@ -63,12 +63,12 @@
             
             <child>
               <object class="GtkButton" id="cancel_btn">
-                <property name="label">Annuler</property>
+                <property name="label">Cancel</property>
               </object>
             </child>
             <child>
               <object class="GtkButton" id="invite_btn">
-                <property name="label">Envoyer l'invitation</property>
+                <property name="label">Send invitation</property>
                 <property name="css-classes">suggested-action</property>
               </object>
             </child>

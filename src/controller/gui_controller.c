@@ -74,6 +74,7 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
 
       clearHighlights (ctx);
       drawBoard (ctx);
+      updateTurnDisplay (ctx);
       ctx->currentPhase = PHASE_MOVE_QUEEN;
 
       if (is_game_over (ctx->gameState, ctx->gameState->current_player))
@@ -117,7 +118,7 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
       if (current_ai_init
           && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
         {
-          g_timeout_add (50, guiAIPlayTurn, ctx);
+          g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
         }
     }
   else
@@ -181,7 +182,7 @@ guiStartNewGame (AppContext *ctx)
   if (current_ai_init
       && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
     {
-      g_timeout_add (50, guiAIPlayTurn, ctx);
+      g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
     }
 }
 
@@ -212,7 +213,7 @@ run_gui_mode (game_config_t *config)
 
   NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
 
-  g_timeout_add (33, gui_network_tick_loop, ctx);
+  g_timeout_add (GUI_NETWORK_DELAY, gui_network_tick_loop, ctx);
 
   runApplication (app, 0, NULL);
 

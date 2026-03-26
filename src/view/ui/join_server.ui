@@ -33,9 +33,9 @@
         
         <child>
           <object class="GtkEntry" id="ip_entry">
-            <property name="placeholder-text">Adresse IP</property>
+            <property name="placeholder-text">IP adress</property>
             <property name="width-request">250</property>
-            <property name="text">127.0.0.1</property>
+            <property name="text"></property>
           </object>
         </child>
 
@@ -43,22 +43,22 @@
           <object class="GtkEntry" id="port_entry">
             <property name="placeholder-text">Port</property>
             <property name="width-request">250</property>
-            <property name="text">12345</property>
+            <property name="text"></property>
           </object>
         </child>
 
         <child>
           <object class="GtkEntry" id="username_entry">
-            <property name="placeholder-text">Pseudo</property>
+            <property name="placeholder-text">Username</property>
             <property name="width-request">250</property>
-            <property name="text">JoueurGUI</property>
+            <property name="text"></property>
             <property name="margin-bottom">20</property>
           </object>
         </child>
         
         <child>
           <object class="GtkButton" id="connect_btn">
-            <property name="label">Se connecter</property>
+            <property name="label">Connect to server</property>
             <property name="width-request">250</property>
             <property name="height-request">50</property>
             <property name="css-classes">pill suggested-action</property>

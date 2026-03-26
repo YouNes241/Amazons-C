@@ -198,6 +198,7 @@ undoButtonClick (GtkButton *button, gpointer user_data)
       ctx->currentPhase = PHASE_MOVE_QUEEN;
       clearHighlights (ctx);
       drawBoard (ctx);
+      updateTurnDisplay (ctx);
     }
 }
 
@@ -221,6 +222,7 @@ redoButtonClick (GtkButton *button, gpointer user_data)
       ctx->currentPhase = PHASE_MOVE_QUEEN;
       clearHighlights (ctx);
       drawBoard (ctx);
+      updateTurnDisplay (ctx);
     }
 }
 

@@ -118,7 +118,13 @@
         <property name="halign">center</property>
         <property name="valign">center</property>
         <property name="vexpand">true</property> 
-        
+        <child>
+          <object class="GtkLabel" id="turn_label">
+            <property name="label"></property>
+            <property name="css-classes">title-2</property>
+            <property name="margin-bottom">15</property>
+          </object>
+        </child>
         <child>
           <object class="GtkGrid" id="board_grid">
             <property name="halign">center</property>

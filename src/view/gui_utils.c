@@ -179,10 +179,21 @@ setupBoard (AppContext *ctx, GtkWidget *boardGrid)
   ctx->gameBoard = malloc (size * size * sizeof (GtkWidget *));
   ctx->currentPhase = PHASE_MOVE_QUEEN;
 
+  bool flipBoard = false;
+
+  if (ctx->isNetworkMatch)
+    {
+      flipBoard = (ctx->selfPlayerColor == PLAYER_BLACK);
+    }
+  else
+    {
+      flipBoard = (ctx->gameConfig->ai_white && !ctx->gameConfig->ai_black);
+    }
+
   for (unsigned int i = 0; i < size * size; i++)
     {
-      unsigned int x = i % size;
-      unsigned int y = i / size;
+      unsigned int logicalX = i % size;
+      unsigned int logicalY = i / size;
 
       GtkWidget *cellBox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
       gtk_widget_set_size_request (cellBox, 80, 80);
@@ -196,15 +207,17 @@ setupBoard (AppContext *ctx, GtkWidget *boardGrid)
 
       g_object_set_data (G_OBJECT (cellBox), "cell_label", label);
 
-      if ((x + y) % 2 == 0)
+      if ((logicalX + logicalY) % 2 == 0)
         gtk_widget_add_css_class (cellBox, "cell-light");
       else
         gtk_widget_add_css_class (cellBox, "cell-dark");
 
       ctx->gameBoard[i] = cellBox;
 
-      g_object_set_data (G_OBJECT (cellBox), "cell_x", GINT_TO_POINTER (x));
-      g_object_set_data (G_OBJECT (cellBox), "cell_y", GINT_TO_POINTER (y));
+      g_object_set_data (G_OBJECT (cellBox), "cell_x",
+                         GINT_TO_POINTER (logicalX));
+      g_object_set_data (G_OBJECT (cellBox), "cell_y",
+                         GINT_TO_POINTER (logicalY));
       g_object_set_data (G_OBJECT (cellBox), "cell_index",
                          GINT_TO_POINTER (i));
 
@@ -224,10 +237,20 @@ setupBoard (AppContext *ctx, GtkWidget *boardGrid)
       g_signal_connect (dropTarget, "drop", G_CALLBACK (onDrop), ctx);
       gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dropTarget));
 
-      gtk_grid_attach (GTK_GRID (boardGrid), cellBox, x, size - 1 - y, 1, 1);
+      int visualX = logicalX;
+      int visualY = size - 1 - logicalY;
+
+      if (flipBoard)
+        {
+          visualX = size - 1 - logicalX;
+          visualY = logicalY;
+        }
+
+      gtk_grid_attach (GTK_GRID (boardGrid), cellBox, visualX, visualY, 1, 1);
     }
 
   drawBoard (ctx);
+  updateTurnDisplay (ctx);
 }
 
 void
@@ -369,4 +392,40 @@ updateGameShortcuts (AppContext *ctx)
                      shortcutController);
   gtk_widget_add_controller (game_box,
                              GTK_EVENT_CONTROLLER (shortcutController));
+}
+
+void
+updateTurnDisplay (AppContext *ctx)
+{
+  if (!ctx || !ctx->mainStack || !ctx->gameState)
+    return;
+
+  GtkWidget *turnLabel = GTK_WIDGET (
+      g_object_get_data (G_OBJECT (ctx->mainStack), "turn_label"));
+  if (!turnLabel)
+    return;
+
+  PlayerColor current = ctx->gameState->current_player;
+
+  if (ctx->isNetworkMatch)
+    {
+      if (current == ctx->selfPlayerColor)
+        gtk_label_set_text (GTK_LABEL (turnLabel), "It is your turn !");
+      else
+        {
+          char *opponentTurnLabel = g_strdup_printf (
+              "%s is playing...",
+              (current == PLAYER_WHITE) ? "White" : "Black");
+
+          gtk_label_set_text (GTK_LABEL (turnLabel), opponentTurnLabel);
+          g_free (opponentTurnLabel);
+        }
+    }
+  else
+    {
+      if (current == PLAYER_WHITE)
+        gtk_label_set_text (GTK_LABEL (turnLabel), "Turn : White");
+      else
+        gtk_label_set_text (GTK_LABEL (turnLabel), "Turn : Black");
+    }
 }

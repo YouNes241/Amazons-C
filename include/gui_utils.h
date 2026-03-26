@@ -54,5 +54,6 @@ void highlightReachableSquares (AppContext *ctx, int srcX, int srcY);
 void setupBoard (AppContext *ctx, GtkWidget *boardGrid);
 void setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx);
 void updateGameShortcuts (AppContext *ctx);
+void updateTurnDisplay (AppContext *ctx);
 
 #endif // GUI_UTILS_H

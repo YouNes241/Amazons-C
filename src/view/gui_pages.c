@@ -283,9 +283,12 @@ createGamePage (AppContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "undo_btn"));
   GtkWidget *redoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "redo_btn"));
+  GtkWidget *turnLabel
+      = GTK_WIDGET (gtk_builder_get_object (builder, "turn_label"));
   GtkWidget *boardGrid
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
 
+  g_object_set_data (G_OBJECT (ctx->mainStack), "turn_label", turnLabel);
   g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
 
   ctx->gameState = NULL;
