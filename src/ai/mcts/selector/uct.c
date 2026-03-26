@@ -1,6 +1,7 @@
 #include "i_selector.h"
 #include "mcts_types.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /**
@@ -47,7 +48,7 @@ uct_select_child (ISelector *self, MCTS_Node *parent)
         }
 
       float exploitation = (float)current->score / (float)current->visit_count;
-      float exploration = (parent_score * sqrt (1 / (current->visit_count)));
+      float exploration = (parent_score * sqrt (1.0 / (current->visit_count)));
 
       float uct_score = exploitation + exploration;
 
