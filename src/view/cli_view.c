@@ -74,20 +74,21 @@ cli_display_main_menu (void)
   printf ("                                                        \n");
   printf ("========================================================\n");
   printf ("\n");
-  printf ("  --- Local Game ---\n");
-  printf ("  new         : Start a new local game\n");
-  printf ("  load [filename]      : Load a saved game\n");
+  printf (_ ("  --- Local Game ---\n"));
+  printf (_ ("  new         : Start a new local game\n"));
+  printf (_ ("  load [filename]      : Load a saved game\n"));
   printf ("\n");
-  printf ("  --- Multiplayer ---\n");
-  printf ("  server start [port]        : Host a new server\n");
-  printf ("  join [IP:Port] [username]  : Connect to a server\n");
+  printf (_ ("  --- Multiplayer ---\n"));
+  printf (_ ("  server start [port]        : Host a new server\n"));
+  printf (_ ("  join [IP:Port] [username]  : Connect to a server\n"));
   printf ("\n");
-  printf ("  --- Playing a Move ---\n");
-  printf ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n");
+  printf (_ ("  --- Playing a Move ---\n"));
+  printf (
+      _ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
   printf ("\n");
-  printf ("  --- Other ---\n");
-  printf ("  help    Show help\n");
-  printf ("  quit    Quit the game\n");
+  printf (_ ("  --- Other ---\n"));
+  printf (_ ("  help    Show help\n"));
+  printf (_ ("  quit    Quit the game\n"));
   printf ("\n");
   printf ("========================================================\n");
 }
