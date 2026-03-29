@@ -27,9 +27,9 @@ typedef struct AI_Interface AI_Interface;
  */
 typedef struct
 {
-  void (*init) (struct AI_Interface *self, ConfigMap *params);
+  void (*init) (AI_Interface *self, const ConfigMap *params);
   void (*clean) (AI_Interface *self);
-  Move (*get_best_move) (AI_Interface *self, GameState state);
+  Move (*get_best_move) (const AI_Interface *self, GameState state);
 } AI_VTable;
 
 /**

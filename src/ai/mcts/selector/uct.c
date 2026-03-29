@@ -31,7 +31,7 @@ typedef struct
  * parameter that controls the balance between exploration and exploitation.
  */
 static MCTS_Node *
-uct_select_child (ISelector *self, MCTS_Node *parent)
+uct_select_child (const ISelector *self, const MCTS_Node *parent)
 {
   UCT_Data *data = (UCT_Data *)self->context;
   MCTS_Node *current = parent->first_child;

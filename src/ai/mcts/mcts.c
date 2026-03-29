@@ -23,7 +23,7 @@ const int DEFAULT_MAX_WORKERS = 1;
  * @return Move Best move found in that iteration
  */
 static Move
-merge_and_get_best (MCTS_Data *data, int num_threads)
+merge_and_get_best (const MCTS_Data *data, int num_threads)
 {
   // TODO : change to use all nodes instead (though, if a node has been
   // explored a lot on one thread, it *should* most likely had been explored
@@ -69,12 +69,12 @@ merge_and_get_best (MCTS_Data *data, int num_threads)
 /**
  * @brief Select a node to expand from the given root node using the provided
  * selection strategy.
- * @param root The root node of the MCTS tree to start selection from.
  * @param selector The selection strategy to use for selecting child nodes.
+ * @param root The root node of the MCTS tree to start selection from.
  * @return The selected MCTS_Node to expand.
  */
 static MCTS_Node *
-select_node (MCTS_Node *root, ISelector *selector)
+select_node (const ISelector *selector, MCTS_Node *root)
 {
   MCTS_Node *node = root;
 
@@ -116,7 +116,8 @@ backpropagate (MCTS_Node *node, float result)
  * @param result The probability of win in that configuration.
  */
 static float
-get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
+get_mcts_win_probability (const BitboardState *state,
+                          bool starting_player_was_white)
 {
   float raw_score = eval_me (state);
 
@@ -144,7 +145,7 @@ get_mcts_win_probability (BitboardState *state, bool starting_player_was_white)
  * @return false
  */
 static inline bool
-is_move_null (Move *m)
+is_move_null (const Move *m)
 {
   return m->queen_src.col == m->queen_dst.col
          && m->queen_src.row == m->queen_dst.row;
@@ -198,13 +199,14 @@ rollout (BitboardState state)
  * @brief Allocates a node in MCTS. It is a bit costly (calloc) : avoid calling
  * it more than necessary.
  *
- * @param parent The parent node.
  * @param move The move to be played. (Can be nulled out)
  * @param current_state The state of the board before the move was played.
+ * @param parent The parent node.
  * @return MCTS_Node* The MCTS node.
  */
 static MCTS_Node *
-alloc_mcts_node (MCTS_Node *parent, Move *move, BitboardState *current_state)
+alloc_mcts_node (const Move *move, const BitboardState *current_state,
+                 MCTS_Node *parent)
 {
   MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
   if (!node)
@@ -259,7 +261,7 @@ expand (MCTS_Node *parent)
   Move next_move = parent->untried_moves[parent->num_untried];
 
   // Create the new child
-  MCTS_Node *new_node = alloc_mcts_node (parent, &next_move, NULL);
+  MCTS_Node *new_node = alloc_mcts_node (&next_move, NULL, parent);
   if (!new_node)
     {
       parent->num_untried++;
@@ -321,7 +323,7 @@ free_mcts_tree (MCTS_Node *node)
  * @return The best Move for the current player based on the MCTS evaluation.
  */
 static Move
-mcts_get_best_move (AI_Interface *self, GameState state)
+mcts_get_best_move (const AI_Interface *self, GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);
@@ -340,7 +342,7 @@ mcts_get_best_move (AI_Interface *self, GameState state)
     int tid = omp_get_thread_num ();
 
     // Each thread creates its own independent root
-    data->roots[tid] = alloc_mcts_node (NULL, NULL, &root_state);
+    data->roots[tid] = alloc_mcts_node (NULL, &root_state, NULL);
     data->roots[tid]->visit_count = 1;
     // Local iteration counter
     uint32_t local_iterations = 0;
@@ -350,7 +352,7 @@ mcts_get_best_move (AI_Interface *self, GameState state)
            && (local_iterations < (data->max_iterations / num_threads)))
       {
         MCTS_Node *picked
-            = select_node (data->roots[tid], data->strategy_select);
+            = select_node (data->strategy_select, data->roots[tid]);
         MCTS_Node *expanded_child = expand (picked);
 
         if (!expanded_child)
@@ -439,7 +441,7 @@ mcts_clean (AI_Interface *self)
  * (default 1).
  */
 static void
-mcts_init (AI_Interface *self, ConfigMap *params)
+mcts_init (AI_Interface *self, const ConfigMap *params)
 {
   MCTS_Data *data = (MCTS_Data *)malloc (sizeof (MCTS_Data));
   if (!data)

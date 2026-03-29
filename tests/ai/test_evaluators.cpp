@@ -189,9 +189,9 @@ TEST (TournamentTest, MinimaxVsMCTS)
 // Symmetry test : a position and its mirror should have the same score
 TEST (EvaluatorTest, SymmetryAllSizes)
 {
-  Evaluator eval_me = get_evaluator_by_name ("me");
-  Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
-  Evaluator eval_rth = get_evaluator_by_name ("rth");
+  Evaluator eval_me = get_evaluator (EVAL_ME);
+  Evaluator eval_qdkd = get_evaluator (EVAL_QD_KD);
+  Evaluator eval_rth = get_evaluator (EVAL_RTH);
 
   for (uint8_t size = 4; size <= 11; size++)
     {
@@ -224,14 +224,14 @@ TEST (EvaluatorTest, MobilityAdvantage)
   bitboard_set_bit (&state.white_queens, 45);
   bitboard_set_bit (&state.black_queens, 0);
 
-  Evaluator eval_me = get_evaluator_by_name ("me");
+  Evaluator eval_me = get_evaluator (EVAL_ME);
 
   EXPECT_GT (eval_me (&state), 0.0f);
 }
 
 TEST (EvaluatorTest, BlackTrappedEverywhere)
 {
-  Evaluator eval_rth = get_evaluator_by_name ("rth");
+  Evaluator eval_rth = get_evaluator (EVAL_RTH);
 
   for (uint8_t size = 4; size <= 11; size++)
     {
@@ -290,7 +290,7 @@ TEST (EvaluatorTest, QDKDWeightedScore)
   bitboard_set_bit (&state.white_queens, 44);
   bitboard_set_bit (&state.black_queens, 0);
 
-  Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
+  Evaluator eval_qdkd = get_evaluator (EVAL_QD_KD);
   float score = eval_qdkd (&state);
 
   EXPECT_GT (score, 0.0f);
@@ -299,9 +299,9 @@ TEST (EvaluatorTest, QDKDWeightedScore)
 // Checks that all evaluators have a score of 0, for any game size.
 TEST (EvaluatorTest, SymmetryRange4to11)
 {
-  Evaluator eval_me = get_evaluator_by_name ("me");
-  Evaluator eval_qdkd = get_evaluator_by_name ("qd&kd");
-  Evaluator eval_rth = get_evaluator_by_name ("rth");
+  Evaluator eval_me = get_evaluator (EVAL_ME);
+  Evaluator eval_qdkd = get_evaluator (EVAL_QD_KD);
+  Evaluator eval_rth = get_evaluator (EVAL_RTH);
 
   for (uint8_t size = 4; size <= 11; size++)
     {

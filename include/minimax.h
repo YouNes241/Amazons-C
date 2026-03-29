@@ -10,13 +10,27 @@
 #include "ai_interface.h"
 #include "evaluator.h"
 
+/**
+ * @struct ScoredMove
+ * @brief Structure used to compact moves with their score.
+ * @var ScoredMove::move
+ * The associated move
+ * @var ScoredMove::score
+ * Score of the move
+ */
+typedef struct
+{
+  Move move;
+  double score;
+} ScoredMove;
+
 // Constants and names
 extern const int DEFAULT_MAX_DEPTH;                   // depth
 extern const int DEFAULT_TIME_LIMIT;                  // time_limit
 extern const bool DEFAULT_FORWARD_PRUNING_ACTIVATION; // forward_pruning
 extern const bool
-    DEFAULT_ITERATIVE_DEEPENING_ACTIVATION; // iterative_deepening
-extern const char *DEFAULT_EVALUATOR;       // evaluator (me, qd&kd, rth)
+    DEFAULT_ITERATIVE_DEEPENING_ACTIVATION;   // iterative_deepening
+extern const EvaluatorType DEFAULT_EVALUATOR; // evaluator (me, qd&kd, rth)
 
 /**
  * @struct Minimax_Data

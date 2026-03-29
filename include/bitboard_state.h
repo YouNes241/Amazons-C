@@ -40,7 +40,7 @@ BitboardState create_empty_state (uint8_t size);
  * @param gs Pointer to the GameState to convert.
  * @return A BitboardState representing the same game state.
  */
-BitboardState sync_from_logic (GameState *gs);
+BitboardState sync_from_logic (const GameState *gs);
 
 /**
  * @brief Applies a given move to a BitboardState, returning the resulting
@@ -49,7 +49,7 @@ BitboardState sync_from_logic (GameState *gs);
  * @param move The Move to apply to the state.
  * @return A new BitboardState reflecting the changes from the move.
  */
-BitboardState apply_move_bitboard (BitboardState *state, Move move);
+BitboardState apply_move_bitboard (const BitboardState *state, Move move);
 
 /**
  * @brief Calculates the maximum number of moves possible in the current board
@@ -59,7 +59,7 @@ BitboardState apply_move_bitboard (BitboardState *state, Move move);
  * @param state The current board state to evaluate.
  * @return Max number of legal moves possibles
  */
-int get_move_limit (BitboardState *state);
+int get_move_limit (const BitboardState *state);
 
 /**
  * @brief Generates all legal moves for the current player in the given
@@ -70,7 +70,7 @@ int get_move_limit (BitboardState *state);
  * an array. Note that this will take a much longer time than is_game_over.
  * @return The total count of legal moves available for the current player.
  */
-int get_legal_moves (BitboardState *state, Move *moves_array);
+int get_legal_moves (const BitboardState *state, Move *moves_array);
 
 /**
  * @brief Prints a visual representation of the game board to standard
@@ -85,7 +85,7 @@ void bitboard_state_print (const BitboardState *state);
  * @param state The current board state to evaluate.
  * @return true if the game is over (no legal moves), false otherwise.
  */
-bool bitboard_state_is_game_over (BitboardState *state);
+bool bitboard_state_is_game_over (const BitboardState *state);
 
-Move get_direct_random_move (BitboardState *state);
+Move get_direct_random_move (const BitboardState *state);
 #endif

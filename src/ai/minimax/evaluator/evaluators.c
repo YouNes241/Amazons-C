@@ -125,7 +125,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
  * the current player has more mobility, negative means less.
  */
 float
-eval_me (BitboardState *state)
+eval_me (const BitboardState *state)
 {
   Bitboard empty = bitboard_masked_not (get_obstacles (state), state->size);
 
@@ -145,7 +145,7 @@ eval_me (BitboardState *state)
  * the current player has better access to squares, negative means worse.
  */
 static float
-eval_rth (BitboardState *state)
+eval_rth (const BitboardState *state)
 {
   int max_moves_nb = state->size * state->size;
   uint8_t dist_white[max_moves_nb];
@@ -277,7 +277,7 @@ get_absolute_territory (Bitboard w_starts, Bitboard b_starts, Bitboard empty,
 }
 
 static float
-eval_qdkd (BitboardState *state)
+eval_qdkd (const BitboardState *state)
 {
   Bitboard obstacles = get_obstacles (state);
 
@@ -296,15 +296,17 @@ eval_qdkd (BitboardState *state)
 }
 
 Evaluator
-get_evaluator_by_name (const char *name)
+get_evaluator (const EvaluatorType name)
 {
-  if (strcmp (name, "rth") == 0)
+  switch (name)
     {
+    case EVAL_ME:
+      return eval_me;
+    case EVAL_RTH:
       return eval_rth;
-    }
-  else if (strcmp (name, "qd&kd") == 0)
-    {
+    case EVAL_QD_KD:
       return eval_qdkd;
+    default:
+      return eval_me; // Default to mobility if unrecognized
     }
-  return eval_me;
 }

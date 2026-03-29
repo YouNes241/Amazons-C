@@ -68,7 +68,7 @@ bitboard_state_print (const BitboardState *state)
 }
 
 BitboardState
-sync_from_logic (GameState *gs)
+sync_from_logic (const GameState *gs)
 {
   BitboardState bs = { 0 };
   bs.size = gs->size;
@@ -105,7 +105,7 @@ sync_from_logic (GameState *gs)
  * @return A new BitboardState with the move applied.
  */
 BitboardState
-apply_move_bitboard (BitboardState *state, Move move)
+apply_move_bitboard (const BitboardState *state, Move move)
 {
   // Init
   BitboardState next = *state;
@@ -145,7 +145,7 @@ apply_move_bitboard (BitboardState *state, Move move)
  * @return Max number of legal moves possibles
  */
 int
-get_move_limit (BitboardState *state)
+get_move_limit (const BitboardState *state)
 {
   int k = bitboard_count_bits (state->white_queens);
   int reach = (state->size - 1) << 2;
@@ -153,7 +153,7 @@ get_move_limit (BitboardState *state)
 }
 
 Bitboard
-bitboard_state_get_occupied_squares (BitboardState *state)
+bitboard_state_get_occupied_squares (const BitboardState *state)
 {
   Bitboard occupied = bitboard_or (state->white_queens, state->black_queens);
   occupied = bitboard_or (occupied, state->arrows);
@@ -161,14 +161,14 @@ bitboard_state_get_occupied_squares (BitboardState *state)
 }
 
 Bitboard
-bitboard_state_get_empty_squares (BitboardState *state)
+bitboard_state_get_empty_squares (const BitboardState *state)
 {
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
   return bitboard_masked_not (occupied, state->size);
 }
 
 Bitboard
-bitboard_state_get_current_queens (BitboardState *state)
+bitboard_state_get_current_queens (const BitboardState *state)
 {
   return (state->white_to_move) ? state->white_queens : state->black_queens;
 }
@@ -180,7 +180,7 @@ bitboard_state_get_current_queens (BitboardState *state)
  * @return true if the game is over (no legal moves), false otherwise.
  */
 bool
-bitboard_state_is_game_over (BitboardState *state)
+bitboard_state_is_game_over (const BitboardState *state)
 {
   // Get the current queens
   Bitboard my_queens = bitboard_state_get_current_queens (state);
@@ -196,7 +196,7 @@ bitboard_state_is_game_over (BitboardState *state)
 }
 
 int
-get_legal_moves (BitboardState *state, Move *moves_array)
+get_legal_moves (const BitboardState *state, Move *moves_array)
 {
   int count = 0;
   int size = state->size;
@@ -240,7 +240,7 @@ get_legal_moves (BitboardState *state, Move *moves_array)
 }
 
 Move
-get_direct_random_move (BitboardState *state)
+get_direct_random_move (const BitboardState *state)
 {
   uint8_t size = (uint8_t)state->size;
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
