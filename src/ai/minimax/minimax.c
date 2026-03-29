@@ -179,8 +179,9 @@ score_move (BitboardState state, Move move)
   int center = state.size / 2;
   int dist_to_center
       = abs (move.queen_dst.row - center) + abs (move.queen_dst.col - center);
+  float jitter = ((float)next_xoshiro () / (float)RAND_MAX) * 0.1f;
 
-  return (float)(20 - dist_to_center);
+  return (float)(20 - dist_to_center) + jitter;
 }
 
 /**
@@ -303,6 +304,11 @@ update_best_move (bool is_maximizing, float score, float *best_score,
           if (best_move)
             *best_move = candidate;
         }
+      else if (score == *best_score && best_move)
+        {
+          if (next_xoshiro () % 2 == 0)
+            *best_move = candidate;
+        }
       *alpha = MAX (*alpha, *best_score);
     }
   else
@@ -311,6 +317,11 @@ update_best_move (bool is_maximizing, float score, float *best_score,
         {
           *best_score = score;
           if (best_move)
+            *best_move = candidate;
+        }
+      else if (score == *best_score && best_move)
+        {
+          if (next_xoshiro () % 2 == 0)
             *best_move = candidate;
         }
       *beta = MIN (*beta, *best_score);
@@ -384,6 +395,14 @@ run_root_search (Minimax_Data *data, BitboardState *state, int depth,
 
   Move available_moves[get_move_limit (state)];
   int count = get_legal_moves (state, available_moves);
+
+  for (int i = count - 1; i > 0; i--)
+    {
+      int j = next_xoshiro () % (i + 1);
+      Move temp = available_moves[i];
+      available_moves[i] = available_moves[j];
+      available_moves[j] = temp;
+    }
 
   for (int i = 0; i < count; i++)
     {
