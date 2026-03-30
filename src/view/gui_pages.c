@@ -308,7 +308,7 @@ createGamePage (AppContext *ctx)
   g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
                     ctx);
   g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoPopupButtonClick),
-                    NULL);
+                    ctx);
   g_signal_connect (configBtn, "clicked", G_CALLBACK (configPopupButtonClick),
                     ctx);
   g_signal_connect (undoBtn, "clicked", G_CALLBACK (undoButtonClick), ctx);
