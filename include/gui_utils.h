@@ -43,17 +43,17 @@ typedef struct
   NetworkManager *networkManager;
   bool isNetworkMatch;
   PlayerColor selfPlayerColor;
-} AppContext;
+} GuiContext;
 
-AppContext *initAppContext (game_config_t *config);
-void freeAppContext (AppContext *ctx);
-void drawPiece (AppContext *ctx, int x, int y, CellContent content);
-void drawBoard (AppContext *ctx);
-void clearHighlights (AppContext *ctx);
-void highlightReachableSquares (AppContext *ctx, int srcX, int srcY);
-void setupBoard (AppContext *ctx, GtkWidget *boardGrid);
-void setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx);
-void updateGameShortcuts (AppContext *ctx);
-void updateTurnDisplay (AppContext *ctx);
+GuiContext *initGuiContext (game_config_t *config);
+void freeGuiContext (GuiContext *ctx);
+void drawPiece (GuiContext *ctx, int x, int y, CellContent content);
+void drawBoard (GuiContext *ctx);
+void clearHighlights (GuiContext *ctx);
+void highlightReachableSquares (GuiContext *ctx, int srcX, int srcY);
+void setupBoard (GuiContext *ctx, GtkWidget *boardGrid);
+void setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx);
+void updateGameShortcuts (GuiContext *ctx);
+void updateTurnDisplay (GuiContext *ctx);
 
 #endif // GUI_UTILS_H

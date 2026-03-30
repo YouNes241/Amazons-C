@@ -4,13 +4,13 @@
 #include "gui_utils.h"
 #include <gtk/gtk.h>
 
-GtkWidget *createMainMenuPage (AppContext *ctx);
-GtkWidget *createSingleplayerMenuPage (AppContext *ctx);
-GtkWidget *createMultiplayerMenuPage (AppContext *ctx);
-GtkWidget *createConfigPage (AppContext *ctx);
-GtkWidget *createInfoPage (AppContext *ctx);
-GtkWidget *createGamePage (AppContext *ctx);
-GtkWidget *createJoinServerPage (AppContext *ctx);
-GtkWidget *createClientPanelPage (AppContext *ctx);
+GtkWidget *createMainMenuPage (GuiContext *ctx);
+GtkWidget *createSingleplayerMenuPage (GuiContext *ctx);
+GtkWidget *createMultiplayerMenuPage (GuiContext *ctx);
+GtkWidget *createConfigPage (GuiContext *ctx);
+GtkWidget *createInfoPage (GuiContext *ctx);
+GtkWidget *createGamePage (GuiContext *ctx);
+GtkWidget *createJoinServerPage (GuiContext *ctx);
+GtkWidget *createClientPanelPage (GuiContext *ctx);
 
 #endif // GUI_PAGES_H

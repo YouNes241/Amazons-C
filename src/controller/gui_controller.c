@@ -14,10 +14,11 @@
 /** @name Forward Declarations
  */
 ///@{
-void guiHandlePlayerMove (AppContext *ctx, Move move);
+void guiHandlePlayerMove (GuiContext *ctx, Move move);
 static gboolean guiAIPlayTurn (gpointer user_data);
 static gboolean gui_network_tick_loop (gpointer user_data);
 static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
+
 ///@}
 
 /** @name Global Variables
@@ -31,36 +32,8 @@ static AI_Interface g_gui_ai_black;
 static bool g_gui_ai_black_initialized = false;
 ///@}
 
-static bool
-is_it_ai_turn (game_config_t *config, PlayerColor current_p)
-{
-  if (current_p == PLAYER_WHITE)
-    return config->ai_white_cfg.enabled;
-  if (current_p == PLAYER_BLACK)
-    return config->ai_black_cfg.enabled;
-  return false;
-}
-
-static gboolean
-guiAIPlayTurn (gpointer user_data)
-{
-  AppContext *ctx = (AppContext *)user_data;
-
-  g_print ("\n[AI] Thinking...\n");
-
-  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-  AI_Interface *current_ai = is_white_turn ? &g_gui_ai_white : &g_gui_ai_black;
-
-  Move ai_move
-      = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));
-
-  guiHandlePlayerMove (ctx, ai_move);
-
-  return G_SOURCE_REMOVE;
-}
-
 void
-guiHandlePlayerMove (AppContext *ctx, Move move)
+guiHandlePlayerMove (GuiContext *ctx, Move move)
 {
   if (is_move_legal (ctx->gameState, move))
     {
@@ -131,7 +104,7 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
 }
 
 void
-guiStartNewGame (AppContext *ctx)
+guiStartNewGame (GuiContext *ctx)
 {
   if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
       && g_gui_ai_white.vtable->clean)
@@ -187,7 +160,7 @@ guiStartNewGame (AppContext *ctx)
 }
 
 void
-guiDisconnectAndRestartNetwork (AppContext *ctx)
+guiDisconnectAndRestartNetwork (GuiContext *ctx)
 {
   if (ctx && ctx->networkManager)
     {
@@ -204,8 +177,8 @@ run_gui_mode (game_config_t *config)
 {
   GtkApplication *app = createApplication (config);
 
-  AppContext *ctx
-      = (AppContext *)g_object_get_data (G_OBJECT (app), "AppContext");
+  GuiContext *ctx
+      = (GuiContext *)g_object_get_data (G_OBJECT (app), "GuiContext");
 
   ctx->networkManager = malloc (sizeof (NetworkManager));
   ctx->isNetworkMatch = false;
@@ -236,16 +209,16 @@ static bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
-    return config->ai_white;
+    return config->ai_white_cfg.enabled;
   if (current_p == PLAYER_BLACK)
-    return config->ai_black;
+    return config->ai_black_cfg.enabled;
   return false;
 }
 
 static gboolean
 gui_network_tick_loop (gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
   if (ctx && ctx->networkManager)
     {
       NetworkManager_Tick (ctx->networkManager);
@@ -259,7 +232,12 @@ guiAIPlayTurn (gpointer user_data)
   AppContext *ctx = (AppContext *)user_data;
 
   g_print ("\n[AI] Thinking...\n");
-  Move ai_move = g_gui_ai.vtable->get_best_move (&g_gui_ai, *(ctx->gameState));
+
+  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
+  AI_Interface *current_ai = is_white_turn ? &g_gui_ai_white : &g_gui_ai_black;
+
+  Move ai_move
+      = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));
 
   guiHandlePlayerMove (ctx, ai_move);
 

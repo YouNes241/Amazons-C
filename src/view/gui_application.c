@@ -23,13 +23,13 @@ createApplication (game_config_t *config)
   g_resources_register (resource);
   g_resource_unref (resource);
 
-  AppContext *ctx = initAppContext (config);
+  GuiContext *ctx = initGuiContext (config);
   GtkApplication *app
       = gtk_application_new ("fr.bordeaux.amazons", G_APPLICATION_NON_UNIQUE);
 
   g_signal_connect (app, "activate", G_CALLBACK (initWindow), ctx);
-  g_object_set_data_full (G_OBJECT (app), "AppContext", ctx,
-                          (GDestroyNotify)freeAppContext);
+  g_object_set_data_full (G_OBJECT (app), "GuiContext", ctx,
+                          (GDestroyNotify)freeGuiContext);
 
   return app;
 }
@@ -48,7 +48,7 @@ runApplication (GtkApplication *app, int argc, char **argv)
 static void
 initWindow (GtkApplication *app, gpointer userData)
 {
-  AppContext *ctx = (AppContext *)userData;
+  GuiContext *ctx = (GuiContext *)userData;
 
   GtkCssProvider *cssProvider = gtk_css_provider_new ();
   gtk_css_provider_load_from_resource (cssProvider, "/amazons/ui/style.css");

@@ -7,7 +7,7 @@
 void
 navigationClick (GtkButton *button, gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
   const char *targetPage
       = (const char *)g_object_get_data (G_OBJECT (button), "target_page");
 
@@ -21,7 +21,7 @@ void
 quitButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx && ctx->mainWindow)
     {
@@ -33,7 +33,7 @@ void
 infoPopupButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/info_popup.ui");
@@ -50,7 +50,7 @@ void
 configPopupButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/config_popup.ui");
@@ -182,7 +182,7 @@ void
 undoButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (!ctx || !ctx->gameState)
     return;
@@ -206,7 +206,7 @@ void
 redoButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (!ctx || !ctx->gameState)
     return;
@@ -229,7 +229,7 @@ redoButtonClick (GtkButton *button, gpointer user_data)
 void
 connectToServerButtonClick (GtkButton *button, gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkEditable *ip_entry
       = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "ip_entry"));
@@ -267,7 +267,7 @@ void
 disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   guiDisconnectAndRestartNetwork (ctx);
 
@@ -281,7 +281,7 @@ void
 createGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/popups/create_game_popup.ui");
@@ -316,7 +316,7 @@ createGameButtonClick (GtkButton *button, gpointer user_data)
 void
 sendInviteButtonClick (GtkButton *button, gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkEditable *target_id_entry = GTK_EDITABLE (
       g_object_get_data (G_OBJECT (button), "target_id_entry"));
@@ -346,7 +346,7 @@ void
 newGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   GtkWidget *boardGrid = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
@@ -366,7 +366,7 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   (void)x;
   (void)y;
 
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN
       || (ctx->isNetworkMatch
@@ -430,7 +430,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   (void)x;
   (void)y;
 
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
     {
@@ -489,7 +489,7 @@ onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
   (void)source;
   (void)drag;
   (void)delete_data;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx->currentPhase == PHASE_MOVE_QUEEN)
     {
@@ -501,7 +501,7 @@ onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
 void
 fireArrow (GtkWidget *button, gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx->currentPhase != PHASE_SHOOT_ARROW
       || (ctx->isNetworkMatch
@@ -549,7 +549,7 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
   (void)n_press;
   (void)x;
   (void)y;
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -589,7 +589,7 @@ void
 updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->verbose
+  ((GuiContext *)user_data)->gameConfig->verbose
       = gtk_switch_get_active (widget);
 }
 
@@ -597,21 +597,21 @@ void
 updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->blitz_mode
+  ((GuiContext *)user_data)->gameConfig->blitz_mode
       = gtk_switch_get_active (widget);
 }
 
 void
 updateConfigTimeout (GtkSpinButton *spin_button, gpointer user_data)
 {
-  ((AppContext *)user_data)->gameConfig->time_per_player
+  ((GuiContext *)user_data)->gameConfig->time_per_player
       = gtk_spin_button_get_value_as_int (spin_button);
 }
 
 void
 updateConfigBoardSize (GtkSpinButton *spin_button, gpointer user_data)
 {
-  ((AppContext *)user_data)->gameConfig->board_size
+  ((GuiContext *)user_data)->gameConfig->board_size
       = gtk_spin_button_get_value_as_int (spin_button);
 }
 
@@ -619,7 +619,7 @@ void
 updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->ai_white
+  ((GuiContext *)user_data)->gameConfig->ai_white
       = gtk_switch_get_active (widget);
 }
 
@@ -627,7 +627,7 @@ void
 updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->ai_black
+  ((GuiContext *)user_data)->gameConfig->ai_black
       = gtk_switch_get_active (widget);
 }
 
@@ -639,7 +639,7 @@ updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
   guint active = gtk_drop_down_get_selected (GTK_DROP_DOWN (object));
   if (active == 0 || active == 1)
     {
-      ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
+      ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
     }
 }
 #else
@@ -649,7 +649,7 @@ updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
   int active = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
   if (active == 0 || active == 1)
     {
-      ((AppContext *)user_data)->gameConfig->language = (lang_t)active;
+      ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
     }
 }
 #endif

@@ -11,10 +11,10 @@ static gboolean bindingKeyPressed (GtkEventControllerKey *controller,
                                    guint keyval, guint keycode,
                                    GdkModifierType state, gpointer user_data);
 
-AppContext *
-initAppContext (game_config_t *config)
+GuiContext *
+initGuiContext (game_config_t *config)
 {
-  AppContext *ctx = malloc (sizeof (AppContext));
+  GuiContext *ctx = malloc (sizeof (GuiContext));
   assert (ctx);
 
   ctx->gameConfig = config;
@@ -42,7 +42,7 @@ initAppContext (game_config_t *config)
 }
 
 void
-freeAppContext (AppContext *ctx)
+freeGuiContext (GuiContext *ctx)
 {
   assert (ctx);
 
@@ -54,7 +54,7 @@ freeAppContext (AppContext *ctx)
 }
 
 void
-drawPiece (AppContext *ctx, int x, int y, CellContent content)
+drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 {
   int size = ctx->gameState->size;
   int index = y * size + x;
@@ -91,7 +91,7 @@ drawPiece (AppContext *ctx, int x, int y, CellContent content)
 }
 
 void
-drawBoard (AppContext *ctx)
+drawBoard (GuiContext *ctx)
 {
   int size = ctx->gameState->size;
 
@@ -105,7 +105,7 @@ drawBoard (AppContext *ctx)
 }
 
 void
-clearHighlights (AppContext *ctx)
+clearHighlights (GuiContext *ctx)
 {
   int size = ctx->gameState->size;
   for (int i = 0; i < size * size; i++)
@@ -117,7 +117,7 @@ clearHighlights (AppContext *ctx)
 }
 
 void
-highlightReachableSquares (AppContext *ctx, int srcX, int srcY)
+highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 {
   clearHighlights (ctx);
 
@@ -148,7 +148,7 @@ highlightReachableSquares (AppContext *ctx, int srcX, int srcY)
 }
 
 void
-setupBoard (AppContext *ctx, GtkWidget *boardGrid)
+setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 {
   int size = ctx->gameConfig->board_size;
 
@@ -254,7 +254,7 @@ setupBoard (AppContext *ctx, GtkWidget *boardGrid)
 }
 
 void
-setupBindingButton (GtkWidget *btn, char *target_str, AppContext *ctx)
+setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx)
 {
   if (!btn)
     return;
@@ -324,7 +324,7 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
 
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), FALSE);
 
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
   if (ctx)
     {
       updateGameShortcuts (ctx);
@@ -334,7 +334,7 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
 }
 
 void
-updateGameShortcuts (AppContext *ctx)
+updateGameShortcuts (GuiContext *ctx)
 {
   if (!ctx || !ctx->mainStack)
     return;
@@ -395,7 +395,7 @@ updateGameShortcuts (AppContext *ctx)
 }
 
 void
-updateTurnDisplay (AppContext *ctx)
+updateTurnDisplay (GuiContext *ctx)
 {
   if (!ctx || !ctx->mainStack || !ctx->gameState)
     return;

@@ -3,7 +3,7 @@
 #include <gtk/gtk.h>
 
 GtkWidget *
-createMainMenuPage (AppContext *ctx)
+createMainMenuPage (GuiContext *ctx)
 {
   GtkBuilder *builder;
   GtkWidget *box;
@@ -46,7 +46,7 @@ createMainMenuPage (AppContext *ctx)
 }
 
 GtkWidget *
-createSingleplayerMenuPage (AppContext *ctx)
+createSingleplayerMenuPage (GuiContext *ctx)
 {
   GtkBuilder *builder;
   GtkWidget *box;
@@ -72,7 +72,7 @@ createSingleplayerMenuPage (AppContext *ctx)
 }
 
 GtkWidget *
-createMultiplayerMenuPage (AppContext *ctx)
+createMultiplayerMenuPage (GuiContext *ctx)
 {
   GtkBuilder *builder;
   GtkWidget *box;
@@ -105,7 +105,7 @@ createMultiplayerMenuPage (AppContext *ctx)
 }
 
 GtkWidget *
-createConfigPage (AppContext *ctx)
+createConfigPage (GuiContext *ctx)
 {
   GtkBuilder *builder;
   GtkWidget *box;
@@ -243,7 +243,7 @@ createConfigPage (AppContext *ctx)
 }
 
 GtkWidget *
-createInfoPage (AppContext *ctx)
+createInfoPage (GuiContext *ctx)
 {
   GtkBuilder *builder;
   GtkWidget *box;
@@ -264,7 +264,7 @@ createInfoPage (AppContext *ctx)
 }
 
 GtkWidget *
-createGamePage (AppContext *ctx)
+createGamePage (GuiContext *ctx)
 {
   GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
   GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
@@ -323,7 +323,7 @@ createGamePage (AppContext *ctx)
 }
 
 GtkWidget *
-createJoinServerPage (AppContext *ctx)
+createJoinServerPage (GuiContext *ctx)
 {
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/join_server.ui");
@@ -358,7 +358,7 @@ createJoinServerPage (AppContext *ctx)
 }
 
 GtkWidget *
-createClientPanelPage (AppContext *ctx)
+createClientPanelPage (GuiContext *ctx)
 {
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/client_panel.ui");

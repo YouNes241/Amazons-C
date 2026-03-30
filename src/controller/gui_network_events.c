@@ -3,7 +3,7 @@
 #include "gui_utils.h"
 #include <stdio.h>
 
-static AppContext *g_gui_net_ctx = NULL;
+static GuiContext *g_gui_net_ctx = NULL;
 
 static void on_gui_game_started (PlayerColor color, int board_size);
 static void on_gui_move_received (Move m);
@@ -11,7 +11,7 @@ static void on_gui_invitation_received (/*int challenger_id*/);
 static void on_gui_player_disconnected (/*const char *reason*/);
 
 NetworkEvents
-create_gui_network_events (AppContext *ctx)
+create_gui_network_events (GuiContext *ctx)
 {
   g_gui_net_ctx = ctx;
   NetworkEvents events = { 0 };
