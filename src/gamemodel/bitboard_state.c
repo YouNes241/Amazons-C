@@ -198,19 +198,21 @@ bitboard_state_is_game_over (const BitboardState *state)
 int
 get_legal_moves (const BitboardState *state, Move *moves_array)
 {
+  if (moves_array == NULL)
+    return 0;
   int count = 0;
   int size = state->size;
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
   Bitboard my_queens = bitboard_state_get_current_queens (state);
 
-  while (bitboard_count_bits (my_queens) != 0)
+  while (!bitboard_is_zero (my_queens) != 0)
     {
       int q_from = pop_lsb (&my_queens);
 
       Bitboard queen_destinations
           = bitboard_get_reachable (q_from, occupied, size);
 
-      while (bitboard_count_bits (queen_destinations) != 0)
+      while (!bitboard_is_zero (queen_destinations))
         {
           int q_to = pop_lsb (&queen_destinations);
 
@@ -221,17 +223,14 @@ get_legal_moves (const BitboardState *state, Move *moves_array)
           Bitboard arrow_destinations
               = bitboard_get_reachable (q_to, arrow_occupied, size);
 
-          while (bitboard_count_bits (arrow_destinations) != 0)
+          while (!bitboard_is_zero (arrow_destinations))
             {
               int arrow_to = pop_lsb (&arrow_destinations);
 
-              if (moves_array != NULL)
-                {
-                  moves_array[count]
-                      = (Move){ .queen_src = idx_to_pos (q_from, size),
-                                .queen_dst = idx_to_pos (q_to, size),
-                                .arrow_dst = idx_to_pos (arrow_to, size) };
-                }
+              moves_array[count]
+                  = (Move){ .queen_src = idx_to_pos (q_from, size),
+                            .queen_dst = idx_to_pos (q_to, size),
+                            .arrow_dst = idx_to_pos (arrow_to, size) };
               count++;
             }
         }

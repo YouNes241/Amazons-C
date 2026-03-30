@@ -192,17 +192,24 @@ get_beam_width (int maximizing_player, int current_depth, int max_depth)
  * @return Score
  */
 static inline float
-score_move (BitboardState state, Move move)
+score_move (const BitboardState *state, Move move)
 {
-  // TODO : try to fix, this evaluation is not efficient
-  int center = state.size / 2;
-  int dist_to_center
-      = abs (move.queen_dst.row - center) + abs (move.queen_dst.col - center);
+  // Instead of a heavy slide, we just look at the Queen's target square.
+  // We check how many empty squares are immediately touching it (Vision).
+  uint8_t size = state->size;
+  uint8_t target_idx = move.queen_dst.row * size + move.queen_dst.col;
 
-  float base_score = (float)(20 - dist_to_center);
-  float randomness = (float)(next_xoshiro () % 101) / 100.0f;
+  // Existing bitboard function to get obstacles
+  Bitboard occupied = bitboard_or (
+      bitboard_or (state->white_queens, state->black_queens), state->arrows);
 
-  return base_score + randomness;
+  // bitboard_get_reachable is already in your project.
+  // We use it here on ONLY the target square to see immediate mobility.
+  Bitboard reachable = bitboard_get_reachable (target_idx, occupied, size);
+
+  // Return the count of reachable squares from that spot.
+  // bitboard_count_bits is already in your project.
+  return (float)bitboard_count_bits (reachable);
 }
 
 /**
@@ -225,11 +232,10 @@ pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
   int best_count = 0;
   for (int i = 0; i < count; i++)
     {
-      float score = score_move (*state, raw_moves[i]);
-      bool qualify
-          = (best_count < limit) || (score > best_moves[best_count - 1].score);
+      // Use the fast scorer instead of the heavy eval_me
+      float score = score_move (state, raw_moves[i]);
 
-      if (qualify)
+      if (best_count < limit || score > best_moves[best_count - 1].score)
         {
           if (best_count < limit)
             best_count++;
