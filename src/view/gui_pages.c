@@ -364,6 +364,13 @@ createClientPanelPage (AppContext *ctx)
       = gtk_builder_new_from_resource ("/amazons/ui/client_panel.ui");
   GtkWidget *box
       = GTK_WIDGET (gtk_builder_get_object (builder, "client_panel_box"));
+  GtkWidget *titleLabel
+      = GTK_WIDGET (gtk_builder_get_object (builder, "lobby_title_label"));
+  if (titleLabel && ctx->mainStack)
+    {
+      g_object_set_data (G_OBJECT (ctx->mainStack), "lobby_title_label",
+                         titleLabel);
+    }
 
   GtkWidget *disconnectBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "disconnect_btn"));

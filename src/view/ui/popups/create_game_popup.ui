@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <object class="GtkWindow" id="create_game_window">
-    <property name="title">Créer une partie</property>
+    <property name="title">Create game</property>
     <property name="modal">true</property>
     <property name="default-width">300</property>
     <property name="resizable">false</property>
@@ -17,7 +17,7 @@
         
         <child>
           <object class="GtkLabel">
-            <property name="label">INVITER UN JOUEUR</property>
+            <property name="label">Invite a player</property>
             <property name="css-classes">title-2</property>
             <property name="margin-bottom">10</property>
           </object>

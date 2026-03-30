@@ -250,6 +250,13 @@ connectToServerButtonClick (GtkButton *button, gpointer user_data)
 
       if (ctx->mainStack != NULL)
         {
+          GtkWidget *titleLabel = GTK_WIDGET (g_object_get_data (
+              G_OBJECT (ctx->mainStack), "lobby_title_label"));
+          if (titleLabel)
+            {
+              char *titleText = g_strdup_printf ("%s", username_str);
+              gtk_label_set_text (GTK_LABEL (titleLabel), titleText);
+            }
           gtk_stack_set_visible_child_name (ctx->mainStack,
                                             "client_panel_page");
         }

@@ -17,7 +17,7 @@
     </child>
 
     <child>
-      <object class="GtkLabel">
+      <object class="GtkLabel" id="lobby_title_label">
         <property name="label">CLIENT_PANEL</property>
         <property name="css-classes">title-1</property>
         <property name="margin-bottom">30</property>
