@@ -176,7 +176,7 @@ TEST (TournamentTest, MinimaxVsMCTS)
   seed_xoshiro (time (NULL));
 
   // Play two games (swap sides to ensure fairness)
-  GameResult r1 = play_match (&mcts, &minimax2, 10); // Minimax as White
+  GameResult r1 = play_match (&minimax2, &mcts, 10); // Minimax as White
 
   printf ("Match 1 (Mini-W vs MCTS-B): Winner AI %d in %d turns\n", r1.winner,
           r1.turns);
