@@ -111,6 +111,8 @@ clearHighlights (GuiContext *ctx)
   for (int i = 0; i < size * size; i++)
     {
       gtk_widget_remove_css_class (ctx->gameBoard[i], "highlight-valid");
+      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-queen");
+      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-arrow");
       g_object_set_data (G_OBJECT (ctx->gameBoard[i]), "is_legal_move",
                          GINT_TO_POINTER (0));
     }
@@ -369,7 +371,7 @@ updateGameShortcuts (GuiContext *ctx)
                     { ctx->keyBindings.key_undo, shortcutUndo },
                     { ctx->keyBindings.key_redo, shortcutRedo },
                     { ctx->keyBindings.key_pause, shortcutDummy },
-                    { ctx->keyBindings.key_hint, shortcutDummy } };
+                    { ctx->keyBindings.key_hint, shortcutHint } };
 
   for (int i = 0; i < SHORTCUTS_COUNT; i++)
     {
@@ -428,4 +430,24 @@ updateTurnDisplay (GuiContext *ctx)
       else
         gtk_label_set_text (GTK_LABEL (turnLabel), "Turn : Black");
     }
+}
+
+void
+showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
+                 Position a_dst)
+{
+  if (!ctx || !ctx->gameBoard || !ctx->gameState)
+    return;
+
+  int size = ctx->gameState->size;
+
+  clearHighlights (ctx);
+
+  int src_idx = q_src.row * size + q_src.col;
+  int dst_idx = q_dst.row * size + q_dst.col;
+  int arr_idx = a_dst.row * size + a_dst.col;
+
+  gtk_widget_add_css_class (ctx->gameBoard[src_idx], "hint-queen");
+  gtk_widget_add_css_class (ctx->gameBoard[dst_idx], "hint-queen");
+  gtk_widget_add_css_class (ctx->gameBoard[arr_idx], "hint-arrow");
 }

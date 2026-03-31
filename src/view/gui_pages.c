@@ -287,6 +287,8 @@ createGamePage (GuiContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "undo_btn"));
   GtkWidget *redoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "redo_btn"));
+  GtkWidget *hintBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "hint_btn"));
   GtkWidget *turnLabel
       = GTK_WIDGET (gtk_builder_get_object (builder, "turn_label"));
   GtkWidget *boardGrid
@@ -319,6 +321,7 @@ createGamePage (GuiContext *ctx)
                     ctx);
   g_signal_connect (undoBtn, "clicked", G_CALLBACK (undoButtonClick), ctx);
   g_signal_connect (redoBtn, "clicked", G_CALLBACK (redoButtonClick), ctx);
+  g_signal_connect (hintBtn, "clicked", G_CALLBACK (hintButtonClick), ctx);
 
   updateGameShortcuts (ctx);
 

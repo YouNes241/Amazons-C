@@ -55,5 +55,7 @@ void setupBoard (GuiContext *ctx, GtkWidget *boardGrid);
 void setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx);
 void updateGameShortcuts (GuiContext *ctx);
 void updateTurnDisplay (GuiContext *ctx);
+void showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
+                      Position a_dst);
 
 #endif // GUI_UTILS_H

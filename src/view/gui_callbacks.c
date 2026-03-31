@@ -1,4 +1,5 @@
 #include "gui_callbacks.h"
+#include "ai_factory.h"
 #include "game_engine.h"
 #include "gui_controller.h"
 #include <save.h>
@@ -225,6 +226,45 @@ redoButtonClick (GtkButton *button, gpointer user_data)
       drawBoard (ctx);
       updateTurnDisplay (ctx);
     }
+}
+
+void
+hintButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    {
+      g_print ("[ERROR] No game in progress to get advice.\n");
+      return;
+    }
+
+  if (ctx->currentPhase != PHASE_MOVE_QUEEN)
+    {
+      g_print ("[INFO] Finish your current move first.\n");
+      return;
+    }
+
+  ConfigMap empty_params = { NULL, 0 };
+  AI_Interface hint_ai = create_ai ("minimax", empty_params);
+
+  if (hint_ai.vtable == NULL)
+    {
+      g_print ("[GUI ERROR] Failed to load the advice engine.\n");
+      return;
+    }
+
+  g_print ("[AI] Initializing advice engine...\n");
+
+  Move move = hint_ai.vtable->get_best_move (&hint_ai, *(ctx->gameState));
+
+  if (hint_ai.vtable->clean)
+    {
+      hint_ai.vtable->clean (&hint_ai);
+    }
+
+  showHintOnBoard (ctx, move.queen_src, move.queen_dst, move.arrow_dst);
 }
 
 void
@@ -932,6 +972,15 @@ shortcutLoadGame (GtkWidget *widget, GVariant *args, gpointer user_data)
   (void)widget;
   (void)args;
   loadButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+gboolean
+shortcutHint (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  hintButtonClick (NULL, user_data);
   return TRUE;
 }
 

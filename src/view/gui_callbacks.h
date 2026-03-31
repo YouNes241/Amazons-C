@@ -10,6 +10,7 @@ void infoPopupButtonClick (GtkButton *button, gpointer user_data);
 void configPopupButtonClick (GtkButton *button, gpointer user_data);
 void undoButtonClick (GtkButton *button, gpointer user_data);
 void redoButtonClick (GtkButton *button, gpointer user_data);
+void hintButtonClick (GtkButton *button, gpointer user_data);
 void connectToServerButtonClick (GtkButton *button, gpointer user_data);
 void disconnectFromServerButtonClick (GtkButton *button, gpointer user_data);
 void createGameButtonClick (GtkButton *button, gpointer user_data);
@@ -67,6 +68,7 @@ gboolean shortcutSaveGame (GtkWidget *widget, GVariant *args,
                            gpointer user_data);
 gboolean shortcutLoadGame (GtkWidget *widget, GVariant *args,
                            gpointer user_data);
+gboolean shortcutHint (GtkWidget *widget, GVariant *args, gpointer user_data);
 gboolean shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data);
 
 #endif // GUI_CALLBACKS_H
