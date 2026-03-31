@@ -12,6 +12,7 @@
 #define NETWORK_COMMON_H
 
 #include "game_types.h"
+#include "i18n.h"
 #include <stddef.h>
 
 /* ==========================================================================
@@ -241,7 +242,7 @@ int NetworkManager_SendBack (NetworkManager *manager);
  * @details This function sends a cancel message to the specified client over
  * the network.
  */
-int NetworkManager_SendCancel (NetworkManager *manager, int target_id);
+int NetworkManager_SendCancel (NetworkManager *manager);
 
 /** @brief Send a ping message to the server.
  *  @param manager Pointer to the network manager.

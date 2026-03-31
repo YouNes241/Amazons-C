@@ -36,8 +36,8 @@ on_game_started (PlayerColor color, int board_size)
   g_net_ctx->current_game->size = board_size;
   game_init (g_net_ctx->current_game);
 
-  printf ("\n[GAME] The game begins! You play the %s.\n",
-          (color == PLAYER_WHITE) ? "White" : "Black");
+  printf (_ ("\n[GAME] The game begins! You play the %s.\n"),
+          (color == PLAYER_WHITE) ? _ ("White") : _ ("Black"));
   refresh_prompt (g_net_ctx);
 }
 
@@ -50,7 +50,7 @@ on_network_move_received (Move m)
     {
       printf ("\n");
       apply_move (g_net_ctx->current_game, m);
-      printf ("[NETWORK] The opponent played !\n");
+      printf (_ ("[NETWORK] The opponent played !\n"));
 
       // Reset the timer because it's our turn now
 
@@ -70,8 +70,9 @@ on_network_timeout_received ()
 {
   if (!g_net_ctx)
     return;
-  printf ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
-          "turn to play!.\n");
+  printf (
+      _ ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
+         "turn to play!.\n"));
 
   // 1. We are changing the current player locally
   g_net_ctx->current_game->current_player
@@ -107,18 +108,18 @@ on_player_disconnected (const char *reason)
 
       g_net_ctx->in_network_match = false;
       g_net_ctx->in_main_menu = true;
+      g_net_ctx->is_away = false;
 
       if (reason && strlen (reason) > 0)
         {
-          printf ("\n[SYSTEM] Connection lost: %s\n", reason);
+          printf (_ ("\n[SYSTEM] Connection lost: %s\n"), reason);
         }
     }
   else
     {
       if (g_net_ctx->in_network_match)
         {
-          printf (
-              "\n[LOBBY] Your opponent disconnected. Returning to LOBBY.\n");
+          printf (_ ("\n[LOBBY] %s\n"), reason);
         }
       g_net_ctx->in_network_match = false;
     }
@@ -131,7 +132,7 @@ on_game_error (const char *err)
 
   if (!g_net_ctx)
     return;
-  printf ("\n[SERVER ERROR] %s\n", err ? err : "Unknown error");
+  printf (_ ("\n[SERVER ERROR] %s\n"), err ? err : "Unknown error");
   refresh_prompt (g_net_ctx);
 }
 
@@ -140,8 +141,8 @@ on_invitation_received (int challenger_id)
 {
   if (!g_net_ctx)
     return;
-  printf ("\n[LOBBY] Player %d invited you to a game!\n", challenger_id);
-  printf ("Type 'accept' to play, or 'decline' to refuse.\n");
+  printf (_ ("\n[LOBBY] Player %d invited you to a game!\n"), challenger_id);
+  printf (_ ("Type 'accept' to play, or 'decline' to refuse.\n"));
   refresh_prompt (g_net_ctx);
 }
 static void
@@ -152,7 +153,7 @@ on_invitation_declined (const char *message)
   if (!g_net_ctx)
     return;
 
-  printf ("\n[LOBBY] %s\n",
+  printf (_ ("\n[LOBBY] %s\n"),
 
           message); // Affichera: [LOBBY] Invitation declined.
 
@@ -164,7 +165,7 @@ on_list_received (const char *list_text)
 {
   if (!g_net_ctx)
     return;
-  printf ("\n=== LOBBY ===\n%s\n===============\n", list_text);
+  printf (_ ("\n=== LOBBY ===\n%s\n===============\n"), list_text);
   refresh_prompt (g_net_ctx);
 }
 

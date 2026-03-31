@@ -2,6 +2,7 @@
 #define CLI_VIEW_H
 
 #include "game_types.h"
+#include "i18n.h"
 
 /**
  * @brief Efface l'écran du terminal

@@ -18,6 +18,8 @@
 
 // Command lengths (for strncmp)
 #define POS_STRING_MAX_LEN 6
+#define MAX_KEY_LEN 64
+#define MAX_VAL_LEN 64
 #define CMD_LEN_HELP 4
 #define CMD_LEN_DETAILS 7
 #define CMD_LEN_SERVER_START 12
@@ -31,6 +33,8 @@
 #define CMD_LEN_INVITE 7
 #define CMD_LEN_ACCEPT 7
 #define CMD_LEN_DECLINE 8
+#define CMD_LEN_QUIT 4
+#define CMD_LEN_SET 3
 #define CMD_SPACE_OFFSET                                                      \
   1 // Indentation to ignore the space after a command (e.g., "join")
 

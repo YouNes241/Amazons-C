@@ -17,6 +17,7 @@
 #include "cli_view.h"
 #include "controller.h"
 #include "game_engine.h"
+#include "i18n.h"
 #include "input.h"
 #include "network_common.h"
 #include <poll.h>
@@ -26,11 +27,14 @@
 #include <time.h>
 #include <unistd.h>
 
-/* ---Static variables (Global game context) --- */
-
-static CliContext *g_cli_ctx = NULL;
-
-static bool
+#ifdef UNIT_TESTING
+#define TEST_STATIC
+#else
+#define TEST_STATIC static
+#endif
+/* --- Variables globales --- */
+TEST_STATIC CliContext *g_cli_ctx = NULL;
+TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
@@ -44,8 +48,7 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
    LINEHANDLER (Readline)
    ==========================================================================
  */
-
-static void
+TEST_STATIC void
 linehandler (char *line)
 {
   if (line == NULL || !g_cli_ctx)
@@ -92,7 +95,7 @@ run_interactive_mode (game_config_t *config)
   game_init (&current_game);
 
   NetworkManager net_manager;
-  CliContext *ctx = calloc (1, sizeof (CliContext));
+  CliContext *ctx = (CliContext *)calloc (1, sizeof (CliContext));
   if (!ctx)
     {
       fprintf (stderr, "Failed to allocate memory for CLI context.\n");
@@ -123,13 +126,13 @@ run_interactive_mode (game_config_t *config)
           == 0)
         {
           ctx->in_main_menu = false; // On passe en mode Lobby
-          printf (
-              "[INFO] Server started directly from command line on port %d.\n",
-              config->server_port);
+          printf (_ ("[INFO] Server started directly from command line on "
+                     "port %d.\n"),
+                  config->server_port);
         }
       else
         {
-          printf ("[ERROR] Failed to start server from command line.\n");
+          printf (_ ("[ERROR] Failed to start server from command line.\n"));
           ctx->in_main_menu = true;
           cli_display_main_menu ();
         }
@@ -161,13 +164,13 @@ run_interactive_mode (game_config_t *config)
         {
           cli_display_board (ctx->current_game);
           PlayerColor winner = get_winner (ctx->current_game);
-          printf ("\n GAME OVER ! \n");
-          printf ("Player %s is blocked.\n",
+          printf (_ ("\n GAME OVER ! \n"));
+          printf (_ ("Player %s is blocked.\n"),
                   (ctx->current_game->current_player == PLAYER_WHITE
-                       ? "White"
-                       : "Black"));
-          printf ("Victory of the %s !\n",
-                  (winner == PLAYER_WHITE ? "Whites" : "Blacks"));
+                       ? _ ("White")
+                       : _ ("Black")));
+          printf (_ ("Victory of the %s !\n"),
+                  (winner == PLAYER_WHITE ? _ ("Whites") : _ ("Blacks")));
 
           if (ctx->net_manager->current_mode != NET_MODE_NONE)
             {
@@ -176,7 +179,7 @@ run_interactive_mode (game_config_t *config)
               NetworkManager_SendGameOver (ctx->net_manager, i_won);
               ctx->in_network_match = false;
               game_init (ctx->current_game);
-              printf ("\n[LOBBY] Match ended. Returning to Lobby.\n");
+              printf (_ ("\n[LOBBY] Match ended. Returning to Lobby.\n"));
               refresh_prompt (ctx);
             }
           else
@@ -206,7 +209,7 @@ run_interactive_mode (game_config_t *config)
 
           if (allowed_to_play)
             {
-              printf ("\n[AI] Thinking...\n");
+              printf (_ ("\n[AI] Thinking...\n"));
               Move ai_move = ctx->ai.vtable->get_best_move (
                   &ctx->ai, *ctx->current_game);
 
@@ -227,9 +230,9 @@ run_interactive_mode (game_config_t *config)
                 }
               else
                 {
-                  printf ("\n[ERROR] AI suggested an illegal move or is "
-                          "blocked.\n");
-                  printf ("Game ended.\n");
+                  printf (_ ("\n[ERROR] AI suggested an illegal move or is "
+                             "blocked.\n"));
+                  printf (_ ("Game ended.\n"));
                   ctx->game_running = false;
                 }
             }
@@ -244,8 +247,8 @@ run_interactive_mode (game_config_t *config)
           if (difftime (now, ctx->turn_start_time) >= ctx->timeout_limit
               && !ctx->timeout_sent)
             {
-              printf ("\n[TIMEOUT] Time's up! Passing the turn to your "
-                      "adversary..\n");
+              printf (_ ("\n[TIMEOUT] Time's up! Passing the turn to your "
+                         "adversary..\n"));
 
               // Turn switch
               ctx->current_game->current_player

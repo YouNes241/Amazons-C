@@ -40,13 +40,20 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
           if (i != client_index && ctx->fds[i].fd != INVALID_SOCKET
               && ctx->clients[i].game_id == game_id)
             {
+
+              NetworkManager_UpdatePlayerStats (ctx->clients[i].username,
+                                                true);
+              NetworkManager_UpdatePlayerStats (
+                  ctx->clients[client_index].username, false);
+
               // we send him back to the lobby
               ctx->clients[i].status = CLIENT_STATUS_IDLE;
               ctx->clients[i].game_id = NO_GAME_ID;
 
               Packet pkt;
               pkt.type = S2C_OPPONENT_LEFT;
-              strncpy (pkt.payload, "Opponent disconnected.",
+              strncpy (pkt.payload,
+                       _ ("Opponent disconnected. You win by forfeit!"),
                        MAX_PAYLOAD_SIZE - 1);
               char out_buf[MAX_FORMATTED_PKT_SIZE];
               if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
@@ -65,7 +72,7 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
   ctx->num_clients--;
 
   if (manager->callbacks.OnPlayerDisconnected)
-    manager->callbacks.OnPlayerDisconnected ("Network disconnection");
+    manager->callbacks.OnPlayerDisconnected (_ ("Network disconnection"));
 }
 
 /** @brief Processes all complete packets extracted from a TCP buffer.
@@ -79,8 +86,9 @@ process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
 {
   char extracted_msg[RECV_TEMP_BUFFER_SIZE];
   int res;
-  const char *log_prefix
-      = (manager->current_mode == NET_MODE_SERVER) ? "[SERVER]" : "[CLIENT]";
+  const char *log_prefix = (manager->current_mode == NET_MODE_SERVER)
+                               ? _ ("[SERVER]")
+                               : "[CLIENT]";
 
   while ((res = tcp_buffer_extract_line (buffer, extracted_msg,
                                          sizeof (extracted_msg)))
@@ -88,15 +96,16 @@ process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
     {
       if (res == EXTRACT_MSG_OVERFLOW)
         {
-          printf ("%s Warning: oversized message discarded.\n", log_prefix);
+          printf (_ ("%s Warning: oversized message discarded.\n"),
+                  log_prefix);
           continue;
         }
 
       Packet pkt;
       if (!DeserializePacket (extracted_msg, &pkt))
         {
-          printf ("%s Incorrect format of received package : %s\n", log_prefix,
-                  extracted_msg);
+          printf (_ ("%s Incorrect format of received package : %s\n"),
+                  log_prefix, extracted_msg);
           continue;
         }
 
@@ -149,8 +158,9 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
       // if text format is wrong, we ignore the move and we warn the client
       // that he sent a wrong format (but we don't disconnect him, maybe it was
       // just a typo)
-      printf ("[SERVER] Hack attempt! Invalid move format from Client %d.\n",
-              client_index);
+      printf (
+          _ ("[SERVER] Hack attempt! Invalid move format from Client %d.\n"),
+          client_index);
       return;
     }
 
@@ -178,13 +188,14 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
       // if the move is illegal, we ignore it and we warn the client that he
       // tried to cheat (but we don't disconnect him, maybe it was just a
       // mistake)
-      printf ("\n[SERVER ANTI-CHEAT] Client %d tried an illegal move: %s\n",
-              client_index, payload);
+      printf (
+          _ ("\n[SERVER ANTI-CHEAT] Client %d tried an illegal move: %s\n"),
+          client_index, payload);
 
       Packet err_pkt;
       err_pkt.type = S2C_ERROR;
       strncpy (err_pkt.payload,
-               "Illegal move detected! You have been desynced.",
+               _ ("Illegal move detected! You have been desynced."),
                MAX_PAYLOAD_SIZE - 1);
 
       char out_buf[MAX_FORMATTED_PKT_SIZE];
@@ -251,7 +262,7 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   if (name_taken)
     {
       resp.type = S2C_REJECT;
-      strncpy (resp.payload, "Username already taken",
+      strncpy (resp.payload, _ ("Username already taken"),
                MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
@@ -270,12 +281,12 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   ctx->clients[client_index].games_played = 0;
   LoadScoreboardForClient (&ctx->clients[client_index]);
 
-  printf ("\n[SERVER] Player '%s' successfully joined Slot %d!\n", username,
-          client_index);
+  printf (_ ("\n[SERVER] Player '%s' successfully joined Slot %d!\n"),
+          username, client_index);
 
   // packets sent to client (JUST THE WELCOME PACKET)
   resp.type = S2C_WELCOME;
-  strncpy (resp.payload, "Welcome to the Lobby!",
+  strncpy (resp.payload, _ ("Welcome to the Lobby!"),
            MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
   SerializePacket (&resp, out_buffer, sizeof (out_buffer));
   NetworkManager_Send (manager, client_index, out_buffer);
@@ -352,7 +363,7 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
       || target_index == sender_index)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Invalid player ID.");
+                           _ ("Error: Invalid player ID."));
       return;
     }
 
@@ -361,7 +372,7 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
       || !ctx->clients[target_index].is_joined)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Player not found.");
+                           _ ("Error: Player not found."));
       return;
     }
 
@@ -369,20 +380,20 @@ process_invite_packet (NetworkManager *manager, ServerContext *ctx,
   if (ctx->clients[target_index].status == CLIENT_STATUS_AWAY)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Player is AWAY.");
+                           _ ("Error: Player is AWAY."));
       return;
     }
   else if (ctx->clients[target_index].status != CLIENT_STATUS_IDLE)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: Player is not available.");
+                           _ ("Error: Player is not available."));
       return;
     }
   if (ctx->clients[target_index].pending_invite_from != -1)
     {
       send_server_message (
           manager, sender_index, S2C_ERROR,
-          "Error: Player is already considering another invitation.");
+          _ ("Error: Player is already considering another invitation."));
       return;
     }
   // 4. Everything is good: We put the sender on hold
@@ -415,7 +426,7 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
   if (challenger_index == -1)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: You have no pending invitations.");
+                           _ ("Error: You have no pending invitations."));
       return;
     }
   // Clear the pending invite to prevent multiple acceptances
@@ -428,7 +439,7 @@ process_accept_packet (NetworkManager *manager, ServerContext *ctx,
     {
       send_server_message (
           manager, sender_index, S2C_ERROR,
-          "Error: The challenger left or the invite expired.");
+          _ ("Error: The challenger left or the invite expired."));
       ctx->clients[sender_index].status
           = CLIENT_STATUS_IDLE; // We put the client back in idle.
       return;
@@ -484,7 +495,7 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
   if (challenger_index == -1)
     {
       send_server_message (manager, sender_index, S2C_ERROR,
-                           "Error: You have no pending invitations.");
+                           _ ("Error: You have no pending invitations."));
       return;
     }
   // Put the player who refused back into IDLE mode
@@ -499,7 +510,7 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
 
       // On le prévient que son invitation a été refusée !
       send_server_message (manager, challenger_index, S2C_DECLINE,
-                           "Invitation declined by the opponent.");
+                           _ ("Invitation declined by the opponent."));
     }
 }
 
@@ -560,6 +571,9 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
     case C2S_ACCEPT:
       process_accept_packet (manager, ctx, client_index, pkt->payload);
       break;
+      /** @brief Processes a HEARTBEAT packet received from a client. */
+    case C2S_HEARTBEAT:
+      break;
       /** @brief Processes a PING packet received from a client. */
     case C2S_PING:
       {
@@ -575,8 +589,8 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       if (ctx->clients[client_index].status == CLIENT_STATUS_IDLE)
         {
           ctx->clients[client_index].status = CLIENT_STATUS_AWAY;
-          printf ("[SERVER] Player %d is now AWAY.\n", client_index);
-          printf ("[LOBBY] >> ");
+          printf (_ ("[SERVER] Player %d is now AWAY.\n"), client_index);
+          printf ("%s", _ ("[LOBBY] >> "));
           fflush (stdout);
         }
       break;
@@ -585,8 +599,8 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       if (ctx->clients[client_index].status == CLIENT_STATUS_AWAY)
         {
           ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
-          printf ("[SERVER] Player %d is BACK.\n", client_index);
-          printf ("[LOBBY] >> ");
+          printf (_ ("[SERVER] Player %d is BACK.\n"), client_index);
+          printf ("%s", _ ("[LOBBY] >> "));
           fflush (stdout);
         }
       break;
@@ -596,28 +610,29 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         {
           ctx->clients[client_index].status = CLIENT_STATUS_IDLE;
 
-          int target_index = atoi (pkt->payload);
-          if (target_index >= FIRST_CLIENT_INDEX && target_index <= MAX_CLIENTS
-              && ctx->fds[target_index].fd != INVALID_SOCKET)
+          for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
             {
-
-              ctx->clients[target_index].status = CLIENT_STATUS_IDLE;
-
-              send_server_message (manager, target_index, S2C_CANCEL,
-                                   "Invitation canceled by challenger.");
+              if (ctx->clients[i].pending_invite_from == client_index)
+                {
+                  ctx->clients[i].pending_invite_from = -1;
+                  ctx->clients[i].status = CLIENT_STATUS_IDLE;
+                  send_server_message (
+                      manager, i, S2C_CANCEL,
+                      _ ("Invitation canceled by challenger."));
+                  break;
+                }
             }
-          printf ("[SERVER] Player %d cancelled their invitation.\n",
+          printf (_ ("\n[SERVER] Player %d cancelled their invitation.\n"),
                   client_index);
-          printf ("[LOBBY] >> ");
-          fflush (stdout);
+          printf ("%s", _ ("[LOBBY] >> "));
         }
       break;
       /** @brief Processes a SCOREBOARD packet received from a client. */
     case C2S_SCOREBOARD:
       {
-        // On envoie l'en-tête
+
         send_server_message (manager, client_index, S2C_SCOREBOARD,
-                             "Name        | Wins | Losses | Played");
+                             _ ("Name | Wins | Losses | Played"));
         send_server_message (manager, client_index, S2C_SCOREBOARD,
                              "-----------------------------------");
 
@@ -629,7 +644,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
             char line[128];
             char name[32];
             int w, l, g;
-            // On envoie chaque joueur ligne par ligne
+
             while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
               {
                 snprintf (line, sizeof (line), "%-10s | %4d | %6d | %6d", name,
@@ -644,10 +659,9 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
         if (!has_scores)
           {
             send_server_message (manager, client_index, S2C_SCOREBOARD,
-                                 "No scores recorded yet.");
+                                 _ ("No scores recorded yet."));
           }
 
-        // Un petit message "clé" pour dire au client que l'affichage est fini
         send_server_message (manager, client_index, S2C_SCOREBOARD,
                              "END_OF_SCOREBOARD");
       }
@@ -655,7 +669,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
       /** @brief Processes a GAME_OVER packet received from a client. */
     case C2S_GAME_OVER:
       {
-        // On récupère le client qui a envoyé le message
+
         ConnectedClient *client = &manager->server_ctx->clients[client_index];
 
         if (strcmp (pkt->payload, "WIN") == 0)
@@ -667,7 +681,6 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
             NetworkManager_UpdatePlayerStats (client->username, false);
           }
 
-        // On remet le statut du joueur à IDLE pour qu'il puisse rejouer
         client->status = CLIENT_STATUS_IDLE;
         client->game_id = NO_GAME_ID;
       }
@@ -689,7 +702,7 @@ handle_server_packet (NetworkManager *manager, ServerContext *ctx,
 
       /** @brief Processes an unknown packet received from a client. */
     default:
-      printf ("[SERVER] Unmanaged package (Type: %d)\n", pkt->type);
+      printf (_ ("[SERVER] Unmanaged package (Type: %d)\n"), pkt->type);
       break;
     }
 }

@@ -21,8 +21,10 @@ list(REMOVE_ITEM GAME_LOGIC ${MAIN_SRC})
 add_library(amazons_core OBJECT ${GAME_LOGIC})
 
 # --- 3. BUILD THE MAIN GAME EXECUTABLE ---
-add_executable(amazons-c ${MAIN_SRC})
-target_link_libraries(amazons-c PRIVATE amazons_core)
+add_executable(amazons ${MAIN_SRC})
+target_link_libraries(amazons PRIVATE amazons_core)
+
+set_target_properties(amazons PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 # --- 4. COMPILER FLAGS & LINKING ---
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -32,7 +34,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   set(CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG} --coverage")
 endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 
 # Link Dependencies

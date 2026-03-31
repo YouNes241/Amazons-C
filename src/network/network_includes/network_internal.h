@@ -302,7 +302,9 @@ struct ClientContext
   int server_socket;
   /** @brief The pollfd structure for monitoring the server socket. */
   struct pollfd fd_info; // The client only monitors one thing: its connection
-                         // to the server
+  // to the server
+  /** @brief Timestamp of the last heartbeat of the client. */
+  time_t last_heartbeat;
   /** @brief The TCP buffer for receiving messages from the server. */
   tcp_buffer_t
       buffer; // Personal buffer used by the client to receive server messages

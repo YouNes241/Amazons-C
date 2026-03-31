@@ -80,7 +80,8 @@ NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
 
   if (count == 0)
     {
-      snprintf (buffer, max_len, "No servers found on the local network.\n");
+      snprintf (buffer, max_len,
+                _ ("No servers found on the local network.\n"));
     }
 
   return count;
@@ -152,8 +153,8 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
           || manager->server_ctx->fds[target_id].fd == INVALID_SOCKET
           || !manager->server_ctx->clients[target_id].is_joined)
         {
-          snprintf (buffer, max_len, "Player %d not found or not connected.\n",
-                    target_id);
+          snprintf (buffer, max_len,
+                    _ ("Player %d not found or not connected.\n"), target_id);
           return;
         }
 
@@ -185,8 +186,8 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
       // TODO: Replace placeholders with actual score data when available
       snprintf (
           buffer, max_len,
-          "Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost "
-          "(%d played)",
+          _ ("Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost "
+             "(%d played)"),
           target_id, manager->server_ctx->clients[target_id].username,
           status_str, manager->server_ctx->clients[target_id].wins,
           manager->server_ctx->clients[target_id].losses,
@@ -226,6 +227,6 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
   // long to fit in the buffer
   if (buffer[0] == '\0')
     {
-      snprintf (buffer, max_len, "No players currently in the lobby.\n");
+      snprintf (buffer, max_len, _ ("No players currently in the lobby.\n"));
     }
 }
