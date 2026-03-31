@@ -42,9 +42,19 @@ void updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec,
 #if GTK_CHECK_VERSION(4, 10, 0)
 void updateConfigLanguage (GObject *object, GParamSpec *pspec,
                            gpointer user_data);
+void on_load_file_selected (GObject *source_object, GAsyncResult *res,
+                            gpointer user_data);
+void on_save_file_selected (GObject *source_object, GAsyncResult *res,
+                            gpointer user_data);
 #else
 void updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data);
+void on_load_response (GtkNativeDialog *native, int response,
+                       gpointer user_data);
+void on_save_response (GtkNativeDialog *native, int response,
+                       gpointer user_data);
 #endif
+void loadButtonClick (GtkButton *button, gpointer user_data);
+void saveButtonClick (GtkButton *button, gpointer user_data);
 gboolean shortcutNewGame (GtkWidget *widget, GVariant *args,
                           gpointer user_data);
 gboolean shortcutInfo (GtkWidget *widget, GVariant *args, gpointer user_data);
@@ -53,6 +63,10 @@ gboolean shortcutConfig (GtkWidget *widget, GVariant *args,
 gboolean shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data);
 gboolean shortcutUndo (GtkWidget *widget, GVariant *args, gpointer user_data);
 gboolean shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data);
+gboolean shortcutSaveGame (GtkWidget *widget, GVariant *args,
+                           gpointer user_data);
+gboolean shortcutLoadGame (GtkWidget *widget, GVariant *args,
+                           gpointer user_data);
 gboolean shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data);
 
 #endif // GUI_CALLBACKS_H

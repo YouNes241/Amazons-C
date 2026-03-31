@@ -273,6 +273,10 @@ createGamePage (GuiContext *ctx)
 
   GtkWidget *newGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  GtkWidget *loadBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
+  GtkWidget *saveBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "save_game_btn"));
   GtkWidget *infoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
   GtkWidget *configBtn
@@ -307,6 +311,8 @@ createGamePage (GuiContext *ctx)
   g_signal_connect (quitBtn, "clicked", G_CALLBACK (navigationClick), ctx);
   g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
                     ctx);
+  g_signal_connect (loadBtn, "clicked", G_CALLBACK (loadButtonClick), ctx);
+  g_signal_connect (saveBtn, "clicked", G_CALLBACK (saveButtonClick), ctx);
   g_signal_connect (infoBtn, "clicked", G_CALLBACK (infoPopupButtonClick),
                     ctx);
   g_signal_connect (configBtn, "clicked", G_CALLBACK (configPopupButtonClick),

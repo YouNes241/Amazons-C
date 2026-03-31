@@ -1,6 +1,7 @@
 #include "gui_callbacks.h"
 #include "game_engine.h"
 #include "gui_controller.h"
+#include <save.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -642,6 +643,108 @@ updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
       ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
     }
 }
+
+void
+on_save_file_selected (GObject *source_object, GAsyncResult *res,
+                       gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GError *error = NULL;
+  GFile *file = gtk_file_dialog_save_finish (dialog, res, &error);
+
+  if (file != NULL)
+    {
+      char *path = g_file_get_path (file);
+      if (save_game (path, ctx->gameConfig, ctx->gameState) == 0)
+        g_print ("[GUI] Game saved to : %s\n", path);
+      else
+        g_print ("[GUI ERROR] Saving failed.\n");
+
+      g_free (path);
+      g_object_unref (file);
+    }
+}
+
+void
+on_load_file_selected (GObject *source_object, GAsyncResult *res,
+                       gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GError *error = NULL;
+  GFile *file = gtk_file_dialog_open_finish (dialog, res, &error);
+
+  if (file != NULL)
+    {
+      char *path = g_file_get_path (file);
+
+      GameState dummy_state;
+      dummy_state.size = MAX_BOARD_SIZE;
+      game_init (&dummy_state);
+
+      int original_size = ctx->gameConfig->board_size;
+
+      if (load_game (path, ctx->gameConfig, &dummy_state) == 0)
+        {
+          g_print ("[GUI] Game loaded from : %s\n", path);
+
+          ctx->gameConfig->board_size = dummy_state.size;
+
+          GtkWidget *boardGrid = GTK_WIDGET (
+              g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+
+          if (boardGrid)
+            {
+              setupBoard (ctx, boardGrid);
+              load_game (path, ctx->gameConfig, ctx->gameState);
+              guiStartNewGame (ctx);
+            }
+
+          ctx->currentPhase = PHASE_MOVE_QUEEN;
+          clearHighlights (ctx);
+          drawBoard (ctx);
+          updateTurnDisplay (ctx);
+        }
+      else
+        {
+          ctx->gameConfig->board_size = original_size;
+          g_print ("[GUI ERROR] Loading failed.\n");
+        }
+
+      game_cleanup (&dummy_state);
+      g_free (path);
+      g_object_unref (file);
+    }
+}
+
+void
+saveButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+  GtkFileDialog *dialog = gtk_file_dialog_new ();
+  gtk_file_dialog_set_title (dialog, "Save the current game");
+  gtk_file_dialog_save (dialog, ctx->mainWindow, NULL, on_save_file_selected,
+                        ctx);
+}
+
+void
+loadButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+  GtkFileDialog *dialog = gtk_file_dialog_new ();
+  gtk_file_dialog_set_title (dialog, "Load a game");
+  gtk_file_dialog_open (dialog, ctx->mainWindow, NULL, on_load_file_selected,
+                        ctx);
+}
 #else
 void
 updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
@@ -651,6 +754,112 @@ updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
     {
       ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
     }
+}
+
+void
+on_save_response (GtkNativeDialog *native, int response, gpointer user_data)
+{
+  if (response == GTK_RESPONSE_ACCEPT)
+    {
+      GuiContext *ctx = (GuiContext *)user_data;
+      GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
+      GFile *file = gtk_file_chooser_get_file (chooser);
+      if (file)
+        {
+          char *path = g_file_get_path (file);
+          if (save_game (path, ctx->gameConfig, ctx->gameState) == 0)
+            g_print ("[GUI] Game saved to : %s\n", path);
+          else
+            g_print ("[GUI ERROR] Saving failed.\n");
+
+          g_free (path);
+          g_object_unref (file);
+        }
+    }
+  g_object_unref (native);
+}
+
+void
+on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
+{
+  if (response == GTK_RESPONSE_ACCEPT)
+    {
+      GuiContext *ctx = (GuiContext *)user_data;
+      GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
+      GFile *file = gtk_file_chooser_get_file (chooser);
+      if (file)
+        {
+          char *path = g_file_get_path (file);
+
+          GameState dummy_state;
+          dummy_state.size = MAX_BOARD_SIZE;
+          game_init (&dummy_state);
+
+          int original_size = ctx->gameConfig->board_size;
+
+          if (load_game (path, ctx->gameConfig, &dummy_state) == 0)
+            {
+              g_print ("[GUI] Load game from : %s\n", path);
+
+              ctx->gameConfig->board_size = dummy_state.size;
+
+              GtkWidget *boardGrid = GTK_WIDGET (
+                  g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+
+              if (boardGrid)
+                {
+                  setupBoard (ctx, boardGrid);
+                  load_game (path, ctx->gameConfig, ctx->gameState);
+                  guiStartNewGame (ctx);
+                }
+
+              ctx->currentPhase = PHASE_MOVE_QUEEN;
+              clearHighlights (ctx);
+              drawBoard (ctx);
+              updateTurnDisplay (ctx);
+            }
+          else
+            {
+              ctx->gameConfig->board_size = original_size;
+              g_print ("[GUI ERROR] Loading failed.\n");
+            }
+
+          game_cleanup (&dummy_state);
+          g_free (path);
+          g_object_unref (file);
+        }
+    }
+  g_object_unref (native);
+}
+
+void
+saveButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+  GtkFileChooserNative *native = gtk_file_chooser_native_new (
+      "Save the current game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_SAVE,
+      "Save", "Cancel");
+  g_signal_connect (native, "response", G_CALLBACK (on_save_response), ctx);
+  gtk_native_dialog_show (GTK_NATIVE_DIALOG (native));
+}
+
+void
+loadButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (!ctx || !ctx->gameState)
+    return;
+  GtkFileChooserNative *native = gtk_file_chooser_native_new (
+      "Load a game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_OPEN, "Open",
+      "Cancel");
+  g_signal_connect (native, "response", G_CALLBACK (on_load_response), ctx);
+  gtk_native_dialog_show (GTK_NATIVE_DIALOG (native));
 }
 #endif
 
@@ -705,6 +914,24 @@ shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data)
   (void)widget;
   (void)args;
   redoButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+gboolean
+shortcutSaveGame (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  saveButtonClick (NULL, user_data);
+  return TRUE;
+}
+
+gboolean
+shortcutLoadGame (GtkWidget *widget, GVariant *args, gpointer user_data)
+{
+  (void)widget;
+  (void)args;
+  loadButtonClick (NULL, user_data);
   return TRUE;
 }
 
