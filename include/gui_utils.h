@@ -43,6 +43,7 @@ typedef struct
   NetworkManager *networkManager;
   bool isNetworkMatch;
   PlayerColor selfPlayerColor;
+  bool isHintActive;
 } GuiContext;
 
 GuiContext *initGuiContext (game_config_t *config);
@@ -50,6 +51,7 @@ void freeGuiContext (GuiContext *ctx);
 void drawPiece (GuiContext *ctx, int x, int y, CellContent content);
 void drawBoard (GuiContext *ctx);
 void clearHighlights (GuiContext *ctx);
+void clearHintHighlights (GuiContext *ctx);
 void highlightReachableSquares (GuiContext *ctx, int srcX, int srcY);
 void setupBoard (GuiContext *ctx, GtkWidget *boardGrid);
 void setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx);

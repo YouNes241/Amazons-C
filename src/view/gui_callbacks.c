@@ -195,6 +195,9 @@ undoButtonClick (GtkButton *button, gpointer user_data)
 
   if (undo_move (ctx->gameState))
     {
+      clearHintHighlights (ctx);
+      ctx->isHintActive = false;
+
       undo_move (ctx->gameState);
 
       ctx->currentPhase = PHASE_MOVE_QUEEN;
@@ -219,6 +222,9 @@ redoButtonClick (GtkButton *button, gpointer user_data)
 
   if (redo_move (ctx->gameState))
     {
+      clearHintHighlights (ctx);
+      ctx->isHintActive = false;
+
       redo_move (ctx->gameState);
 
       ctx->currentPhase = PHASE_MOVE_QUEEN;
@@ -246,6 +252,13 @@ hintButtonClick (GtkButton *button, gpointer user_data)
       return;
     }
 
+  if (ctx->isHintActive)
+    {
+      clearHintHighlights (ctx);
+      ctx->isHintActive = false;
+      return;
+    }
+
   ConfigMap empty_params = { NULL, 0 };
   AI_Interface hint_ai = create_ai ("minimax", empty_params);
 
@@ -265,6 +278,7 @@ hintButtonClick (GtkButton *button, gpointer user_data)
     }
 
   showHintOnBoard (ctx, move.queen_src, move.queen_dst, move.arrow_dst);
+  ctx->isHintActive = true;
 }
 
 void

@@ -25,6 +25,7 @@ initGuiContext (game_config_t *config)
   ctx->networkManager = NULL;
   ctx->currentPhase = PHASE_MOVE_QUEEN;
   ctx->isNetworkMatch = false;
+  ctx->isHintActive = false;
 
   memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
   strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);
@@ -107,14 +108,29 @@ drawBoard (GuiContext *ctx)
 void
 clearHighlights (GuiContext *ctx)
 {
+  if (!ctx || !ctx->gameBoard || !ctx->gameState)
+    return;
+
   int size = ctx->gameState->size;
   for (int i = 0; i < size * size; i++)
     {
       gtk_widget_remove_css_class (ctx->gameBoard[i], "highlight-valid");
-      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-queen");
-      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-arrow");
       g_object_set_data (G_OBJECT (ctx->gameBoard[i]), "is_legal_move",
                          GINT_TO_POINTER (0));
+    }
+}
+
+void
+clearHintHighlights (GuiContext *ctx)
+{
+  if (!ctx || !ctx->gameBoard || !ctx->gameState)
+    return;
+
+  int size = ctx->gameState->size;
+  for (int i = 0; i < size * size; i++)
+    {
+      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-queen");
+      gtk_widget_remove_css_class (ctx->gameBoard[i], "hint-arrow");
     }
 }
 

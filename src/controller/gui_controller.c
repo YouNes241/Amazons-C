@@ -39,6 +39,9 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
     {
       apply_move (ctx->gameState, move);
 
+      clearHintHighlights (ctx);
+      ctx->isHintActive = false;
+
       if (ctx->isNetworkMatch
           && ctx->gameState->current_player != ctx->selfPlayerColor)
         {
