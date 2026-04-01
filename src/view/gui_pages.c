@@ -77,18 +77,27 @@ createMultiplayerMenuPage (GuiContext *ctx)
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
+  GtkWidget *hostServerBtn;
   GtkWidget *joinServerBtn;
 
   builder = gtk_builder_new_from_resource ("/amazons/ui/multiplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
 
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  hostServerBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "host_server_btn"));
   joinServerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_btn"));
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
 
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+
+  if (hostServerBtn)
+    {
+      g_signal_connect (hostServerBtn, "clicked",
+                        G_CALLBACK (hostServerPopupButtonClick), ctx);
+    }
 
   if (joinServerBtn)
     {
@@ -354,6 +363,26 @@ createJoinServerPage (GuiContext *ctx)
 
   g_signal_connect (refreshBtn, "clicked",
                     G_CALLBACK (refreshServerListButtonClick), ctx);
+
+  g_object_ref (box);
+  g_object_unref (builder);
+
+  return box;
+}
+
+GtkWidget *
+createHostPanelPage (GuiContext *ctx)
+{
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/host_panel.ui");
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "server_panel_box"));
+
+  GtkWidget *stopServerBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "stop_server_btn"));
+
+  g_signal_connect (stopServerBtn, "clicked",
+                    G_CALLBACK (stopServerButtonClick), ctx);
 
   g_object_ref (box);
   g_object_unref (builder);

@@ -527,6 +527,87 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
   gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
 }
 
+void
+hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  GtkBuilder *builder = gtk_builder_new_from_resource (
+      "/amazons/ui/popups/create_server_popup.ui");
+  GtkWindow *createServerWindow
+      = GTK_WINDOW (gtk_builder_get_object (builder, "create_server_window"));
+
+  gtk_window_set_transient_for (createServerWindow,
+                                GTK_WINDOW (ctx->mainWindow));
+
+  GtkWidget *portSpin
+      = GTK_WIDGET (gtk_builder_get_object (builder, "port_spin"));
+  GtkWidget *cancelBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "cancel_btn"));
+  GtkWidget *startBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "start_btn"));
+
+  g_object_set_data (G_OBJECT (startBtn), "port_spin", portSpin);
+  g_object_set_data (G_OBJECT (startBtn), "popup_window", createServerWindow);
+
+  g_signal_connect_swapped (cancelBtn, "clicked",
+                            G_CALLBACK (gtk_window_destroy),
+                            createServerWindow);
+
+  g_signal_connect (startBtn, "clicked", G_CALLBACK (startServerButtonClick),
+                    ctx);
+
+  gtk_window_present (createServerWindow);
+  g_object_unref (builder);
+}
+
+void
+startServerButtonClick (GtkButton *button, gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  GtkSpinButton *port_spin
+      = GTK_SPIN_BUTTON (g_object_get_data (G_OBJECT (button), "port_spin"));
+  GtkWindow *popup_window
+      = GTK_WINDOW (g_object_get_data (G_OBJECT (button), "popup_window"));
+
+  int port = gtk_spin_button_get_value_as_int (port_spin);
+
+  if (NetworkManager_ServerStart (ctx->networkManager, port) == 0)
+    {
+      g_print ("[INFO] Server started successfully on port %d.\n", port);
+
+      if (ctx->mainStack != NULL)
+        {
+          gtk_stack_set_visible_child_name (ctx->mainStack, "host_panel_page");
+        }
+    }
+  else
+    {
+      g_print ("[ERROR] Failed to start server. Port %d might be in use.\n",
+               port);
+    }
+
+  gtk_window_destroy (popup_window);
+}
+
+void
+stopServerButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  g_print ("[SERVER] Shutting down server...\n");
+
+  NetworkManager_ShutdownServer (ctx->networkManager);
+
+  if (ctx->mainStack != NULL)
+    {
+      gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
+    }
+}
+
 GdkContentProvider *
 onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 {

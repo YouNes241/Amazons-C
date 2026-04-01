@@ -99,6 +99,7 @@ initWindow (GtkApplication *app, gpointer userData)
   GtkWidget *infoPage = createInfoPage (ctx);
   GtkWidget *gamePage = createGamePage (ctx);
   GtkWidget *joinServerPage = createJoinServerPage (ctx);
+  GtkWidget *hostPanelPage = createHostPanelPage (ctx);
   GtkWidget *clientPanelPage = createClientPanelPage (ctx);
 
   gtk_stack_add_named (GTK_STACK (stack), mainMenuPage, "main_menu_page");
@@ -110,6 +111,7 @@ initWindow (GtkApplication *app, gpointer userData)
   gtk_stack_add_named (GTK_STACK (stack), infoPage, "info_page");
   gtk_stack_add_named (GTK_STACK (stack), gamePage, "game_page");
   gtk_stack_add_named (GTK_STACK (stack), joinServerPage, "join_server_page");
+  gtk_stack_add_named (GTK_STACK (stack), hostPanelPage, "host_panel_page");
   gtk_stack_add_named (GTK_STACK (stack), clientPanelPage,
                        "client_panel_page");
 

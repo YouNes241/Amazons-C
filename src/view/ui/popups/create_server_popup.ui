@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="create_server_window">
+    <property name="title">Host a Server</property>
+    <property name="modal">true</property>
+    <property name="resizable">false</property>
+    <property name="default-width">300</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <property name="margin-start">20</property>
+        <property name="margin-end">20</property>
+        <property name="margin-top">20</property>
+        <property name="margin-bottom">20</property>
+        
+        <child>
+          <object class="GtkLabel">
+            <property name="label">Server Port :</property>
+            <property name="halign">start</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkSpinButton" id="port_spin">
+            <property name="adjustment">
+              <object class="GtkAdjustment">
+                <property name="lower">1024</property>
+                <property name="upper">65535</property>
+                <property name="value">12345</property>
+                <property name="step-increment">1</property>
+              </object>
+            </property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">10</property>
+            <property name="halign">end</property>
+            <property name="margin-top">10</property>
+            
+            <child>
+              <object class="GtkButton" id="cancel_btn">
+                <property name="label">Cancel</property>
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkButton" id="start_btn">
+                <property name="label">Start Server</property>
+                <property name="css-classes">suggested-action</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="server_panel_box">
+    <property name="orientation">vertical</property>
+    <property name="spacing">20</property>
+    <property name="halign">center</property>
+    <property name="valign">center</property>
+    
+    <child>
+      <object class="GtkLabel" id="server_title_label">
+        <property name="label">SERVER HOST PANEL</property>
+        <property name="css-classes">title-1</property>
+        <property name="margin-bottom">10</property>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkLabel" id="server_status_label">
+        <property name="label">Server is running and visible on the local network.</property>
+        <property name="css-classes">dim-label</property>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkButton" id="stop_server_btn">
+        <property name="label">Shutdown Server</property>
+        <property name="css-classes">destructive-action</property>
+        <property name="margin-top">30</property>
+      </object>
+    </child>
+  </object>
+</interface>

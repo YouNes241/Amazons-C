@@ -11,6 +11,7 @@ GtkWidget *createConfigPage (GuiContext *ctx);
 GtkWidget *createInfoPage (GuiContext *ctx);
 GtkWidget *createGamePage (GuiContext *ctx);
 GtkWidget *createJoinServerPage (GuiContext *ctx);
+GtkWidget *createHostPanelPage (GuiContext *ctx);
 GtkWidget *createClientPanelPage (GuiContext *ctx);
 
 #endif // GUI_PAGES_H

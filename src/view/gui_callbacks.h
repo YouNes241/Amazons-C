@@ -18,6 +18,9 @@ void disconnectFromServerButtonClick (GtkButton *button, gpointer user_data);
 void createGameButtonClick (GtkButton *button, gpointer user_data);
 void sendInviteButtonClick (GtkButton *button, gpointer user_data);
 void newGameButtonClick (GtkButton *button, gpointer user_data);
+void hostServerPopupButtonClick (GtkButton *button, gpointer user_data);
+void startServerButtonClick (GtkButton *button, gpointer user_data);
+void stopServerButtonClick (GtkButton *button, gpointer user_data);
 
 GdkContentProvider *onDrag (GtkDragSource *source, double x, double y,
                             gpointer user_data);
