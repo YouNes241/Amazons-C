@@ -2,6 +2,7 @@
 #include "ai_factory.h"
 #include "game_engine.h"
 #include "gui_controller.h"
+#include "network_common.h"
 #include <save.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -282,22 +283,46 @@ hintButtonClick (GtkButton *button, gpointer user_data)
 }
 
 void
-connectToServerButtonClick (GtkButton *button, gpointer user_data)
+quitGameButtonClick (GtkButton *button, gpointer user_data)
+{
+  (void)button;
+  GuiContext *ctx = (GuiContext *)user_data;
+
+  if (ctx->isNetworkMatch)
+    {
+      NetworkManager_SendGameOver (ctx->networkManager, false);
+
+      ctx->isNetworkMatch = false;
+      gtk_stack_set_visible_child_name (ctx->mainStack, "client_panel_page");
+    }
+  else
+    {
+      gtk_stack_set_visible_child_name (ctx->mainStack, "main_menu_page");
+    }
+}
+
+void
+joinServerButtonClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
 
-  GtkEditable *ip_entry
-      = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "ip_entry"));
-  GtkEditable *port_entry
-      = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "port_entry"));
+  const char *ip_str
+      = (const char *)g_object_get_data (G_OBJECT (button), "server_ip");
+  int port
+      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "server_port"));
   GtkEditable *username_entry
       = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "username_entry"));
 
-  const char *ip_str = gtk_editable_get_text (ip_entry);
-  const char *port_str = gtk_editable_get_text (port_entry);
   const char *username_str = gtk_editable_get_text (username_entry);
 
-  int port = atoi (port_str);
+  if (!username_str || strlen (username_str) == 0)
+    {
+      g_print ("[GUI ERROR] Username cannot be empty.\n");
+      return;
+    }
+
+  g_print ("[NETWORK] Attempting to connect to %s:%d as %s\n", ip_str, port,
+           username_str);
 
   if (NetworkManager_ClientJoin (ctx->networkManager, ip_str, port) == 0)
     {
@@ -311,10 +336,103 @@ connectToServerButtonClick (GtkButton *button, gpointer user_data)
             {
               char *titleText = g_strdup_printf ("%s", username_str);
               gtk_label_set_text (GTK_LABEL (titleLabel), titleText);
+              g_free (titleText);
             }
           gtk_stack_set_visible_child_name (ctx->mainStack,
                                             "client_panel_page");
         }
+    }
+  else
+    {
+      g_print ("[NETWORK ERROR] Connection failed.\n");
+    }
+}
+
+void
+refreshServerListButtonClick (GtkButton *button, gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+  GtkListBox *listbox
+      = GTK_LIST_BOX (g_object_get_data (G_OBJECT (button), "server_listbox"));
+  GtkWidget *username_entry
+      = GTK_WIDGET (g_object_get_data (G_OBJECT (button), "username_entry"));
+
+  if (!ctx || !ctx->networkManager || !listbox)
+    return;
+
+  GtkWidget *child = gtk_widget_get_first_child (GTK_WIDGET (listbox));
+  while (child != NULL)
+    {
+      GtkWidget *next = gtk_widget_get_next_sibling (child);
+      gtk_list_box_remove (listbox, child);
+      child = next;
+    }
+
+  char list_buffer[2048];
+  int count = NetworkManager_GetServerList (ctx->networkManager, list_buffer,
+                                            sizeof (list_buffer));
+
+  if (count > 0)
+    {
+      char *line = strtok (list_buffer, "\n");
+      while (line != NULL)
+        {
+          char name[64];
+          char ip[64];
+          int port = 0;
+
+          if (sscanf (line, "[%*d] %63[^(] (IP: %63[^,], Port: %d)", name, ip,
+                      &port)
+              == 3)
+            {
+              int len = strlen (name);
+              while (len > 0 && name[len - 1] == ' ')
+                {
+                  name[len - 1] = '\0';
+                  len--;
+                }
+
+              GtkWidget *row_box
+                  = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
+              gtk_widget_set_margin_start (row_box, 10);
+              gtk_widget_set_margin_end (row_box, 10);
+              gtk_widget_set_margin_top (row_box, 10);
+              gtk_widget_set_margin_bottom (row_box, 10);
+
+              char display_text[128];
+              snprintf (display_text, sizeof (display_text), "%s\t\t%s:%d",
+                        name, ip, port);
+              GtkWidget *name_label = gtk_label_new (display_text);
+              gtk_widget_set_halign (name_label, GTK_ALIGN_START);
+              gtk_widget_set_hexpand (name_label, TRUE);
+
+              GtkWidget *join_btn = gtk_button_new_with_label ("Join");
+
+              g_object_set_data_full (G_OBJECT (join_btn), "server_ip",
+                                      g_strdup (ip), g_free);
+              g_object_set_data (G_OBJECT (join_btn), "server_port",
+                                 GINT_TO_POINTER (port));
+              g_object_set_data (G_OBJECT (join_btn), "username_entry",
+                                 username_entry);
+
+              g_signal_connect (join_btn, "clicked",
+                                G_CALLBACK (joinServerButtonClick), ctx);
+
+              gtk_box_append (GTK_BOX (row_box), name_label);
+              gtk_box_append (GTK_BOX (row_box), join_btn);
+
+              gtk_list_box_append (listbox, row_box);
+            }
+          line = strtok (NULL, "\n");
+        }
+    }
+  else
+    {
+      GtkWidget *empty_label
+          = gtk_label_new ("No local servers found. Please refresh.");
+      gtk_widget_set_margin_top (empty_label, 15);
+      gtk_widget_set_margin_bottom (empty_label, 15);
+      gtk_list_box_append (listbox, empty_label);
     }
 }
 
@@ -328,7 +446,7 @@ disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 
   if (ctx->mainStack != NULL)
     {
-      gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
+      gtk_stack_set_visible_child_name (ctx->mainStack, "join_server_page");
     }
 }
 
@@ -949,7 +1067,7 @@ shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-  quitButtonClick (NULL, user_data);
+  quitGameButtonClick (NULL, user_data);
   return TRUE;
 }
 

@@ -308,9 +308,7 @@ createGamePage (GuiContext *ctx)
   g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
   gtk_widget_add_controller (boardGrid, GTK_EVENT_CONTROLLER (rightClick));
 
-  g_object_set_data (G_OBJECT (quitBtn), "target_page", "main_menu_page");
-
-  g_signal_connect (quitBtn, "clicked", G_CALLBACK (navigationClick), ctx);
+  g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitGameButtonClick), ctx);
   g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
                     ctx);
   g_signal_connect (loadBtn, "clicked", G_CALLBACK (loadButtonClick), ctx);
@@ -341,24 +339,21 @@ createJoinServerPage (GuiContext *ctx)
 
   GtkWidget *returnBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
-  GtkWidget *ipEntry
-      = GTK_WIDGET (gtk_builder_get_object (builder, "ip_entry"));
-  GtkWidget *portEntry
-      = GTK_WIDGET (gtk_builder_get_object (builder, "port_entry"));
+  GtkWidget *refreshBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "refresh_btn"));
   GtkWidget *usernameEntry
       = GTK_WIDGET (gtk_builder_get_object (builder, "username_entry"));
-  GtkWidget *connectBtn
-      = GTK_WIDGET (gtk_builder_get_object (builder, "connect_btn"));
+  GtkWidget *serverListbox
+      = GTK_WIDGET (gtk_builder_get_object (builder, "server_listbox"));
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "multiplayer_page");
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
-  g_object_set_data (G_OBJECT (connectBtn), "ip_entry", ipEntry);
-  g_object_set_data (G_OBJECT (connectBtn), "port_entry", portEntry);
-  g_object_set_data (G_OBJECT (connectBtn), "username_entry", usernameEntry);
+  g_object_set_data (G_OBJECT (refreshBtn), "server_listbox", serverListbox);
+  g_object_set_data (G_OBJECT (refreshBtn), "username_entry", usernameEntry);
 
-  g_signal_connect (connectBtn, "clicked",
-                    G_CALLBACK (connectToServerButtonClick), ctx);
+  g_signal_connect (refreshBtn, "clicked",
+                    G_CALLBACK (refreshServerListButtonClick), ctx);
 
   g_object_ref (box);
   g_object_unref (builder);
