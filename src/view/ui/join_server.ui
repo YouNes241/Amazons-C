@@ -81,7 +81,7 @@
             
             <child>
               <object class="GtkButton" id="refresh_btn">
-                <property name="label">Refresh List</property>
+                <property name="label">Refresh</property>
                 <property name="css-classes">suggested-action</property>
               </object>
             </child>

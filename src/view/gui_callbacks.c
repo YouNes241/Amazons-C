@@ -360,37 +360,30 @@ refreshServerListButtonClick (GtkButton *button, gpointer user_data)
   if (!ctx || !ctx->networkManager || !listbox)
     return;
 
-  GtkWidget *child = gtk_widget_get_first_child (GTK_WIDGET (listbox));
-  while (child != NULL)
+  GtkWidget *child;
+  while ((child = gtk_widget_get_first_child (GTK_WIDGET (listbox))) != NULL)
     {
-      GtkWidget *next = gtk_widget_get_next_sibling (child);
       gtk_list_box_remove (listbox, child);
-      child = next;
     }
 
-  char list_buffer[2048];
-  int count = NetworkManager_GetServerList (ctx->networkManager, list_buffer,
-                                            sizeof (list_buffer));
+  char list_buffer[2048] = { 0 };
 
-  if (count > 0)
+  if (NetworkManager_GetServerList (ctx->networkManager, list_buffer,
+                                    sizeof (list_buffer))
+      > 0)
     {
       char *line = strtok (list_buffer, "\n");
       while (line != NULL)
         {
-          char name[64];
-          char ip[64];
+          char name[64] = { 0 };
+          char ip[64] = { 0 };
           int port = 0;
 
           if (sscanf (line, "[%*d] %63[^(] (IP: %63[^,], Port: %d)", name, ip,
                       &port)
               == 3)
             {
-              int len = strlen (name);
-              while (len > 0 && name[len - 1] == ' ')
-                {
-                  name[len - 1] = '\0';
-                  len--;
-                }
+              g_strchomp (name);
 
               GtkWidget *row_box
                   = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
@@ -402,6 +395,7 @@ refreshServerListButtonClick (GtkButton *button, gpointer user_data)
               char display_text[128];
               snprintf (display_text, sizeof (display_text), "%s\t\t%s:%d",
                         name, ip, port);
+
               GtkWidget *name_label = gtk_label_new (display_text);
               gtk_widget_set_halign (name_label, GTK_ALIGN_START);
               gtk_widget_set_hexpand (name_label, TRUE);
