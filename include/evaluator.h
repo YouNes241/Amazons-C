@@ -1,3 +1,13 @@
+/**
+ * @file evaluator.h
+ * @author tdecabrat
+ * @brief This file defines the Evaluator type and related functions for
+ * evaluating the game state in the Amazons AI. Evaluators are heuristics that
+ * provide a score for a given board state, which can be used by AI algorithms
+ * like Minimax to make informed decisions. The file includes definitions for
+ * different types of evaluators, such as mobility and territory control, as
+ * well as a function to retrieve an evaluator based on a specified type.
+ */
 #ifndef EVALUATOR_H
 #define EVALUATOR_H
 

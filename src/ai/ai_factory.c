@@ -1,3 +1,15 @@
+/**
+ * @file ai_factory.c
+ * @author tdecabrat
+ * @brief This file implements the AI factory, which is responsible for
+ * creating AI instances based on a given name and configuration parameters.
+ * The factory maintains a registry of available AI types and their
+ * corresponding creation functions. It provides a unified interface for
+ * initializing different AI strategies, allowing for easy extension and
+ * maintenance of the AI system.
+ * @note If you want to add an AI, simply implement its creation function and
+ * add it to the registry + the method as extern.
+ */
 #include "ai_factory.h"
 #include <stdio.h>
 #include <string.h>

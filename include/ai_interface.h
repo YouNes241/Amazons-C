@@ -1,5 +1,17 @@
+/**
+ * @file ai_interface.h
+ * @author tdecabrat
+ * @brief This file defines the AI interface, which serves as a common
+ * structure for different AI implementations in the Amazons game. The
+ * AI_Interface struct contains a vtable for function pointers to the AI's
+ * methods (initialization, cleanup, and move selection) and a context pointer
+ * for storing AI-specific data. The file also includes utility functions for
+ * parameter checking, allowing AI implementations to easily parse
+ * configuration parameters from a ConfigMap.
+ */
 #ifndef AI_INTERFACE_H
 #define AI_INTERFACE_H
+
 #include "bitboard_state.h"
 #include "game_types.h"
 #include <stdlib.h>

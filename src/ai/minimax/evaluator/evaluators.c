@@ -1,3 +1,22 @@
+/**
+ * @file evaluators.c
+ * @author tdecabrat
+ * @brief This file implements various evaluation functions (heuristics) for
+ * the game of Amazons. These functions analyze the current board state and
+ * provide a score that estimates how favorable the position is for the current
+ * player. The implemented heuristics include:
+ * - Mobility (eval_me): Evaluates the difference in the number of legal moves
+ * available to the current player versus the opponent.
+ * - Relative Territory Heuristic (eval_rth): Evaluates the difference in
+ * Queen-move distance to every square on the board, giving a sense of
+ * territorial control.
+ * - Queen Distance & King Distance (eval_qdkd): Combines the average distance
+ * of the player's queens to all squares (Queen Distance - RTH) and the average
+ * distance of the player's queens to the opponent's queens (King Distance -
+ * Chebyshev), to evaluate both mobility and proximity to the opponent.
+ * For reference : me < qd&kd < rth with forward pruning, and me < rth < qd&kd
+ * without.
+ */
 #include "bitboard.h"
 #include "evaluator.h"
 #include "game_types.h"

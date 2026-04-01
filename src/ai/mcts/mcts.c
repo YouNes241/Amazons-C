@@ -1,3 +1,15 @@
+/**
+ * @file mcts.c
+ * @author tdecabrat
+ * @brief This file implements a Monte Carlo Tree Search (MCTS) AI for the game
+ * of Amazons. MCTS is a heuristic search algorithm for decision-making in
+ * games, which builds a search tree incrementally and uses random simulations
+ * to evaluate the potential of moves. The implementation includes support for
+ * multi-threading, allowing multiple worker threads to perform MCTS in
+ * parallel. The rollout is also heuristic-based, using an evaluation function
+ * to guide the random playouts and cut them off sooner, which can improve the
+ * quality of the search results while reducing complexity.
+ */
 #include "mcts.h"
 #include "ai_interface.h"
 #include "bitboard.h"

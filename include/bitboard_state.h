@@ -1,3 +1,12 @@
+/**
+ * @file bitboard_state.h
+ * @author your name (you@domain.com)
+ * @brief This file defines the BitboardState structure and associated
+ * functions for representing the game state in a format suitable for AI
+ * algorithms. The BitboardState uses bitboards to represent the different
+ * pieces of the game in order for fast cross computation between them and
+ * masks.
+ */
 #ifndef BITBOARD_STATE_H
 #define BITBOARD_STATE_H
 

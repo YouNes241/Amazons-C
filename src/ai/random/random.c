@@ -1,3 +1,10 @@
+/**
+ * @file random.c
+ * @author tdecabrat
+ * @brief This file implements a simple random AI that selects moves uniformly
+ * at random from the set of legal moves. It is just an example file,
+ * basically.
+ */
 #include "ai_interface.h"
 #include "evaluator.h"
 #include "utils.h"

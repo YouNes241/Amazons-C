@@ -2,7 +2,7 @@
  * @file mcts.h
  * @author tdecabrat
  * @brief This file defines all types necessary to an MCTS ai and gives the
- * method to factory a MCTS AI
+ * method to factory a MCTS AI.
  */
 #ifndef MCTS_H
 #define MCTS_H

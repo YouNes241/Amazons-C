@@ -1,3 +1,11 @@
+/**
+ * @file uct.c
+ * @author tdecabrat
+ * @brief This file implements the UCT (Upper Confidence Bound for Trees)
+ * selection strategy for the MCTS AI. UCT works by selecting the child node
+ * with the highest UCT score, which is a combination of the average reward
+ * (exploitation) and a term that encourages exploration of less visited nodes.
+ */
 #include "i_selector.h"
 #include "mcts_types.h"
 #include <math.h>

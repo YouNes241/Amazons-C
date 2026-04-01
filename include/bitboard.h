@@ -1,3 +1,10 @@
+/**
+ * @file bitboard.h
+ * @brief This file defines the Bitboard structure and associated functions for
+ * representing and manipulating the game board state efficiently using bitwise
+ * operations. The Bitboard allows for fast move generation, state evaluation,
+ * and other operations critical to the performance of the AI.
+ */
 #ifndef BITBOARD_H
 #define BITBOARD_H
 

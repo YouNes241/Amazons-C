@@ -1,8 +1,8 @@
 /**
- * @file minimah.h
+ * @file minimax.h
  * @author tdecabrat
  * @brief This file defines all types necessary to a MINIMAX ai and gives the
- * method to factory a MINIMAX AI
+ * method to factory a MINIMAX AI.
  */
 #ifndef MINIMAX_H
 #define MINIMAX_H
@@ -66,5 +66,4 @@ extern const AI_VTable minimax_vtable;
  * context for the Minimax algorithm.
  */
 void create_minimax_ai (AI_Interface *ai);
-
 #endif
