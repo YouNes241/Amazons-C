@@ -363,19 +363,14 @@ handle_command (char *input_buffer, CliContext *ctx)
 
   else if (strcmp (input_buffer, "server list") == 0)
     {
-      if (ctx->net_manager->current_mode == NET_MODE_NONE)
-        {
-          char list_buffer[512];
-          printf (_ ("\n=== Local Amazons Servers ===\n"));
-          NetworkManager_GetServerList (ctx->net_manager, list_buffer,
-                                        sizeof (list_buffer));
-          printf ("%s", list_buffer);
-          printf ("=============================\n");
-        }
-      else
-        {
-          printf (_ ("You are already connected to a network.\n"));
-        }
+
+      char list_buffer[512];
+      printf (_ ("\n=== Local Amazons Servers ===\n"));
+      NetworkManager_GetServerList (ctx->net_manager, list_buffer,
+                                    sizeof (list_buffer));
+      printf ("%s", list_buffer);
+      printf ("=============================\n");
+
       return;
     }
 
@@ -449,8 +444,8 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (
-              _ ("You must start or join a server first to see players.\n"));
+          printf (_ ("[INFO] You must start or join a server first to see "
+                     "players.\n"));
         }
       return;
     }
@@ -478,9 +473,25 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendCancel (ctx->net_manager);
-          printf (_ ("Invitation to player %d canceled.\n"),
-                  ctx->last_invited_id);
+          if (ctx->last_invited_id > 0)
+            {
+              NetworkManager_SendCancel (ctx->net_manager);
+              printf (_ ("[CLIENT] Invitation to player %d canceled.\n"),
+                      ctx->last_invited_id);
+              ctx->last_invited_id = -1;
+            }
+          else
+            {
+
+              printf (_ (
+                  "[CLIENT] You haven't sent any invitations to cancel.\n"));
+            }
+        }
+      else
+        {
+
+          printf (
+              _ ("[INFO] Only connected clients can cancel invitations.\n"));
         }
       return;
     }
@@ -501,7 +512,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("Error: No server is running.\n"));
+          printf (_ ("[MENU] Error: No server is running.\n"));
         }
       return;
     }
@@ -521,9 +532,18 @@ handle_command (char *input_buffer, CliContext *ctx)
           printf (_ ("Games in progress: %d\n"), games);
           printf (_ ("=====================\n"));
         }
+      else if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          // Le Client doit faire une requête réseau !
+          // (Tu devras créer cette fonction, sur le même modèle que
+          // SendScoreboardRequest)
+          // NetworkManager_SendStatusRequest(ctx->net_manager);
+
+          printf (_ ("\n[NETWORK] Requesting server status...\n"));
+        }
       else
         {
-          printf (_ ("[CLIENT] Error: You are not running a server.\n"));
+          printf (_ ("\n[ERROR] You must start or join a server first.\n"));
         }
       return;
     }
@@ -539,7 +559,7 @@ handle_command (char *input_buffer, CliContext *ctx)
           // Le serveur peut l'afficher directement en lisant son fichier
           if (system ("cat scoreboard.txt") != 0)
             {
-              printf (_ ("Failed to read scoreboard.txt\n"));
+              printf (_ ("[ERROR] Failed to read scoreboard.txt\n"));
             }
         }
       return;
@@ -549,11 +569,11 @@ handle_command (char *input_buffer, CliContext *ctx)
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
           NetworkManager_SendPing (ctx->net_manager);
-          printf ("Client: PING\n");
+          printf (_ ("[CLIENT] PING\n"));
         }
       else
         {
-          printf (_ ("You must join a server first to ping it.\n"));
+          printf (_ ("[INFO] You must join a server first to ping it.\n"));
         }
       return;
     }
@@ -702,7 +722,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("Failed to save the game.\n"));
+          printf (_ ("[ERROR] Failed to save the game.\n"));
         }
       return;
     }
@@ -716,7 +736,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("Failed to load the game.\n"));
+          printf (_ ("[ERROR] Failed to load the game.\n"));
         }
       return;
     }
