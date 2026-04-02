@@ -218,10 +218,10 @@ update_config (game_config_t *config, const char *key, const char *val)
   else if (strcmp (key, "board_size") == 0)
     {
       int new_size = atoi (val);
-      if (new_size >= 3 && new_size <= 26)
+      if (new_size >= 4 && new_size <= 11)
         config->board_size = new_size;
       else
-        printf (_ ("[ERROR] Invalid board size (3-26).\n"));
+        printf (_ ("[ERROR] Invalid board size (4-11).\n"));
     }
   else if (strcmp (key, "time") == 0)
     {
