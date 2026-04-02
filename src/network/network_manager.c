@@ -483,7 +483,7 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
 
   // 3. One single sending call for everyone!
   int total_sent = 0;
-  int bytes_left = strlen (message) + 1; // +1 pour inclure le '\0'
+  int bytes_left = strlen (message); // +1 pour inclure le '\0'
   int n;
 
   while (total_sent < bytes_left)
