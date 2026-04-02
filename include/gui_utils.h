@@ -5,6 +5,7 @@
 #include "game_types.h"
 #include "network_common.h"
 #include <gtk/gtk.h>
+#include <stdarg.h>
 
 #define SHORTCUTS_SIZE 16
 #define SHORTCUTS_COUNT 10
@@ -59,5 +60,6 @@ void updateGameShortcuts (GuiContext *ctx);
 void updateTurnDisplay (GuiContext *ctx);
 void showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
                       Position a_dst);
+void gui_log_to_server_console (GuiContext *ctx, const char *format, ...);
 
 #endif // GUI_UTILS_H

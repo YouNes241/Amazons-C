@@ -576,11 +576,14 @@ startServerButtonClick (GtkButton *button, gpointer user_data)
 
   if (NetworkManager_ServerStart (ctx->networkManager, port) == 0)
     {
-      g_print ("[INFO] Server started successfully on port %d.\n", port);
-
       if (ctx->mainStack != NULL)
         {
           gtk_stack_set_visible_child_name (ctx->mainStack, "host_panel_page");
+
+          gui_log_to_server_console (ctx, "[*] Server initialized on port %d",
+                                     port);
+          gui_log_to_server_console (ctx,
+                                     "[*] Waiting for players to connect...");
         }
     }
   else

@@ -381,6 +381,14 @@ createHostPanelPage (GuiContext *ctx)
   GtkWidget *stopServerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "stop_server_btn"));
 
+  GtkWidget *consoleView
+      = GTK_WIDGET (gtk_builder_get_object (builder, "server_console_view"));
+  if (ctx->mainStack)
+    {
+      g_object_set_data (G_OBJECT (ctx->mainStack), "server_console_view",
+                         consoleView);
+    }
+
   g_signal_connect (stopServerBtn, "clicked",
                     G_CALLBACK (stopServerButtonClick), ctx);
 

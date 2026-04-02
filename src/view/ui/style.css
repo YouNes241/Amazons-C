@@ -117,3 +117,10 @@ popover button:hover {
 .hint-arrow {
   background-color: #ff4500;
 }
+
+.server-console {
+  background-color: #1e1e1e;
+  color: gold;
+  font-family: monospace;
+  padding: 10px;
+}

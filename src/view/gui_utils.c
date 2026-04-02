@@ -467,3 +467,33 @@ showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
   gtk_widget_add_css_class (ctx->gameBoard[dst_idx], "hint-queen");
   gtk_widget_add_css_class (ctx->gameBoard[arr_idx], "hint-arrow");
 }
+
+void
+gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
+{
+  if (!ctx || !ctx->mainStack)
+    return;
+
+  GtkWidget *consoleView = GTK_WIDGET (
+      g_object_get_data (G_OBJECT (ctx->mainStack), "server_console_view"));
+  if (!consoleView)
+    return;
+
+  char buffer[1024];
+  va_list args;
+  va_start (args, format);
+  vsnprintf (buffer, sizeof (buffer), format, args);
+  va_end (args);
+
+  GtkTextBuffer *text_buf
+      = gtk_text_view_get_buffer (GTK_TEXT_VIEW (consoleView));
+  GtkTextIter end;
+  gtk_text_buffer_get_end_iter (text_buf, &end);
+  gtk_text_buffer_insert (text_buf, &end, buffer, -1);
+  gtk_text_buffer_insert (text_buf, &end, "\n", -1);
+
+  GtkTextMark *mark
+      = gtk_text_buffer_create_mark (text_buf, NULL, &end, FALSE);
+  gtk_text_view_scroll_mark_onscreen (GTK_TEXT_VIEW (consoleView), mark);
+  gtk_text_buffer_delete_mark (text_buf, mark);
+}
