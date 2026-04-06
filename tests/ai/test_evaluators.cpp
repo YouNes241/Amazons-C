@@ -66,8 +66,17 @@ setup_standard_start (int board_size)
       cc[board_size - 1][board_size - 1] = CONTENT_WHITE_QUEEN;
     }
 
-  GameState new_game
-      = { (uint8_t)board_size, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState new_game = { (uint8_t)board_size,
+                         false,
+                         0,
+                         PLAYER_WHITE,
+                         GAME_IN_PROGRESS,
+                         cc,
+                         0,
+                         0,
+                         0,
+                         {},
+                         {} };
   return new_game;
 }
 
@@ -144,23 +153,23 @@ TEST (TournamentTest, MinimaxVsMCTS)
   // Configure Minimax
   Param p_mini[] = { { (char *)"depth", (char *)"5" },
                      { (char *)"evaluator", (char *)"me" } };
-  ConfigMap cm_mini = { p_mini, 2 };
+  ConfigMap cm_mini = { 2, p_mini };
   AI_Interface minimax = create_ai ("minimax", cm_mini);
 
   // Configure Minimax
   Param p_mini2[] = { { (char *)"depth", (char *)"5" },
                       { (char *)"evaluator", (char *)"qd&kd" } };
-  ConfigMap cm_mini2 = { p_mini2, 2 };
+  ConfigMap cm_mini2 = { 2, p_mini2 };
   AI_Interface minimax2 = create_ai ("minimax", cm_mini2);
 
   // Configure MCTS
   Param p_mcts[] = { { (char *)"time_limit", (char *)"500" },
                      { (char *)"max_iterations", (char *)"20000" } };
-  ConfigMap cm_mcts = { p_mcts, 2 };
+  ConfigMap cm_mcts = { 2, p_mcts };
   AI_Interface mcts = create_ai ("mcts", cm_mcts);
 
   Param p_rd = {};
-  ConfigMap cm_rd = { &p_rd, 0 };
+  ConfigMap cm_rd = { 0, &p_rd };
   AI_Interface rd = create_ai ("random", cm_rd);
   (void)rd;
 
@@ -332,12 +341,14 @@ TEST (EvaluatorTest, RandomMove)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 10,  false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  AI_Interface randomAI = create_ai ("random", { NULL, 0 });
+  AI_Interface randomAI = create_ai ("random", { 0, NULL });
   Move move = randomAI.vtable->get_best_move (&randomAI, state);
 
   printf ("Random move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
@@ -375,15 +386,16 @@ TEST (EvaluatorTest, MiniMaxMove)
   cc[9][3] = CONTENT_WHITE_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
-
+  GameState state
+      = { 10,  false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
   printf ("EVALUATING DEPTH 5.\n");
   Param depth = { "depth", "5" };
   Param evaluator = { "evaluator", "me" };
   Param params[] = { depth, evaluator };
-  ConfigMap cm = { params, 2 };
+  ConfigMap cm = { 2, params };
   AI_Interface randomAI = create_ai ("minimax", cm);
   Move move = randomAI.vtable->get_best_move (&randomAI, state);
 
@@ -425,8 +437,9 @@ TEST (EvaluatorTest, MiniMaxWin)
   cc[8][9] = CONTENT_EMPTY;
   cc[7][9] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
-
+  GameState state
+      = { 10,  false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
@@ -440,9 +453,9 @@ TEST (EvaluatorTest, MiniMaxWin)
   Param params_rth[] = { depth, evaluator_rth };
   Param params_me[] = { depth, evaluator_me };
 
-  ConfigMap cm_qdkd = { params_qdkd, 2 };
-  ConfigMap cm_rth = { params_rth, 2 };
-  ConfigMap cm_me = { params_me, 2 };
+  ConfigMap cm_qdkd = { 2, params_qdkd };
+  ConfigMap cm_rth = { 2, params_rth };
+  ConfigMap cm_me = { 2, params_me };
 
   AI_Interface qdkdAI = create_ai ("minimax", cm_qdkd);
   AI_Interface rthAI = create_ai ("minimax", cm_rth);

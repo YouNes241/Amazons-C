@@ -30,17 +30,17 @@ typedef enum
 
 typedef struct
 {
-  int board_size;   // Taille du plateau
-  game_mode_t mode; // Le mode de jeu actuel choisi
-  bool blitz_mode;  // Vrai si le mode blitz est activé
-  int time_per_player;
+  bool blitz_mode; // Vrai si le mode blitz est activé
   bool ai_white;
   bool ai_black;
   bool verbose; // Pour le debug
-  lang_t language;
   bool start_server;
   bool daemon_mode;
+  int board_size; // Taille du plateau
+  int time_per_player;
   int server_port;
+  game_mode_t mode; // Le mode de jeu actuel choisi
+  lang_t language;
 } game_config_t;
 
 void init_default_config (game_config_t *config);

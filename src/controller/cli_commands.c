@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static CliContext *g_ctx_ref = NULL;
 // --- Autocomplete ---
 static char *commands_list[] = { "new",
                                  "help",
@@ -167,7 +168,7 @@ execute_hint (CliContext *ctx)
   if (!ctx->ai_initialized)
     {
       printf ("%s", "[AI] Initializing advice engine...\n");
-      ConfigMap empty_params = { NULL, 0 };
+      ConfigMap empty_params = { 0, NULL };
       ctx->ai = create_ai ("minimax", empty_params);
 
       if (ctx->ai.vtable == NULL)
@@ -244,12 +245,28 @@ update_config (game_config_t *config, const char *key, const char *val)
   printf (_ ("[CONFIG] %s updated to %s\n"), key, val);
 }
 
+int
+check_blitz_timeout (void)
+{
+  if (g_ctx_ref && g_ctx_ref->current_game
+      && g_ctx_ref->current_game->blitz_mode
+      && g_ctx_ref->current_game->status == GAME_IN_PROGRESS)
+    {
+      update_blitz_timer (g_ctx_ref->current_game);
+
+      if (g_ctx_ref->current_game->status != GAME_IN_PROGRESS)
+        {
+          rl_done = 1;
+        }
+    }
+  return 0;
+}
+
 /**
  * @brief Manages the "quit" command, ensuring proper cleanup and offering to
  * save the game
  * @param ctx CLI context.
  */
-
 static void
 execute_quit (CliContext *ctx)
 {
@@ -289,7 +306,17 @@ execute_quit (CliContext *ctx)
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
-
+  if (ctx->current_game && ctx->current_game->blitz_mode
+      && ctx->current_game->status != GAME_IN_PROGRESS && !ctx->in_main_menu)
+    {
+      cli_display_board (ctx->current_game);
+      PlayerColor winner = get_winner (ctx->current_game);
+      printf (_ ("\n[!] TIME ELAPSED ! Player %s won.\n"),
+              (winner == PLAYER_WHITE ? _ ("White") : _ ("Black")));
+      ctx->in_main_menu = true;
+      rl_event_hook = NULL;
+      return;
+    }
   // 2. HELP & CONFIGURATION
   if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
     {
@@ -309,8 +336,8 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  server stop          : Stop hosting the server\n"));
       printf (_ ("  server status        : Show connected clients and active "
                  "games\n"));
-      printf (_ (
-          "  server list          : Discover local servers on the network\n"));
+      printf (_ ("  server list          : Discover local servers on the "
+                 "network\n"));
 
       printf (_ ("\n--- Network (Client & Lobby) ---\n"));
       printf (_ ("  join [IP:Port] [name]: Connect to a server\n"));
@@ -328,8 +355,8 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  back                 : Mark yourself as BACK/IDLE\n"));
 
       printf (_ ("\n--- Playing a Move ---\n"));
-      printf (_ (
-          "  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
+      printf (_ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: "
+                 "d10-d9(d8)\n"));
       printf (_ ("====================\n\n"));
       return;
     }
@@ -352,11 +379,11 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          // Si le port est pris, on prévient l'utilisateur et on REST dans le
-          // menu
-          printf (
-              _ ("[ERROR] Failed to start server. Port %d might be in use.\n"),
-              port);
+          // Si le port est pris, on prévient l'utilisateur et on REST dans
+          // le menu
+          printf (_ ("[ERROR] Failed to start server. Port %d might be in "
+                     "use.\n"),
+                  port);
         }
       return;
     }
@@ -507,8 +534,8 @@ handle_command (char *input_buffer, CliContext *ctx)
         {
           NetworkManager_ShutdownServer (ctx->net_manager);
           ctx->in_main_menu = true;
-          printf (_ (
-              "\n[SERVER] Server successfully stopped. Returned to menu.\n"));
+          printf (_ ("\n[SERVER] Server successfully stopped. Returned to "
+                     "menu.\n"));
         }
       else
         {
@@ -653,8 +680,17 @@ handle_command (char *input_buffer, CliContext *ctx)
           // Pas d'ID ? Alors c'est une partie locale !
           printf (_ ("New local game.\n"));
           game_init (ctx->current_game);
+          ctx->current_game->blitz_mode = ctx->config->blitz_mode;
+          ctx->current_game->white_time_left
+              = (double)ctx->config->time_per_player;
+          ctx->current_game->black_time_left
+              = (double)ctx->config->time_per_player;
+          ctx->current_game->blitz_turn_start = (double)time (NULL);
           ctx->turn_start_time = time (NULL);
           ctx->in_main_menu = false;
+          g_ctx_ref = ctx;
+          rl_event_hook = check_blitz_timeout;
+          rl_set_keyboard_input_timeout (100000); // 100ms
           cli_clear_screen ();
         }
       return;
@@ -833,6 +869,17 @@ handle_command (char *input_buffer, CliContext *ctx)
       if (is_move_legal (ctx->current_game, player_move))
         {
           apply_move (ctx->current_game, player_move);
+          if (ctx->current_game->blitz_mode
+              && ctx->current_game->status != GAME_IN_PROGRESS)
+            {
+              cli_display_board (ctx->current_game);
+              printf (_ ("\n[!] TIME ELAPSED ! Player %s lost.\n"),
+                      (ctx->current_game->status == GAME_OVER_BLACK_WINS
+                           ? _ ("White")
+                           : _ ("Black")));
+              ctx->game_running = false;
+              return;
+            }
 
           if (ctx->net_manager->current_mode != NET_MODE_NONE)
             {
@@ -862,6 +909,7 @@ handle_command (char *input_buffer, CliContext *ctx)
                 {
                   ctx->game_running = false;
                 }
+              rl_event_hook = NULL;
             }
         }
       else

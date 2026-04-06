@@ -134,5 +134,6 @@ void game_cleanup (GameState *state);
 
 bool undo_move (GameState *state);
 bool redo_move (GameState *state);
+void update_blitz_timer (GameState *state);
 
 #endif

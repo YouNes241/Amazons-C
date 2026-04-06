@@ -27,7 +27,7 @@ protected:
   void
   SetUp () override
   {
-    ConfigMap empty_params = { NULL, 0 };
+    ConfigMap empty_params = { 0, NULL };
     ai = create_ai ("mcts", empty_params);
   }
 
@@ -43,7 +43,7 @@ TEST_F (MCTSParamTest, UpdatesTimeLimitFromParams)
 {
   // Re-init with specific params
   Param p[] = { { (char *)"time_limit", (char *)"1500" } };
-  ConfigMap params = { p, 1 };
+  ConfigMap params = { 1, p };
 
   ai.vtable->init (&ai, &params);
   MCTS_Data *data = (MCTS_Data *)ai.context;
@@ -73,11 +73,13 @@ TEST (MCTSFunctTest, FindWinningMoveInRestrictedState)
   cc[0][0] = CONTENT_BLACK_QUEEN;
   cc[0][1] = CONTENT_EMPTY;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {} };
+  GameState state
+      = { 10,  false, 50, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
 
   // Give MCTS 1 second to explore
   Param p = { (char *)"time_limit", (char *)"1000" };
-  ConfigMap cm = { &p, 1 };
+  ConfigMap cm = { 1, &p };
 
   AI_Interface ai = create_ai ("mcts", cm);
   ASSERT_NE (ai.vtable, nullptr);
@@ -117,11 +119,13 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
   cc[0][3] = CONTENT_BLACK_QUEEN;
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
-  GameState state = { 10, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 10,  false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
 
   Param p[] = { { (char *)"time_limit", (char *)"1000" },
                 { (char *)"max_iterations", (char *)"5000" } };
-  ConfigMap cm = { p, 2 };
+  ConfigMap cm = { 2, p };
 
   AI_Interface ai1 = create_ai ("mcts", cm);
   Move m1 = ai1.vtable->get_best_move (&ai1, state);
@@ -143,7 +147,7 @@ TEST (MCTSFunctTest, ConsistentMoveUnderSameSeed)
 // 4. Factory Test: Creation
 TEST (AIFactoryTest, CreateMCTSReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface ai = create_ai ("mcts", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
@@ -167,10 +171,12 @@ TEST (MCTSCoverageTest, TriggerChildLoop)
   cc[0][0] = CONTENT_WHITE_QUEEN;
   cc[3][3] = CONTENT_BLACK_QUEEN;
 
-  GameState state = { 4, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  GameState state
+      = { 4,   false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
 
   Param p = { (char *)"time_limit", (char *)"3000" };
-  ConfigMap cm = { &p, 1 };
+  ConfigMap cm = { 1, &p };
 
   AI_Interface ai = create_ai ("mcts", cm);
   Move m = ai.vtable->get_best_move (&ai, state);
