@@ -168,7 +168,7 @@ execute_hint (CliContext *ctx)
   if (!ctx->ai_initialized)
     {
       printf ("%s", "[AI] Initializing advice engine...\n");
-      ConfigMap empty_params = { NULL, 0 };
+      ConfigMap empty_params = { 0, NULL };
       ctx->ai = create_ai ("minimax", empty_params);
 
       if (ctx->ai.vtable == NULL)

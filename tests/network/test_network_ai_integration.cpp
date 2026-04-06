@@ -68,11 +68,11 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
   GameState state
-      = { 10,  cc,  PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {}, false,
-          0.0, 0.0, 0.0 };
+      = { 10,  false, 50, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0.0, 0.0,
+          0.0, {},    {} };
 
   // 3. AI generates a real hit
-  ConfigMap empty_params = { nullptr, 0 };
+  ConfigMap empty_params = { 0, nullptr };
   AI_Interface randomAI = create_ai ("random", empty_params);
   Move ai_move = randomAI.vtable->get_best_move (&randomAI, state);
 

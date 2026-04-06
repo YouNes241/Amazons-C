@@ -29,7 +29,7 @@ protected:
 // Testing default values
 TEST_F (MinimaxParamTest, UseDefaultValuesWhenNoParams)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
 
   ai.vtable->init (&ai, &empty_params);
 
@@ -45,7 +45,7 @@ TEST_F (MinimaxParamTest, UseDefaultValuesWhenNoParams)
 TEST_F (MinimaxParamTest, UpdatesDepthFromParams)
 {
   Param p[] = { { "depth", "10" }, { "time_limit", "30" } };
-  ConfigMap params = { p, 2 };
+  ConfigMap params = { 2, p };
 
   ai.vtable->init (&ai, &params);
   Minimax_Data *data = (Minimax_Data *)ai.context;
@@ -60,7 +60,7 @@ TEST_F (MinimaxParamTest, UpdatesDepthFromParamsWithUnused)
   Param p[] = { { "depth", "10" },
                 { "time_limit", "30" },
                 { "a_random_parameter", "comic_sans_ms" } };
-  ConfigMap params = { p, 2 };
+  ConfigMap params = { 2, p };
 
   ai.vtable->init (&ai, &params);
   Minimax_Data *data = (Minimax_Data *)ai.context;
@@ -72,7 +72,7 @@ TEST_F (MinimaxParamTest, UpdatesDepthFromParamsWithUnused)
 // Testing creating a random AI using the factory
 TEST (AIFactoryTest, CreateRandomReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface ai = create_ai ("random", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
@@ -87,7 +87,7 @@ TEST (AIFactoryTest, CreateRandomReturnsCorrectImplementation)
 // Testing creating a minimax AI using the factory
 TEST (AIFactoryTest, CreateMinimaxReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface ai = create_ai ("minimax", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
@@ -102,7 +102,7 @@ TEST (AIFactoryTest, CreateMinimaxReturnsCorrectImplementation)
 // Testing creating an unknown AI using the factory
 TEST (AIFactoryTest, CreateUnknownReturnsNull)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
 
   // On demande un truc qui n'existe pas
   AI_Interface ai = create_ai ("skynet", empty_params);
