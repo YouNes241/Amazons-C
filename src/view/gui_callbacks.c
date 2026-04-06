@@ -260,7 +260,7 @@ hintButtonClick (GtkButton *button, gpointer user_data)
       return;
     }
 
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface hint_ai = create_ai ("minimax", empty_params);
 
   if (hint_ai.vtable == NULL)
