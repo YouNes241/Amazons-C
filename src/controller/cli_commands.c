@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static CliContext *g_ctx_ref = NULL;
 // --- Autocomplete ---
 static char *commands_list[] = { "new",
                                  "help",
@@ -244,10 +245,37 @@ update_config (game_config_t *config, const char *key, const char *val)
   printf (_ ("[CONFIG] %s updated to %s\n"), key, val);
 }
 
+int
+check_blitz_timeout (void)
+{
+  if (g_ctx_ref && g_ctx_ref->current_game
+      && g_ctx_ref->current_game->blitz_mode
+      && g_ctx_ref->current_game->status == GAME_IN_PROGRESS)
+    {
+      update_blitz_timer (g_ctx_ref->current_game);
+
+      if (g_ctx_ref->current_game->status != GAME_IN_PROGRESS)
+        {
+          rl_done = 1;
+        }
+    }
+  return 0;
+}
+
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
-
+  if (ctx->current_game && ctx->current_game->blitz_mode
+      && ctx->current_game->status != GAME_IN_PROGRESS && !ctx->in_main_menu)
+    {
+      cli_display_board (ctx->current_game);
+      PlayerColor winner = get_winner (ctx->current_game);
+      printf (_ ("\n[!] TIME ELAPSED ! Player %s won.\n"),
+              (winner == PLAYER_WHITE ? _ ("White") : _ ("Black")));
+      ctx->in_main_menu = true;
+      rl_event_hook = NULL;
+      return;
+    }
   // 2. HELP & CONFIGURATION
   if (strncmp (input_buffer, "help", CMD_LEN_HELP) == 0)
     {
@@ -611,6 +639,9 @@ handle_command (char *input_buffer, CliContext *ctx)
           ctx->current_game->blitz_turn_start = (double)time (NULL);
           ctx->turn_start_time = time (NULL);
           ctx->in_main_menu = false;
+          g_ctx_ref = ctx;
+          rl_event_hook = check_blitz_timeout;
+          rl_set_keyboard_input_timeout (100000); // 100ms
           cli_clear_screen ();
         }
       return;
@@ -829,6 +860,7 @@ handle_command (char *input_buffer, CliContext *ctx)
                 {
                   ctx->game_running = false;
                 }
+              rl_event_hook = NULL;
             }
         }
       else

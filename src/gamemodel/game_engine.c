@@ -8,7 +8,7 @@ get_time_now (void)
   return (double)time (NULL);
 }
 
-static void
+void
 update_blitz_timer (GameState *state)
 {
   if (!state->blitz_mode)

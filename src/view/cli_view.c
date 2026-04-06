@@ -55,7 +55,7 @@ cli_display_board (const GameState *state)
 
   if (state->blitz_mode)
     {
-      printf ("\n[DEBUG] W: %.1f s | B: %.1f s\n", state->white_time_left,
+      printf ("\n[TIME] W: %.1f s | B: %.1f s\n", state->white_time_left,
               state->black_time_left);
     }
 }
