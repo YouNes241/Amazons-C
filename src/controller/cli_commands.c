@@ -219,10 +219,10 @@ update_config (game_config_t *config, const char *key, const char *val)
   else if (strcmp (key, "board_size") == 0)
     {
       int new_size = atoi (val);
-      if (new_size >= 3 && new_size <= 26)
+      if (new_size >= 4 && new_size <= 11)
         config->board_size = new_size;
       else
-        printf (_ ("[ERROR] Invalid board size (3-26).\n"));
+        printf (_ ("[ERROR] Invalid board size (4-11).\n"));
     }
   else if (strcmp (key, "time") == 0)
     {
@@ -262,6 +262,47 @@ check_blitz_timeout (void)
   return 0;
 }
 
+/**
+ * @brief Manages the "quit" command, ensuring proper cleanup and offering to
+ * save the game
+ * @param ctx CLI context.
+ */
+static void
+execute_quit (CliContext *ctx)
+{
+  if (ctx->net_manager->current_mode != NET_MODE_NONE)
+    {
+      NetworkManager_Cleanup (ctx->net_manager);
+      ctx->in_main_menu = true;
+      ctx->in_network_match = false;
+      ctx->is_away = false;
+      printf (_ ("\n[NETWORK] Disconnected. Returned to local menu.\n"));
+      return;
+    }
+
+  if (!ctx->in_main_menu && ctx->current_game->undo_stack.top >= 0)
+    {
+      printf (_ ("You are about to quit. Save current game? [y/N]: "));
+      char *ans = readline (">> ");
+
+      if (ans && (ans[0] == 'y' || ans[0] == 'Y'))
+        {
+          char *path = readline (_ ("Enter filename: "));
+          if (path && strlen (path) > 0)
+            {
+              if (save_game (path, ctx->config, ctx->current_game) == 0)
+                printf (_ ("Game saved successfully.\n"));
+              else
+                printf (_ ("[ERROR] Failed to save. Exit cancelled.\n"));
+            }
+          free (path);
+        }
+      free (ans);
+    }
+  ctx->game_running = false;
+  printf (_ ("Goodbye!\n"));
+}
+
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
@@ -295,8 +336,8 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  server stop          : Stop hosting the server\n"));
       printf (_ ("  server status        : Show connected clients and active "
                  "games\n"));
-      printf (_ (
-          "  server list          : Discover local servers on the network\n"));
+      printf (_ ("  server list          : Discover local servers on the "
+                 "network\n"));
 
       printf (_ ("\n--- Network (Client & Lobby) ---\n"));
       printf (_ ("  join [IP:Port] [name]: Connect to a server\n"));
@@ -314,8 +355,8 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  back                 : Mark yourself as BACK/IDLE\n"));
 
       printf (_ ("\n--- Playing a Move ---\n"));
-      printf (_ (
-          "  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
+      printf (_ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: "
+                 "d10-d9(d8)\n"));
       printf (_ ("====================\n\n"));
       return;
     }
@@ -338,30 +379,25 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          // Si le port est pris, on prévient l'utilisateur et on REST dans le
-          // menu
-          printf (
-              _ ("[ERROR] Failed to start server. Port %d might be in use.\n"),
-              port);
+          // Si le port est pris, on prévient l'utilisateur et on REST dans
+          // le menu
+          printf (_ ("[ERROR] Failed to start server. Port %d might be in "
+                     "use.\n"),
+                  port);
         }
       return;
     }
 
   else if (strcmp (input_buffer, "server list") == 0)
     {
-      if (ctx->net_manager->current_mode == NET_MODE_NONE)
-        {
-          char list_buffer[512];
-          printf (_ ("\n=== Local Amazons Servers ===\n"));
-          NetworkManager_GetServerList (ctx->net_manager, list_buffer,
-                                        sizeof (list_buffer));
-          printf ("%s", list_buffer);
-          printf ("=============================\n");
-        }
-      else
-        {
-          printf (_ ("You are already connected to a network.\n"));
-        }
+
+      char list_buffer[512];
+      printf (_ ("\n=== Local Amazons Servers ===\n"));
+      NetworkManager_GetServerList (ctx->net_manager, list_buffer,
+                                    sizeof (list_buffer));
+      printf ("%s", list_buffer);
+      printf ("=============================\n");
+
       return;
     }
 
@@ -435,8 +471,8 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (
-              _ ("You must start or join a server first to see players.\n"));
+          printf (_ ("[INFO] You must start or join a server first to see "
+                     "players.\n"));
         }
       return;
     }
@@ -464,27 +500,31 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendCancel (ctx->net_manager);
-          printf (_ ("Invitation to player %d canceled.\n"),
-                  ctx->last_invited_id);
+          if (ctx->last_invited_id > 0)
+            {
+              NetworkManager_SendCancel (ctx->net_manager);
+              printf (_ ("[CLIENT] Invitation to player %d canceled.\n"),
+                      ctx->last_invited_id);
+              ctx->last_invited_id = -1;
+            }
+          else
+            {
+
+              printf (_ (
+                  "[CLIENT] You haven't sent any invitations to cancel.\n"));
+            }
+        }
+      else
+        {
+
+          printf (
+              _ ("[INFO] Only connected clients can cancel invitations.\n"));
         }
       return;
     }
   if (strcmp (input_buffer, "quit") == 0)
     {
-      if (ctx->net_manager->current_mode != NET_MODE_NONE)
-        {
-
-          NetworkManager_Cleanup (ctx->net_manager);
-          ctx->in_main_menu = true;
-          ctx->in_network_match = false;
-          ctx->is_away = false;
-          printf (_ ("\n[NETWORK] Disconnected. Returned to local menu.\n"));
-        }
-      else
-        {
-          ctx->game_running = false;
-        }
+      execute_quit (ctx);
       return;
     }
   // 3. NETWORK: SERVER STOP
@@ -494,12 +534,12 @@ handle_command (char *input_buffer, CliContext *ctx)
         {
           NetworkManager_ShutdownServer (ctx->net_manager);
           ctx->in_main_menu = true;
-          printf (_ (
-              "\n[SERVER] Server successfully stopped. Returned to menu.\n"));
+          printf (_ ("\n[SERVER] Server successfully stopped. Returned to "
+                     "menu.\n"));
         }
       else
         {
-          printf (_ ("Error: No server is running.\n"));
+          printf (_ ("[MENU] Error: No server is running.\n"));
         }
       return;
     }
@@ -519,9 +559,18 @@ handle_command (char *input_buffer, CliContext *ctx)
           printf (_ ("Games in progress: %d\n"), games);
           printf (_ ("=====================\n"));
         }
+      else if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
+        {
+          // Le Client doit faire une requête réseau !
+          // (Tu devras créer cette fonction, sur le même modèle que
+          // SendScoreboardRequest)
+          // NetworkManager_SendStatusRequest(ctx->net_manager);
+
+          printf (_ ("\n[NETWORK] Requesting server status...\n"));
+        }
       else
         {
-          printf (_ ("[CLIENT] Error: You are not running a server.\n"));
+          printf (_ ("\n[ERROR] You must start or join a server first.\n"));
         }
       return;
     }
@@ -537,7 +586,7 @@ handle_command (char *input_buffer, CliContext *ctx)
           // Le serveur peut l'afficher directement en lisant son fichier
           if (system ("cat scoreboard.txt") != 0)
             {
-              printf (_ ("Failed to read scoreboard.txt\n"));
+              printf (_ ("[ERROR] Failed to read scoreboard.txt\n"));
             }
         }
       return;
@@ -547,11 +596,11 @@ handle_command (char *input_buffer, CliContext *ctx)
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
           NetworkManager_SendPing (ctx->net_manager);
-          printf ("Client: PING\n");
+          printf (_ ("[CLIENT] PING\n"));
         }
       else
         {
-          printf (_ ("You must join a server first to ping it.\n"));
+          printf (_ ("[INFO] You must join a server first to ping it.\n"));
         }
       return;
     }
@@ -709,7 +758,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("Failed to save the game.\n"));
+          printf (_ ("[ERROR] Failed to save the game.\n"));
         }
       return;
     }
@@ -723,7 +772,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("Failed to load the game.\n"));
+          printf (_ ("[ERROR] Failed to load the game.\n"));
         }
       return;
     }

@@ -1,10 +1,12 @@
 #ifndef NETWORK_TEST_FIXTURE_H
 #define NETWORK_TEST_FIXTURE_H
 
+#include <chrono>
 #include <gtest/gtest.h>
 #include <string.h>
 #include <string>
 #include <sys/socket.h>
+#include <thread>
 #include <unistd.h>
 
 extern "C"
@@ -12,6 +14,7 @@ extern "C"
 #include "../../src/network/network_includes/network_handlers.h"
 #include "../../src/network/network_includes/network_internal.h"
 #include "../../src/network/network_includes/network_packet.h"
+#include "game_engine.h"
 #include "network_protocol.h"
 }
 

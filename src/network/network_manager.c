@@ -73,8 +73,13 @@ NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
           local_addr.sin_port = htons (UDP_DISCOVERY_PORT);
           local_addr.sin_addr.s_addr = INADDR_ANY;
 
-          bind (manager->discovery_ctx->udp_listen_socket,
-                (struct sockaddr *)&local_addr, sizeof (local_addr));
+          if (bind (manager->discovery_ctx->udp_listen_socket,
+                    (struct sockaddr *)&local_addr, sizeof (local_addr))
+              < 0)
+            {
+              perror (
+                  _ ("[NETWORK WARNING] Failed to bind UDP discovery socket"));
+            }
         }
     }
 }
@@ -122,6 +127,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
 
   if (bind (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
+      perror (_ ("[NETWORK] Bind error (Port already in use)"));
       close (sock);
       return NET_ERROR;
     }
@@ -219,7 +225,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      perror (_ ("Client socket creation error"));
+      perror (_ ("[NETWORK] Client socket creation error"));
       return NET_ERROR;
     }
 
@@ -240,7 +246,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   // this call is blocking until the handshake is complete or fails.
   if (connect (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
-      perror (_ ("Server connection error"));
+      perror (_ ("[NETWORK] Server connection error"));
       close (sock);
       return NET_ERROR;
     }
@@ -250,7 +256,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   manager->client_ctx = malloc (sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
-      perror (_ ("Client memory allocation error"));
+      perror (_ ("[NETWORK] Client memory allocation error"));
       close (sock);
       return NET_ERROR;
     }
@@ -476,10 +482,20 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
     }
 
   // 3. One single sending call for everyone!
-  if (send (target_socket, message, strlen (message), 0) < 0)
+  int total_sent = 0;
+  int bytes_left = strlen (message); // +1 pour inclure le '\0'
+  int n;
+
+  while (total_sent < bytes_left)
     {
-      perror (log_prefix);
-      return NET_ERROR;
+      n = send (target_socket, message + total_sent, bytes_left - total_sent,
+                0);
+      if (n < 0)
+        {
+          perror (log_prefix);
+          return NET_ERROR;
+        }
+      total_sent += n;
     }
 
   return NET_SUCCESS;

@@ -27,11 +27,14 @@
 #include <time.h>
 #include <unistd.h>
 
-/* ---Static variables (Global game context) --- */
-
-static CliContext *g_cli_ctx = NULL;
-
-static bool
+#ifdef UNIT_TESTING
+#define TEST_STATIC
+#else
+#define TEST_STATIC static
+#endif
+/* --- Variables globales --- */
+TEST_STATIC CliContext *g_cli_ctx = NULL;
+TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
@@ -45,8 +48,7 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
    LINEHANDLER (Readline)
    ==========================================================================
  */
-
-static void
+TEST_STATIC void
 linehandler (char *line)
 {
   if (line == NULL || !g_cli_ctx)
@@ -93,10 +95,10 @@ run_interactive_mode (game_config_t *config)
   game_init (&current_game);
 
   NetworkManager net_manager;
-  CliContext *ctx = calloc (1, sizeof (CliContext));
+  CliContext *ctx = (CliContext *)calloc (1, sizeof (CliContext));
   if (!ctx)
     {
-      fprintf (stderr, "Failed to allocate memory for CLI context.\n");
+      fprintf (stderr, "[ERROR] Failed to allocate memory for CLI context.\n");
       exit (EXIT_FAILURE);
     }
   NetworkManager_Init (&net_manager, create_cli_network_events (ctx));
@@ -130,9 +132,14 @@ run_interactive_mode (game_config_t *config)
         }
       else
         {
-          printf (_ ("[ERROR] Failed to start server from command line.\n"));
+
           ctx->in_main_menu = true;
           cli_display_main_menu ();
+          printf (_ ("[ERROR] Failed to start server on port %d. It might be "
+                     "in use.\n"),
+                  config->server_port);
+          printf (_ ("[INFO] Redirected to local menu type help for more "
+                     "information.\n"));
         }
     }
   else

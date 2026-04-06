@@ -132,7 +132,7 @@ on_game_error (const char *err)
 
   if (!g_net_ctx)
     return;
-  printf (_ ("\n[SERVER ERROR] %s\n"), err ? err : "Unknown error");
+  printf (_ ("\n[SERVER] %s\n"), err ? err : "Unknown error");
   refresh_prompt (g_net_ctx);
 }
 

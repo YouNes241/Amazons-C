@@ -307,15 +307,6 @@ int NetworkManager_GetServerStatus (NetworkManager *manager, int *out_clients,
  */
 void NetworkManager_UpdatePlayerStats (const char *username, bool won);
 
-/** @brief Discover available servers on the local network.
- * @details This function sends out discovery packets on the local network to
- * find available game servers. It listens for responses and updates the
- * discovery context with the list of discovered servers, including their IP
- * addresses, ports, names, and last seen timestamps. The discovery results can
- * be retrieved using NetworkManager_GetServerList.
- */
-void NetworkManager_DiscoverServers ();
-
 /** @brief Shutdown the game server.
  *  @param manager Pointer to the network manager.
  * @details This function shuts down the game server.

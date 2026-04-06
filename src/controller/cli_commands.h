@@ -33,6 +33,7 @@
 #define CMD_LEN_INVITE 7
 #define CMD_LEN_ACCEPT 7
 #define CMD_LEN_DECLINE 8
+#define CMD_LEN_QUIT 4
 #define CMD_LEN_SET 3
 #define CMD_SPACE_OFFSET                                                      \
   1 // Indentation to ignore the space after a command (e.g., "join")

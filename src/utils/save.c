@@ -1,10 +1,9 @@
 #include "save.h"
 #include <ctype.h>
-#include <stdbool.h> // Pour avoir le droit d'écrire "true" et "false"
+#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h> // Pour convertir du texte en nombres entiers (atoi)
-#include <string.h> // Pour comparer et mesurer du texte (strcmp, strncmp, strlen)
-
+#include <stdlib.h>
+#include <string.h>
 #define BUFFER_SIZE 512
 #define KEY_SIZE 64
 #define VAL_SIZE 64
@@ -112,7 +111,7 @@ save_game (const char *filepath, game_config_t *config, GameState *state)
 
   if (file == NULL)
     {
-      fprintf (stderr, "Error: Cannot create save file. %s\n", filepath);
+      fprintf (stderr, "ERROR: Cannot create save file %s\n", filepath);
       return -1;
     }
 
@@ -125,13 +124,10 @@ save_game (const char *filepath, game_config_t *config, GameState *state)
   return 0;
 }
 
-/* ==========================================================================
-   LECTURE DE FICHIER (LOAD)
-   ==========================================================================
- */
-
 /**
- * @brief Nettoie une ligne en supprimant les commentaires # et { }
+ * @brief Cleans a line from the save file by removing comments and trimming
+ * whitespace. It handles both line comments (starting with #) and block
+ * comments (enclosed in { }).
  */
 static void
 clean_line (const char *input, char *output, bool *in_block_comment)
@@ -163,48 +159,197 @@ clean_line (const char *input, char *output, bool *in_block_comment)
   output[j] = '\0';
 }
 
+/**
+ * @brief Parses a line from the [settings] section and fills the game_config_t
+ * structure accordingly.
+ */
+static void
+parse_settings_line (const char *trimmed, game_config_t *config,
+                     GameState *state, int *row_index)
+{
+  char key[KEY_SIZE], val_str[VAL_SIZE];
+
+  if (sscanf (trimmed, "%63[^=]=%63s", key, val_str) == 2)
+    {
+      if (strcmp (key, "board_size") == 0)
+        {
+          int new_size = atoi (val_str);
+          if (new_size >= MIN_BOARD_SIZE && new_size <= MAX_BOARD_SIZE)
+            {
+              config->board_size = new_size;
+            }
+          else
+            {
+              config->board_size = DEFAULT_BOARD_SIZE;
+            }
+          state->size = config->board_size;
+          *row_index = state->size - 1;
+        }
+      else if (strcmp (key, "time_per_player") == 0)
+        {
+          config->time_per_player = atoi (val_str);
+        }
+      else if (strcmp (key, "blitz_mode") == 0)
+        {
+          config->blitz_mode = (strcmp (val_str, "true") == 0);
+        }
+      else if (strcmp (key, "ai_white") == 0)
+        {
+          config->ai_white = (strcmp (val_str, "true") == 0);
+        }
+      else if (strcmp (key, "ai_black") == 0)
+        {
+          config->ai_black = (strcmp (val_str, "true") == 0);
+        }
+      else if (strcmp (key, "verbose") == 0)
+        {
+          config->verbose = (strcmp (val_str, "true") == 0);
+        }
+      else if (strcmp (key, "language") == 0)
+        {
+          config->language = (strcmp (val_str, "fr") == 0) ? LANG_FR : LANG_EN;
+        }
+      else if (strcmp (key, "mode") == 0)
+        {
+          if (strcmp (val_str, "gui") == 0)
+            config->mode = MODE_GUI;
+          else if (strcmp (val_str, "contest") == 0)
+            config->mode = MODE_CONTEST;
+          else
+            config->mode = MODE_INTERACTIVE;
+        }
+    }
+}
+
+/**
+ * @brief Parses a line from the [game] section and fills the GameState's board
+ * or current player accordingly. The row_index pointer is used to keep track
+ * of which row of the board we are filling, and it is updated as we read lines
+ * of the board.
+ */
+static void
+parse_board_line (const char *trimmed, GameState *state, int *row_index)
+{
+  if (strcmp (trimmed, "W") == 0)
+    {
+      state->current_player = PLAYER_WHITE;
+      return;
+    }
+  else if (strcmp (trimmed, "B") == 0)
+    {
+      state->current_player = PLAYER_BLACK;
+      return;
+    }
+
+  if (*row_index >= 0 && *row_index < state->size)
+    {
+      int col = 0;
+      for (int i = 0; trimmed[i] != '\0' && col < state->size; i++)
+        {
+          char c = trimmed[i];
+          if (c == ' ' || c == '\t')
+            continue;
+
+          switch (c)
+            {
+            case 'Q':
+              state->board[*row_index][col] = CONTENT_WHITE_QUEEN;
+              break;
+            case 'q':
+              state->board[*row_index][col] = CONTENT_BLACK_QUEEN;
+              break;
+            case 'x':
+            case 'X':
+              state->board[*row_index][col] = CONTENT_ARROW;
+              break;
+            case '_':
+            default:
+              state->board[*row_index][col] = CONTENT_EMPTY;
+              break;
+            }
+          col++;
+        }
+
+      while (col < state->size)
+        {
+          state->board[*row_index][col] = CONTENT_EMPTY;
+          col++;
+        }
+
+      (*row_index)--;
+    }
+}
+
+/**
+ * @brief Parses a line from the [history] section and adds the move to the
+ * undo stack.
+ */
+static void
+parse_history_line (const char *trimmed, GameState *state)
+{
+  char qs_c, qd_c, ad_c;
+  int qs_r, qd_r, ad_r;
+
+  if (sscanf (trimmed, "%c%d-%c%d(%c%d)", &qs_c, &qs_r, &qd_c, &qd_r, &ad_c,
+              &ad_r)
+      == 6)
+    {
+      Move m;
+      m.queen_src.col = qs_c - 'a';
+      m.queen_src.row = qs_r - 1;
+      m.queen_dst.col = qd_c - 'a';
+      m.queen_dst.row = qd_r - 1;
+      m.arrow_dst.col = ad_c - 'a';
+      m.arrow_dst.row = ad_r - 1;
+
+      if (m.queen_src.col < state->size && m.queen_src.row < state->size
+          && m.queen_dst.col < state->size && m.queen_dst.row < state->size
+          && m.arrow_dst.col < state->size && m.arrow_dst.row < state->size)
+        {
+          if (state->undo_stack.top < state->undo_stack.capacity - 1)
+            {
+              state->undo_stack.top++;
+              state->undo_stack.data[state->undo_stack.top] = m;
+            }
+        }
+    }
+}
+
+/**
+ * @brief Main function to load a game from a file. It reads the file line by
+ * line, determines which section it is in, and calls the appropriate parsing
+ * function for each line. It also initializes the undo and redo stacks.
+ */
 int
 load_game (const char *filepath, game_config_t *config, GameState *state)
 {
   FILE *file = fopen (filepath, "r");
   if (file == NULL)
     {
-      fprintf (stderr, "Erreur : Impossible d'ouvrir le fichier %s\n",
-               filepath);
+      fprintf (stderr, "ERROR : Cannot open file %s\n", filepath);
       return -1;
     }
 
-  char raw_line[BUFFER_SIZE]; // Ligne brute lue depuis le fichier
-  char line[BUFFER_SIZE];     // Ligne nettoyée (sans commentaires ni espaces
-                              // inutiles)
+  char raw_line[BUFFER_SIZE];
+  char line[BUFFER_SIZE];
   bool in_block_comment = false;
 
   int current_section = 0; // 1=settings, 2=game, 3=history
-  int row_index = -1;      // Pour suivre la ligne du plateau que l'on remplit
-                           // spécifiquement dans la section [game]
-  // on le met à -1 pour indiquer que l'on n'a pas encore commencé à remplir le
-  // plateau, et on le réinitialisera à size-1 dès que l'on saura la taille du
-  // plateau (lors de la lecture des settings)
+  int row_index = -1;
 
   state->undo_stack.top = -1;
   state->redo_stack.top = -1;
 
-  while (fgets (raw_line, sizeof (raw_line), file)) // on prend ligne par ligne
+  while (fgets (raw_line, sizeof (raw_line), file))
     {
-      // Nettoyage des commentaires
       clean_line (raw_line, line, &in_block_comment);
-
-      // Suppression des espaces de début de ligne
-      char *trimmed = line; // trimmed pointe vers le premier caractère de la
-                            // partie utile de la ligne
-      while (isspace (
-          (unsigned char)*trimmed)) // on avance tant que ce sont des espaces
+      char *trimmed = line;
+      while (isspace ((unsigned char)*trimmed))
         trimmed++;
 
-      if (strlen (trimmed) == 0) // Ligne vide ou uniquement des commentaires
+      if (strlen (trimmed) == 0)
         continue;
 
-      // Ici on détermine la section du fichier dans laquelle on se trouve
       if (strncmp (trimmed, "[settings]", 10) == 0)
         {
           current_section = 1;
@@ -221,135 +366,17 @@ load_game (const char *filepath, game_config_t *config, GameState *state)
           continue;
         }
 
-      // On est dans la première section qui est settings, on lit les
-      // paramètres de configuration
       if (current_section == 1)
         {
-          char key[KEY_SIZE], val_str[VAL_SIZE];
-          if (sscanf (trimmed, "%63[^=]=%63s", key, val_str)
-              == 2) // On lit une ligne au format "clé=valeur"
-            {
-              if (strcmp (key, "board_size")
-                  == 0) // on re-remplit la structure de config à partir du
-                        // fichier
-                {
-                  config->board_size = atoi (val_str);
-                  state->size = config->board_size;
-                  row_index = state->size - 1;
-                }
-              else if (strcmp (key, "time_per_player") == 0)
-                {
-                  config->time_per_player = atoi (val_str);
-                }
-              else if (strcmp (key, "blitz_mode") == 0)
-                {
-                  config->blitz_mode = (strcmp (val_str, "true") == 0);
-                }
-              else if (strcmp (key, "ai_white") == 0)
-                {
-                  config->ai_white = (strcmp (val_str, "true") == 0);
-                }
-              else if (strcmp (key, "ai_black") == 0)
-                {
-                  config->ai_black = (strcmp (val_str, "true") == 0);
-                }
-              else if (strcmp (key, "verbose") == 0)
-                {
-                  config->verbose = (strcmp (val_str, "true") == 0);
-                }
-              else if (strcmp (key, "language") == 0)
-                {
-                  config->language
-                      = (strcmp (val_str, "fr") == 0) ? LANG_FR : LANG_EN;
-                }
-              else if (strcmp (key, "mode") == 0)
-                {
-                  if (strcmp (val_str, "gui") == 0)
-                    config->mode = MODE_GUI;
-                  else if (strcmp (val_str, "contest") == 0)
-                    config->mode = MODE_CONTEST;
-                  else
-                    config->mode = 0; // Mode interactif par défaut
-                }
-            }
+          parse_settings_line (trimmed, config, state, &row_index);
         }
-
-      // On passe à la section game
       else if (current_section == 2)
         {
-          if (strcmp (trimmed, "W") == 0)
-            state->current_player = PLAYER_WHITE;
-          else if (strcmp (trimmed, "B") == 0)
-            state->current_player = PLAYER_BLACK;
-
-          else if (row_index
-                   >= 0) // si c'est pas la ligne du tour, alors c'est une
-                         // ligne du plateau que l'on doit remplir
-            {
-              int col = 0;
-              for (int i = 0; trimmed[i] != '\0' && col < state->size; i++)
-                {
-                  char c = trimmed[i];
-                  if (c == ' ' || c == '\t')
-                    continue; // On ignore les espaces
-
-                  switch (c) // on remplit la matrice du plateau en fonction
-                             // des caractères lus
-                    {
-                    case 'Q':
-                      state->board[row_index][col] = CONTENT_WHITE_QUEEN;
-                      break;
-                    case 'q':
-                      state->board[row_index][col] = CONTENT_BLACK_QUEEN;
-                      break;
-                    case 'x':
-                    case 'X':
-                      state->board[row_index][col] = CONTENT_ARROW;
-                      break;
-                    case '_':
-                      state->board[row_index][col] = CONTENT_EMPTY;
-                      break;
-                    }
-                  col++;
-                }
-              row_index--;
-            }
+          parse_board_line (trimmed, state, &row_index);
         }
-
-      // On passe à la section history, on lit les coups joués
       else if (current_section == 3)
         {
-          char qs_c, qd_c, ad_c;
-          int qs_r, qd_r, ad_r;
-
-          // On cherche le format exact qui est d10-d9(d8)
-          if (sscanf (trimmed, "%c%d-%c%d(%c%d)", &qs_c, &qs_r, &qd_c, &qd_r,
-                      &ad_c, &ad_r)
-              == 6)
-            {
-              Move m; // on remplit une structure Move à partir de la ligne lue
-              m.queen_src.col
-                  = qs_c - 'a'; // Convertir la lettre en index de colonne (0
-                                // pour 'a', 1 pour 'b', ...)
-              m.queen_src.row = qs_r - 1;
-              m.queen_dst.col = qd_c - 'a';
-              m.queen_dst.row = qd_r - 1;
-              m.arrow_dst.col = ad_c - 'a';
-              m.arrow_dst.row = ad_r - 1;
-
-              // Ajout manuel dans la pile d'historique des coups joués
-              if (state->undo_stack.top
-                  < state->undo_stack.capacity
-                        - 1) // on vérifie qu'il y a de la place dans la pile
-                             // pour ajouter ce coup
-                {
-                  state->undo_stack.top++; // on avance le sommet de la pile
-                  state->undo_stack.data[state->undo_stack.top]
-                      = m; // on ajoute le coup au sommet de la pile
-                  // dans le tableau data, à l'indice top, on range le
-                  // mouvement m que qu'on vient de lire dans le fichier
-                }
-            }
+          parse_history_line (trimmed, state);
         }
     }
 
