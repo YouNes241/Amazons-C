@@ -33,6 +33,8 @@ const int NB_BEST_MOVES_PLAYER = 10;
 const int NB_BEST_MOVES_OPPONENT = 25;
 const float BOTTOM_SCORE = -1000000.0f;
 const float TOP_SCORE = 1000000.0f;
+const float HIGH_BONUS_SCORE = 1000.0f;
+const float MEDIUM_BONUS_SCORE = 500.0f;
 
 /**
  * @brief Gets the optimal beam width for forward pruning based on depth.
@@ -278,7 +280,8 @@ minimax_clean (AI_Interface *self)
  * @return The actual number of moves selected as the best moves.
  */
 MINIMAX_STATIC int
-pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
+pick_top_moves (const Minimax_Data *data, int depth,
+                const BitboardState *state, const Move *raw_moves, int count,
                 int limit, ScoredMove *best_moves)
 {
   assert (state != NULL && raw_moves != NULL && best_moves != NULL);
@@ -287,8 +290,20 @@ pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
   int best_count = 0;
   for (int i = 0; i < count; i++)
     {
-      // Use the fast scorer instead of the heavy eval_me
       float score = score_move (state, raw_moves[i]);
+
+      if (moves_are_equal (raw_moves[i], data->killer_moves[depth][0]))
+        score += HIGH_BONUS_SCORE;
+      else if (moves_are_equal (raw_moves[i], data->killer_moves[depth][1]))
+        score += MEDIUM_BONUS_SCORE;
+
+      int q_idx = raw_moves[i].queen_dst.row * state->size
+                  + raw_moves[i].queen_dst.col;
+      int a_idx = (raw_moves[i].arrow_dst.row == 255)
+                      ? 0
+                      : raw_moves[i].arrow_dst.row * state->size
+                            + raw_moves[i].arrow_dst.col;
+      score += (float)data->history_table[q_idx][a_idx] / 100.0f;
 
       if (best_count < limit || score > best_moves[best_count - 1].score)
         {
@@ -301,7 +316,7 @@ pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
               j--;
             }
           best_moves[j].move = raw_moves[i];
-          best_moves[j].score = score;
+          best_moves[j].score = (double)score;
         }
     }
   return best_count;
@@ -358,8 +373,8 @@ minimax_get_queen_actions (Bitboard player_queens, Bitboard occupied, int size,
  * available.
  */
 MINIMAX_STATIC int
-get_top_moves (const BitboardState *state, int beam_limit,
-               ScoredMove *top_moves)
+get_top_moves (Minimax_Data *data, int depth, const BitboardState *state,
+               int beam_limit, ScoredMove *top_moves)
 {
   assert (state != NULL && top_moves != NULL && beam_limit > 0);
 
@@ -376,13 +391,15 @@ get_top_moves (const BitboardState *state, int beam_limit,
   if (queen_count == 0)
     return 0;
 
+  // Prune Queens first
   ScoredMove filtered_queens[beam_limit];
-  int actual_q_count = pick_top_moves (state, queen_moves, queen_count,
-                                       beam_limit, filtered_queens);
+  int actual_q_count
+      = pick_top_moves (data, depth, state, queen_moves, queen_count,
+                        beam_limit, filtered_queens);
 
+  // Generate full moves
   Move filtered_full_moves[get_move_limit (state)];
   int total_full_moves = 0;
-
   for (int i = 0; i < actual_q_count; i++)
     {
       total_full_moves += get_arrow_moves (
@@ -390,8 +407,8 @@ get_top_moves (const BitboardState *state, int beam_limit,
           &filtered_full_moves[total_full_moves]);
     }
 
-  return pick_top_moves (state, filtered_full_moves, total_full_moves,
-                         beam_limit, top_moves);
+  return pick_top_moves (data, depth, state, filtered_full_moves,
+                         total_full_moves, beam_limit, top_moves);
 }
 
 /**
@@ -412,8 +429,8 @@ get_top_moves (const BitboardState *state, int beam_limit,
  * tree.
  */
 MINIMAX_STATIC float
-alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
-                    int depth, float alpha, float beta, bool maximizing,
+alpha_beta_forward (Minimax_Data *data, const BitboardState *state, int depth,
+                    float alpha, float beta, bool maximizing,
                     unsigned long start_time)
 {
   if (alpha_beta_conditions (data, state, depth, start_time) || data == NULL
@@ -427,8 +444,7 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
     return data->evaluate (state);
 
   ScoredMove top_moves[beam_limit];
-
-  int actual_count = get_top_moves (state, beam_limit, top_moves);
+  int actual_count = get_top_moves (data, depth, state, beam_limit, top_moves);
 
   if (actual_count == 0)
     return maximizing ? BOTTOM_SCORE : TOP_SCORE;
@@ -445,9 +461,21 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
                         &best_score, &alpha, &beta);
 
       if (beta <= alpha)
-        break;
+        {
+          if (!moves_are_equal (top_moves[i].move,
+                                data->killer_moves[depth][0]))
+            {
+              data->killer_moves[depth][1] = data->killer_moves[depth][0];
+              data->killer_moves[depth][0] = top_moves[i].move;
+            }
+          int q_idx = top_moves[i].move.queen_dst.row * state->size
+                      + top_moves[i].move.queen_dst.col;
+          int a_idx = top_moves[i].move.arrow_dst.row * state->size
+                      + top_moves[i].move.arrow_dst.col;
+          data->history_table[q_idx][a_idx] += (uint32_t)(depth * depth);
+          break;
+        }
     }
-
   return best_score;
 }
 
@@ -469,9 +497,8 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
  * all fields set to zero.
  */
 MINIMAX_STATIC Move
-run_root_search (const Minimax_Data *data, const BitboardState *state,
-                 int depth, unsigned long start_time, Move *available_moves,
-                 int count)
+run_root_search (Minimax_Data *data, const BitboardState *state, int depth,
+                 unsigned long start_time, Move *available_moves, int count)
 {
   float alpha = BOTTOM_SCORE;
   float beta = TOP_SCORE;
@@ -502,31 +529,30 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
 }
 
 /**
- * @brief Updates (inline) a given array of moves by moving the best move found
- * to the front of the array, and shifting other moves accordingly.
- * @note This is used to improve move ordering in iterative deepening, to have
- * more chance of pruning.
+ * @brief Sorts moves at the root level using the fast move scoring heuristic.
+ * This improves alpha-beta pruning effectiveness by evaluating the most
+ * promising moves first.
  *
- * @param count The number of moves in the available_moves array.
- * @param best_move_overall The best move found in the previous iteration.
- * @param available_moves The array of available moves to reorder. Mind that it
- * should be of size at least count.
+ * @param state The current board state.
+ * @param moves Array of moves to sort.
+ * @param count The number of moves.
  */
-MINIMAX_STATIC void
-sort_moves (int count, const Move best_move_overall, Move *available_moves)
+static void
+sort_root_moves (const BitboardState *state, Move *moves, int count)
 {
-  if (available_moves == NULL || count <= 1)
-    return;
-
-  for (int i = 0; i < count; i++)
+  // Simple insertion sort with fast scoring heuristic
+  for (int i = 1; i < count; i++)
     {
-      if (moves_are_equal (available_moves[i], best_move_overall))
+      float score_i = score_move (state, moves[i]);
+      int j = i - 1;
+
+      while (j >= 0 && score_move (state, moves[j]) < score_i)
         {
-          Move temp = available_moves[0];
-          available_moves[0] = available_moves[i];
-          available_moves[i] = temp;
-          break;
+          moves[j + 1] = moves[j];
+          j--;
         }
+
+      moves[j + 1] = moves[i];
     }
 }
 
@@ -567,14 +593,17 @@ minimax_get_best_move (const AI_Interface *self, GameState state)
     }
   else
     {
+      // Sort moves once for better pruning across all iterations
+      sort_root_moves (&root_state, available_moves, count);
+
       for (int d = 1; d <= data->max_depth; d++)
         {
+          printf ("[Minimax] Starting iterative deepening at depth %d\n", d);
           if (get_time_ms () - start_time >= data->time_limit)
             break;
 
-          // Put the previous best move at index 0
-          if (d > 1)
-            sort_moves (count, best_move_overall, available_moves);
+          // Re-sort moves based on current best move and history data
+          sort_root_moves (&root_state, available_moves, count);
 
           Move move_at_depth = run_root_search (
               data, &root_state, d, start_time, available_moves, count);

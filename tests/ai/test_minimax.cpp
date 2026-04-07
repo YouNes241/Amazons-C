@@ -113,6 +113,8 @@ make_data (uint64_t time_limit_ms = 5000, int max_depth = 3)
   d.forward_pruning_enabled = true;
   d.iterative_deepening_enabled = false;
   d.evaluate = get_evaluator (EVAL_ME);
+  memset (d.killer_moves, 0, sizeof (d.killer_moves));
+  memset (d.history_table, 0, sizeof (d.history_table));
   return d;
 }
 
@@ -300,56 +302,6 @@ TEST (GetBeamWidth, ZeroDepthBonusAtLeaf)
 }
 
 // ============================================================
-// sort_moves
-// ============================================================
-
-// The target move must be swapped to index 0 while the displaced element
-// moves to the target's old position.
-TEST (SortMoves, CorrectlySwaps)
-{
-  Move best = { { 0, 0 }, { 1, 1 }, { 2, 2 } };
-  Move other_1 = { { 3, 3 }, { 4, 4 }, { 5, 5 } };
-  Move other_2 = { { 6, 6 }, { 7, 7 }, { 8, 8 } };
-  Move list[] = { other_1, best, other_2 };
-
-  sort_moves (3, best, list);
-
-  EXPECT_TRUE (moves_are_equal (list[0], best));
-  EXPECT_TRUE (moves_are_equal (list[1], other_1));
-  EXPECT_TRUE (moves_are_equal (list[2], other_2));
-}
-
-// If the target move is absent the list must remain completely unchanged.
-TEST (SortMoves, MissingMoveLeavesList)
-{
-  Move a = { { 0, 0 }, { 1, 1 }, { 2, 2 } };
-  Move b = { { 3, 3 }, { 4, 4 }, { 5, 5 } };
-  Move list[] = { a, b };
-
-  sort_moves (2, { { 9, 9 }, { 9, 9 }, { 9, 9 } }, list);
-
-  EXPECT_TRUE (moves_are_equal (list[0], a));
-  EXPECT_TRUE (moves_are_equal (list[1], b));
-}
-
-// A null list pointer must not cause a crash (no iteration happens).
-TEST (SortMoves, NullListDoesNotCrash)
-{
-  sort_moves (3, { { 0, 0 }, { 1, 1 }, { 2, 2 } }, nullptr);
-}
-
-// Edge counts of 0 and 1 must be handled without crashing.
-TEST (SortMoves, EdgeCounts)
-{
-  Move a = { { 0, 0 }, { 1, 1 }, { 2, 2 } };
-  Move b = { { 3, 3 }, { 4, 4 }, { 5, 5 } };
-  Move list[] = { a, b };
-
-  sort_moves (0, a, list);
-  sort_moves (1, a, list);
-}
-
-// ============================================================
 // score_move
 // ============================================================
 
@@ -400,7 +352,16 @@ TEST (PickTopMoves, FiltersAndSorts)
                  { { 0, 0 }, { 2, 2 }, { 255, 255 } } }; // medium score
 
   ScoredMove best[2];
-  int actual = pick_top_moves (&state, raw, 3, 2, best);
+  Minimax_Data data = make_data ();
+  int actual = pick_top_moves (&data, 0, &state, raw, 3, 2, best);
+
+  printf ("Best moves returned by pick_top_moves:\n");
+  for (int i = 0; i < actual; i++)
+    printf (
+        "  Move %d: queen (%d,%d) → (%d,%d), arrow → (%d,%d), score %.2f\n", i,
+        best[i].move.queen_src.row, best[i].move.queen_src.col,
+        best[i].move.queen_dst.row, best[i].move.queen_dst.col,
+        best[i].move.arrow_dst.row, best[i].move.arrow_dst.col, best[i].score);
 
   EXPECT_EQ (actual, 2);
   EXPECT_TRUE (moves_are_equal (best[0].move, raw[1]));
@@ -411,7 +372,8 @@ TEST (PickTopMoves, FiltersAndSorts)
 // Null arguments must trigger an assertion/crash.
 TEST (PickTopMoves, AssertsOnNull)
 {
-  ASSERT_DEATH ({ pick_top_moves (nullptr, nullptr, 0, 0, nullptr); }, "");
+  ASSERT_DEATH (
+      { pick_top_moves (nullptr, 0, nullptr, nullptr, 0, 0, nullptr); }, ".*");
 }
 
 // When count < limit every provided move must be returned.
@@ -421,7 +383,9 @@ TEST (PickTopMoves, AllUnderLimit)
   Move raw[] = { { { 0, 0 }, { 1, 1 }, { 255, 255 } } };
   ScoredMove best[10];
 
-  EXPECT_EQ (pick_top_moves (&state, raw, 1, 10, best), 1);
+  Minimax_Data data = make_data ();
+  EXPECT_EQ (pick_top_moves (&data, 0, &state, raw, 1, 10, best), 1);
+  EXPECT_TRUE (moves_are_equal (best[0].move, raw[0]));
 }
 
 // ============================================================
@@ -609,8 +573,10 @@ TEST (GetTopMoves, TrappedPlayerReturnsZero)
   trap_queen (&state, true, 0, 0);
   state.white_to_move = true;
 
+  Minimax_Data data = make_data ();
+
   ScoredMove top[5];
-  EXPECT_EQ (get_top_moves (&state, 5, top), 0);
+  EXPECT_EQ (get_top_moves (&data, 0, &state, 5, top), 0);
 }
 
 // The returned count must never exceed the requested beam limit, and results
@@ -622,8 +588,9 @@ TEST (GetTopMoves, RespectsBeamLimit)
   bitboard_set_bit (&state.black_queens, 54);
   state.white_to_move = true;
 
+  Minimax_Data data = make_data ();
   ScoredMove top[3];
-  int count = get_top_moves (&state, 3, top);
+  int count = get_top_moves (&data, 0, &state, 3, top);
 
   EXPECT_EQ (count, 3);
   EXPECT_GE (top[0].score, top[1].score);
@@ -638,8 +605,9 @@ TEST (GetTopMoves, BlackTurnMovesOriginateFromBlack)
   bitboard_set_bit (&state.black_queens, 99);
   state.white_to_move = false;
 
+  Minimax_Data data = make_data ();
   ScoredMove top[5];
-  int count = get_top_moves (&state, 5, top);
+  int count = get_top_moves (&data, 0, &state, 5, top);
 
   EXPECT_GT (count, 0);
   EXPECT_EQ (top[0].move.queen_src.row, 9);
