@@ -10,11 +10,20 @@
  * to guide the random playouts and cut them off sooner, which can improve the
  * quality of the search results while reducing complexity.
  */
+
+/* Test mode support: make static functions visible to unit tests */
+#ifdef MCTS_TEST_MODE
+#define MCTS_STATIC
+#else
+#define MCTS_STATIC static
+#endif
+
 #include "mcts.h"
 #include "ai_interface.h"
 #include "bitboard.h"
 #include "evaluator.h"
 #include "i_selector.h"
+#include "mcts_includes/mcts_internal.h"
 #include "mcts_types.h"
 #include "uct.h"
 #include "utils.h"
@@ -27,6 +36,20 @@ const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
 const int DEFAULT_MAX_WORKERS = 1;
 
 /**
+ * @brief Checks if a move is null (queen source and destination are the same).
+ * Body defined in mcts.c under MCTS_STATIC.
+ *
+ * @param m The move to check.
+ * @return true if the move is null, false otherwise.
+ */
+MCTS_STATIC bool
+is_move_null (const Move *m)
+{
+  return m->queen_src.col == m->queen_dst.col
+         && m->queen_src.row == m->queen_dst.row;
+}
+
+/**
  * @brief Aggregates search results found using MCTS, by simply taking the move
  * that has been explored the most between multiple threads, if any.
  *
@@ -34,7 +57,7 @@ const int DEFAULT_MAX_WORKERS = 1;
  * @param num_threads Number of threads used for the calculation
  * @return Move Best move found in that iteration
  */
-static Move
+MCTS_STATIC Move
 merge_and_get_best (const MCTS_Data *data, int num_threads)
 {
   // TODO : change to use all nodes instead (though, if a node has been
@@ -85,7 +108,7 @@ merge_and_get_best (const MCTS_Data *data, int num_threads)
  * @param root The root node of the MCTS tree to start selection from.
  * @return The selected MCTS_Node to expand.
  */
-static MCTS_Node *
+MCTS_STATIC MCTS_Node *
 select_node (const ISelector *selector, MCTS_Node *root)
 {
   MCTS_Node *node = root;
@@ -105,7 +128,7 @@ select_node (const ISelector *selector, MCTS_Node *root)
  * @param node The MCTS_Node from which to start backpropagation.
  * @param result The result of the rollout.
  */
-static void
+MCTS_STATIC void
 backpropagate (MCTS_Node *node, float result)
 {
   MCTS_Node *current = node;
@@ -127,7 +150,7 @@ backpropagate (MCTS_Node *node, float result)
  * otherwise.
  * @param result The probability of win in that configuration.
  */
-static float
+MCTS_STATIC float
 get_mcts_win_probability (const BitboardState *state,
                           bool starting_player_was_white)
 {
@@ -150,20 +173,6 @@ get_mcts_win_probability (const BitboardState *state,
 }
 
 /**
- * @brief Checks if a move is null.
- *
- * @param m A move.
- * @return true
- * @return false
- */
-static inline bool
-is_move_null (const Move *m)
-{
-  return m->queen_src.col == m->queen_dst.col
-         && m->queen_src.row == m->queen_dst.row;
-}
-
-/**
  * @brief Performs a random rollout (simulation) from the given state until the
  * game ends, and returns the result from the perspective of the player to move
  * at the start of the rollout.
@@ -171,7 +180,7 @@ is_move_null (const Move *m)
  * @return A float value representing the result of the rollout: 1.0 if the
  * starting player wins, 0.0 if the starting player loses.
  */
-static float
+MCTS_STATIC float
 rollout (BitboardState state)
 {
   BitboardState current = state;
@@ -216,7 +225,7 @@ rollout (BitboardState state)
  * @param parent The parent node.
  * @return MCTS_Node* The MCTS node.
  */
-static MCTS_Node *
+MCTS_STATIC MCTS_Node *
 alloc_mcts_node (const Move *move, const BitboardState *current_state,
                  MCTS_Node *parent)
 {
@@ -243,7 +252,7 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
  * @return The newly created child node corresponding to an untried move, or
  * the parent node if all moves have already been tried (fully expanded).
  */
-static MCTS_Node *
+MCTS_STATIC MCTS_Node *
 expand (MCTS_Node *parent)
 {
   if (parent->is_fully_expanded
@@ -298,8 +307,11 @@ expand (MCTS_Node *parent)
  * from the given node.
  * @param node The root node of the subtree to free. This function will free
  * all descendants of this node as well.
+ * @note Should not be called twice on the same node, as it will lead to
+ * double-free errors. Please ensure that the caller sets the pointer to NULL
+ * after freeing if there's a possibility of it being freed again.
  */
-static void
+MCTS_STATIC void
 free_mcts_tree (MCTS_Node *node)
 {
   if (node == NULL)
@@ -334,7 +346,7 @@ free_mcts_tree (MCTS_Node *node)
  * @param state The current GameState to evaluate and find the best move for.
  * @return The best Move for the current player based on the MCTS evaluation.
  */
-static Move
+MCTS_STATIC Move
 mcts_get_best_move (const AI_Interface *self, GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
@@ -417,7 +429,7 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
  * @param self The AI_Interface instance to clean, which holds the context
  * for the MCTS algorithm.
  */
-static void
+MCTS_STATIC void
 mcts_clean (AI_Interface *self)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
@@ -452,7 +464,7 @@ mcts_clean (AI_Interface *self)
  * @note max_workers: Maximum number of worker threads for parallel MCTS
  * (default 1).
  */
-static void
+MCTS_STATIC void
 mcts_init (AI_Interface *self, const ConfigMap *params)
 {
   MCTS_Data *data = (MCTS_Data *)malloc (sizeof (MCTS_Data));

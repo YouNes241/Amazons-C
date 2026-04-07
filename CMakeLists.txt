@@ -19,7 +19,7 @@ include(CTest)
 include(GoogleTest)
 
 enable_testing()
-add_compile_options(-Wall -Wextra -O3 -g -Werror)
+add_compile_options(-Wall -Wextra -g -Werror)
 
 # --- DEPENDENCIES ---
 find_package(OpenMP REQUIRED)
@@ -33,6 +33,10 @@ find_program(GLIB_COMPILE_RESOURCES NAMES glib-compile-resources REQUIRED)
 find_package(Intl)
 find_package(Doxygen)
 
+# Force No Optimization for Coverage builds (BRANCHES)
+set(CMAKE_C_FLAGS_COVERAGE "-O0 -g --coverage")
+set(CMAKE_CXX_FLAGS_COVERAGE "-O0 -g --coverage")
+
 # --- SUBDIRECTORIES ---
 add_subdirectory(src)
 add_subdirectory(tests)
@@ -44,8 +48,16 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
     add_link_options(--coverage)
     add_custom_target(coverage
         COMMAND ${CMAKE_COMMAND} -E make_directory coverage
-        COMMAND ${Python3_EXECUTABLE} -m gcovr -r ${CMAKE_SOURCE_DIR} --html --html-details -o coverage/index.html
+        COMMAND ${Python3_EXECUTABLE} -m gcovr 
+                -r ${CMAKE_SOURCE_DIR} 
+                --object-directory=${CMAKE_BINARY_DIR}
+                --filter "${CMAKE_SOURCE_DIR}/src/"
+                --filter "${CMAKE_SOURCE_DIR}/include/"
+                --html --html-details 
+                -o coverage/index.html
+                ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating HTML coverage report..."
     )
 endif()
 

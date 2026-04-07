@@ -66,4 +66,55 @@ extern const AI_VTable minimax_vtable;
  * context for the Minimax algorithm.
  */
 void create_minimax_ai (AI_Interface *ai);
+
+/* Test-mode declarations: expose internal functions for unit testing */
+#ifdef MINIMAX_TEST_MODE
+
+/**
+ * @brief Gets the optimal beam width for forward pruning based on depth.
+ * @param maximizing_player Indicates if the current player is the maximizing
+ * player.
+ * @param current_depth The current depth in the search tree.
+ * @param max_depth The maximum depth of the search tree.
+ * @return The calculated beam width for the current search depth and player.
+ */
+int get_beam_width (int maximizing_player, int current_depth, int max_depth);
+
+/**
+ * @brief Evaluates a move based on the reachable squares from the target.
+ * @param state The current board state before the move.
+ * @param move The move to score.
+ * @return Score based on mobility from the destination square.
+ */
+float score_move (const BitboardState *state, Move move);
+
+/**
+ * @brief Determines if the alpha-beta search should stop at this node.
+ * @param data The Minimax_Data containing time limits and state.
+ * @param state The current board state.
+ * @param depth The current depth in the search tree.
+ * @param start_time The starting time of the algorithm.
+ * @return True if search should terminate, false otherwise.
+ */
+bool alpha_beta_conditions (const Minimax_Data *data,
+                            const BitboardState *state, int depth,
+                            unsigned long start_time);
+
+/**
+ * @brief Updates the best move and alpha-beta bounds.
+ * @param is_maximizing Indicates if the current player is the maximizing
+ * player.
+ * @param score The score of the candidate move.
+ * @param candidate The move being evaluated.
+ * @param best_move Pointer to update with the best move found.
+ * @param best_score Pointer to update with the best score.
+ * @param alpha Pointer to the alpha value (lower bound).
+ * @param beta Pointer to the beta value (upper bound).
+ */
+void update_best_move (bool is_maximizing, float score, const Move candidate,
+                       Move *best_move, float *best_score, float *alpha,
+                       float *beta);
+
+#endif /* MINIMAX_TEST_MODE */
+
 #endif

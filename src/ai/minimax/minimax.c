@@ -11,18 +11,14 @@
  * cutting off less promising moves. (Use with caution as it can miss some
  * winning moves)
  */
-#include "minimax.h"
-#include "ai_interface.h"
-#include "bitboard.h"
-#include "evaluator.h"
-#include "game_types.h"
-#include "utils.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#include "minimax_includes/minimax_internal.h"
+#include <assert.h>
+
+#ifdef MINIMAX_TEST_MODE
+#define MINIMAX_STATIC
+#else
+#define MINIMAX_STATIC static
+#endif
 
 // PARAMS
 const int DEFAULT_MAX_DEPTH = 3;
@@ -31,11 +27,100 @@ const bool DEFAULT_FORWARD_PRUNING_ACTIVATION = true;
 const bool DEFAULT_ITERATIVE_DEEPENING_ACTIVATION = false;
 const EvaluatorType DEFAULT_EVALUATOR = EVAL_ME;
 
-// INTERNAL CONSTANTS
-static const int NB_BEST_MOVES_PLAYER = 10;
-static const int NB_BEST_MOVES_OPPONENT = 25;
-static const float BOTTOM_SCORE = -1000000.0f;
-static const float TOP_SCORE = 1000000.0f;
+// INTERNAL CONSTANTS (non-static so they can be declared as extern in the
+// header)
+const int NB_BEST_MOVES_PLAYER = 10;
+const int NB_BEST_MOVES_OPPONENT = 25;
+const float BOTTOM_SCORE = -1000000.0f;
+const float TOP_SCORE = 1000000.0f;
+
+/**
+ * @brief Gets the optimal beam width for forward pruning based on depth.
+ * @param maximizing_player Indicates if the current player is the maximizing
+ * player.
+ * @param current_depth The current depth in the search tree.
+ * @param max_depth The maximum depth of the search tree.
+ * @return The calculated beam width for the current search depth and player.
+ */
+MINIMAX_STATIC int
+get_beam_width (int maximizing_player, int current_depth, int max_depth)
+{
+  int base_width
+      = maximizing_player ? NB_BEST_MOVES_PLAYER : NB_BEST_MOVES_OPPONENT;
+  int depth_bonus = (max_depth - current_depth) * 3;
+  return base_width + depth_bonus;
+}
+
+/**
+ * @brief Evaluates a move based on the reachable squares from the target.
+ * @param state The current board state before the move.
+ * @param move The move to score.
+ * @return Score based on mobility from the destination square.
+ */
+MINIMAX_STATIC float
+score_move (const BitboardState *state, Move move)
+{
+  uint8_t size = state->size;
+  uint8_t target_idx = move.queen_dst.row * size + move.queen_dst.col;
+  Bitboard occupied = bitboard_or (
+      bitboard_or (state->white_queens, state->black_queens), state->arrows);
+  Bitboard reachable = bitboard_get_reachable (target_idx, occupied, size);
+  return (float)bitboard_count_bits (reachable);
+}
+
+/**
+ * @brief Determines if the alpha-beta search should stop at this node.
+ * @param data The Minimax_Data containing time limits and state.
+ * @param state The current board state.
+ * @param depth The current depth in the search tree.
+ * @param start_time The starting time of the algorithm.
+ * @return True if search should terminate, false otherwise.
+ */
+MINIMAX_STATIC bool
+alpha_beta_conditions (const Minimax_Data *data, const BitboardState *state,
+                       int depth, unsigned long start_time)
+{
+  return (get_time_ms () - start_time >= data->time_limit) || depth <= 0
+         || bitboard_state_is_game_over (state);
+}
+
+/**
+ * @brief Updates the best move and alpha-beta bounds.
+ * @param is_maximizing Indicates if the current player is the maximizing
+ * player.
+ * @param score The score of the candidate move.
+ * @param candidate The move being evaluated.
+ * @param best_move Pointer to update with the best move found.
+ * @param best_score Pointer to update with the best score.
+ * @param alpha Pointer to the alpha value (lower bound).
+ * @param beta Pointer to the beta value (upper bound).
+ */
+MINIMAX_STATIC void
+update_best_move (bool is_maximizing, float score, const Move candidate,
+                  Move *best_move, float *best_score, float *alpha,
+                  float *beta)
+{
+  if (is_maximizing)
+    {
+      if (score > *best_score)
+        {
+          *best_score = score;
+          if (best_move)
+            *best_move = candidate;
+        }
+      *alpha = MAX (*alpha, *best_score);
+    }
+  else
+    {
+      if (score < *best_score)
+        {
+          *best_score = score;
+          if (best_move)
+            *best_move = candidate;
+        }
+      *beta = MIN (*beta, *best_score);
+    }
+}
 
 /**
  * @brief Get the possible moves for a queen at a given index, based on the
@@ -50,20 +135,20 @@ static const float TOP_SCORE = 1000000.0f;
  *
  * @return int The number of moves generated and stored in moves_array.
  */
-static int
+MINIMAX_STATIC int
 get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
                  Move *moves_array)
 {
   Bitboard reachable = bitboard_get_reachable (queen_index, occupied, size);
   int count = 0;
+  Position src = idx_to_pos (queen_index, size);
 
   while (!bitboard_is_zero (reachable))
     {
       int idx = pop_lsb (&reachable);
-      moves_array[count++]
-          = (Move){ .queen_src = idx_to_pos (queen_index, size),
-                    .queen_dst = idx_to_pos (idx, size),
-                    .arrow_dst = { -1, -1 } };
+      moves_array[count++] = (Move){ .queen_src = src,
+                                     .queen_dst = idx_to_pos (idx, size),
+                                     .arrow_dst = { 255, 255 } };
     }
   return count;
 }
@@ -82,7 +167,7 @@ get_queen_moves (uint8_t queen_index, Bitboard occupied, uint8_t size,
  *
  * @return int The number of moves generated and stored in final_moves.
  */
-static int
+MINIMAX_STATIC int
 get_arrow_moves (const Move *queen_moves, int queen_move_count,
                  Bitboard occupied, uint8_t size, Move *final_moves)
 {
@@ -121,7 +206,7 @@ get_arrow_moves (const Move *queen_moves, int queen_move_count,
  * context for the Minimax algorithm.
  * @param params A ConfigMap containing key-value pairs for configuration.
  */
-static void
+MINIMAX_STATIC void
 minimax_init (AI_Interface *self, const ConfigMap *params)
 {
   Minimax_Data *data = (Minimax_Data *)malloc (sizeof (Minimax_Data));
@@ -166,56 +251,17 @@ minimax_init (AI_Interface *self, const ConfigMap *params)
  * @param self The AI_Interface instance to clean, which holds the context for
  * the Minimax algorithm.
  */
-static void
+MINIMAX_STATIC void
 minimax_clean (AI_Interface *self)
 {
+  if (!self->context)
+    return;
   Minimax_Data *data = (Minimax_Data *)self->context;
 
   free (data);
   self->context = NULL;
 
   printf ("[Minimax] Clean OK\n");
-}
-
-/**
- * @brief Gets the optimal beam width for the forward pruning  based on
- * max_depth.
- * @param maximizing_player Indicates if the current player is the maximizing
- * player.
- * @param current_depth The current depth in the search tree.
- * @param max_depth The maximum depth of the search tree.
- * @return The calculated beam width for the current search depth and player.
- */
-static inline int
-get_beam_width (int maximizing_player, int current_depth, int max_depth)
-{
-  int base_width
-      = maximizing_player ? NB_BEST_MOVES_PLAYER : NB_BEST_MOVES_OPPONENT;
-
-  int depth_bonus = (max_depth - current_depth) * 3;
-
-  return base_width + depth_bonus;
-}
-
-/**
- * @brief Scores a move based on its potential mobility after the queen moves
- * to its destination.
- * @param state The current board state before the move.
- * @param move The move to score, containing source and destination for the
- * queen and the arrow.
- * @return Score
- */
-static inline float
-score_move (const BitboardState *state, Move move)
-{
-  // Instead of a heavy slide, we just look at the Queen's target square.
-  uint8_t size = state->size;
-  uint8_t target_idx = move.queen_dst.row * size + move.queen_dst.col;
-  Bitboard occupied = bitboard_or (
-      bitboard_or (state->white_queens, state->black_queens), state->arrows);
-  Bitboard reachable = bitboard_get_reachable (target_idx, occupied, size);
-
-  return (float)bitboard_count_bits (reachable);
 }
 
 /**
@@ -231,10 +277,13 @@ score_move (const BitboardState *state, Move move)
  * on their scores.
  * @return The actual number of moves selected as the best moves.
  */
-static int
+MINIMAX_STATIC int
 pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
                 int limit, ScoredMove *best_moves)
 {
+  assert (state != NULL && raw_moves != NULL && best_moves != NULL);
+  assert (count > 0 && limit > 0);
+
   int best_count = 0;
   for (int i = 0; i < count; i++)
     {
@@ -259,29 +308,12 @@ pick_top_moves (const BitboardState *state, const Move *raw_moves, int count,
 }
 
 /**
- * @brief Checks the conditions for terminating the alpha-beta search.
- *
- * @param data The Minimax_Data containing configuration.
- * @param state The current board state to evaluate.
- * @param depth The current depth in the search tree.
- * @param start_time The starting time of the search to check against the time
- * limit.
- * @return true if the search should be terminated (time limit reached, depth
- * limit reached, or game over), otherwise false.
- * @return false else.
- */
-static inline bool
-alpha_beta_conditions (const Minimax_Data *data, const BitboardState *state,
-                       int depth, unsigned long start_time)
-{
-  return (get_time_ms () - start_time >= data->time_limit) || depth <= 0
-         || bitboard_state_is_game_over (state);
-}
-
-/**
  * @brief Gets the possible queen moves for the current player based on the
  * occupied squares and the board size, and stores them in the provided moves
  * array.
+ * @note We expect the caller to provide a moves array that is large enough to
+ * hold all possible moves, as well as correct bitboards, as this is an
+ * internal function.
  *
  * @param player_queens Bitboard representing the positions of the current
  * player's queens.
@@ -292,10 +324,12 @@ alpha_beta_conditions (const Minimax_Data *data, const BitboardState *state,
  * be large enough to hold all possible moves.
  * @return int The number of moves generated and stored in the moves array.
  */
-static int
-minimax_get_queen_moves (Bitboard player_queens, Bitboard occupied, int size,
-                         Move *moves)
+MINIMAX_STATIC int
+minimax_get_queen_actions (Bitboard player_queens, Bitboard occupied, int size,
+                           Move *moves)
 {
+  if (moves == NULL)
+    return 0;
   int queen_count = 0;
   Bitboard test = player_queens;
   while (!bitboard_is_zero (test))
@@ -323,10 +357,12 @@ minimax_get_queen_moves (Bitboard player_queens, Bitboard occupied, int size,
  * than or equal to beam_limit depending on the number of legal moves
  * available.
  */
-static int
+MINIMAX_STATIC int
 get_top_moves (const BitboardState *state, int beam_limit,
                ScoredMove *top_moves)
 {
+  assert (state != NULL && top_moves != NULL && beam_limit > 0);
+
   Move queen_moves[get_move_limit (state)];
 
   Bitboard player_queens
@@ -334,8 +370,8 @@ get_top_moves (const BitboardState *state, int beam_limit,
   Bitboard occupied = bitboard_or (
       bitboard_or (state->white_queens, state->black_queens), state->arrows);
 
-  int queen_count = minimax_get_queen_moves (player_queens, occupied,
-                                             state->size, queen_moves);
+  int queen_count = minimax_get_queen_actions (player_queens, occupied,
+                                               state->size, queen_moves);
 
   if (queen_count == 0)
     return 0;
@@ -359,52 +395,6 @@ get_top_moves (const BitboardState *state, int beam_limit,
 }
 
 /**
- * @brief Updates the best move and score based on the new candidate move and
- * its score, while also updating the alpha and beta values for pruning.
- *
- * @param is_maximizing Indicates if the current player is the maximizing
- * player.
- * @param score The score of the candidate move being evaluated.
- * @param candidate The move being evaluated as a potential best move.
- * @param best_move Pointer to the current best move, which may be updated if
- * the candidate move is better.
- * @param best_score Pointer to the current best score, which may be updated
- * if the candidate move has a better score.
- * @param alpha Pointer to the current alpha value for alpha-beta pruning,
- * which may be updated if the candidate move is better for the maximizing
- * player.
- * @param beta Pointer to the current beta value for alpha-beta pruning,
- * which may be updated if the candidate move is better for the minimizing
- * player.
- */
-static inline void
-update_best_move (bool is_maximizing, float score, const Move candidate,
-                  Move *best_move, float *best_score, float *alpha,
-                  float *beta)
-{
-  if (is_maximizing)
-    {
-      if (score > *best_score)
-        {
-          *best_score = score;
-          if (best_move)
-            *best_move = candidate;
-        }
-      *alpha = MAX (*alpha, *best_score);
-    }
-  else
-    {
-      if (score < *best_score)
-        {
-          *best_score = score;
-          if (best_move)
-            *best_move = candidate;
-        }
-      *beta = MIN (*beta, *best_score);
-    }
-}
-
-/**
  * @brief Implements the Minimax algorithm with alpha-beta pruning and
  * forward pruning to evaluate the best move for the current player.
  * @param data The Minimax_Data containing configuration and evaluation
@@ -421,19 +411,23 @@ update_best_move (bool is_maximizing, float score, const Move candidate,
  * @return The best score for the current player at this level of the search
  * tree.
  */
-static float
+MINIMAX_STATIC float
 alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
                     int depth, float alpha, float beta, bool maximizing,
                     unsigned long start_time)
 {
-  if (alpha_beta_conditions (data, state, depth, start_time))
+  if (alpha_beta_conditions (data, state, depth, start_time) || data == NULL
+      || state == NULL)
     return data->evaluate (state);
 
   int beam_limit = data->forward_pruning_enabled
                        ? get_beam_width (maximizing, depth, data->max_depth)
                        : get_move_limit (state);
+  if (beam_limit <= 0)
+    return data->evaluate (state);
 
   ScoredMove top_moves[beam_limit];
+
   int actual_count = get_top_moves (state, beam_limit, top_moves);
 
   if (actual_count == 0)
@@ -474,7 +468,7 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
  * Minimax evaluation. If no moves are available, returns a default move with
  * all fields set to zero.
  */
-static Move
+MINIMAX_STATIC Move
 run_root_search (const Minimax_Data *data, const BitboardState *state,
                  int depth, unsigned long start_time, Move *available_moves,
                  int count)
@@ -483,7 +477,7 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
   float beta = TOP_SCORE;
   bool root_is_white = state->white_to_move;
 
-  Move best_move = { 0 };
+  Move best_move = {}; // Default move in case no moves are available
   float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
 
   for (int i = 0; i < count; i++)
@@ -518,9 +512,12 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
  * @param available_moves The array of available moves to reorder. Mind that it
  * should be of size at least count.
  */
-static inline void
-sortMoves (int count, const Move best_move_overall, Move *available_moves)
+MINIMAX_STATIC void
+sort_moves (int count, const Move best_move_overall, Move *available_moves)
 {
+  if (available_moves == NULL || count <= 1)
+    return;
+
   for (int i = 0; i < count; i++)
     {
       if (moves_are_equal (available_moves[i], best_move_overall))
@@ -560,6 +557,9 @@ minimax_get_best_move (const AI_Interface *self, GameState state)
 
   Move best_move_overall = available_moves[0];
 
+  printf ("ID is %s\n",
+          data->iterative_deepening_enabled ? "enabled" : "disabled");
+
   if (!data->iterative_deepening_enabled)
     {
       best_move_overall = run_root_search (data, &root_state, data->max_depth,
@@ -574,7 +574,7 @@ minimax_get_best_move (const AI_Interface *self, GameState state)
 
           // Put the previous best move at index 0
           if (d > 1)
-            sortMoves (count, best_move_overall, available_moves);
+            sort_moves (count, best_move_overall, available_moves);
 
           Move move_at_depth = run_root_search (
               data, &root_state, d, start_time, available_moves, count);
