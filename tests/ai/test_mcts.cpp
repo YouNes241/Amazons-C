@@ -66,7 +66,9 @@ make_game_state (uint8_t white_r, uint8_t white_c, uint8_t black_r,
     }
   cc[white_r][white_c] = CONTENT_WHITE_QUEEN;
   cc[black_r][black_c] = CONTENT_BLACK_QUEEN;
-  return { SIZE, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+  return {
+    SIZE, false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0, 0, 0, {}, {}
+  };
 }
 
 static void
@@ -132,7 +134,7 @@ protected:
   {
     if (ai.context)
       ai.vtable->clean (&ai);
-    ConfigMap cm = { params, count };
+    ConfigMap cm = { count, params };
     ai.vtable->init (&ai, &cm);
   }
 };
@@ -710,7 +712,8 @@ TEST_F (MCTSAI, FindsOnlyLegalMove)
   cc[0][0] = CONTENT_BLACK_QUEEN;
   cc[0][1] = CONTENT_EMPTY;
 
-  GameState state = { SIZE, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 50, {}, {} };
+  GameState state = { SIZE, false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0, 0,
+                      0,    {},    {} };
   unsigned long t0 = get_time_ms ();
   Move best = ai.vtable->get_best_move (&ai, state);
   unsigned long elapsed = get_time_ms () - t0;

@@ -154,7 +154,7 @@ protected:
   {
     if (ai.context)
       ai.vtable->clean (&ai);
-    ConfigMap cm = { params, count };
+    ConfigMap cm = { count, params };
     ai.vtable->init (&ai, &cm);
   }
 };

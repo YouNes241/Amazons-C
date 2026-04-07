@@ -25,12 +25,13 @@ TEST (RandomIntegration, GetRandomMove)
   cc[9][6] = CONTENT_WHITE_QUEEN;
 
   GameState state
-      = { board_size, cc, PLAYER_WHITE, GAME_IN_PROGRESS, 0, {}, {} };
+      = { board_size, false, 0, PLAYER_WHITE, GAME_IN_PROGRESS, cc, 0, 0,
+          0,          {},    {} };
 
   BitboardState bs = sync_from_logic (&state);
   bitboard_state_print (&bs);
 
-  AI_Interface randomAI = create_ai ("random", { NULL, 0 });
+  AI_Interface randomAI = create_ai ("random", { 0, NULL });
   Move move = randomAI.vtable->get_best_move (&randomAI, state);
 
   printf ("Random move generated: Queen from (%d,%d) to (%d,%d) with arrow to "
