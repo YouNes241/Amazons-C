@@ -66,14 +66,13 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       {
         if (strcmp (pkt->payload, "END_OF_SCOREBOARD") == 0)
           {
-            // Fin de la liste, on redessine proprement le prompt
+            // End of list, redraw the prompt cleanly
             printf ("%s", _ ("[LOBBY] >> "));
             fflush (stdout);
           }
         else
           {
-            // On affiche simplement la ligne reçue avec un retour à la ligne
-            // local
+            // Simply display the received line with local newline
             printf ("%s\n", pkt->payload);
           }
       }
@@ -85,8 +84,8 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
         gettimeofday (&tv, NULL);
         long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
 
-        long long sent_time = atoll (pkt->payload); // On lit l'heure de départ
-        long long rtt = now_ms - sent_time;         // Round-Trip Time
+        long long sent_time = atoll (pkt->payload); // Read the start time
+        long long rtt = now_ms - sent_time; // Round-Trip Time (milliseconds)
 
         printf (_ ("\nServer: PONG TIME=%lldms\n"), rtt);
 
@@ -147,10 +146,10 @@ handle_client_packet (NetworkManager *manager, Packet *pkt)
       if (manager->callbacks.OnMoveReceived)
         {
           Move incoming_move;
-          // On traduit le texte reçu en structure Move
+          // Translate received text into Move structure
           if (Protocol_StringToMove (pkt->payload, &incoming_move))
             {
-              // Si la traduction réussit, on passe la VRAIE structure au jeu
+              // If translation succeeds, pass the actual structure to the game
               manager->callbacks.OnMoveReceived (incoming_move);
             }
           else

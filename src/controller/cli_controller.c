@@ -32,7 +32,10 @@
 #else
 #define TEST_STATIC static
 #endif
-/* --- Variables globales --- */
+/* ============================================================================
+ * Global Variables
+ * ============================================================================
+ */
 TEST_STATIC CliContext *g_cli_ctx = NULL;
 TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
@@ -44,10 +47,9 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
   return false;
 }
 
-/* ==========================================================================
-   LINEHANDLER (Readline)
-   ==========================================================================
+/** @name LINEHANDLER Readline Callback
  */
+///@{
 TEST_STATIC void
 linehandler (char *line)
 {
@@ -81,12 +83,11 @@ linehandler (char *line)
       rl_on_new_line ();
     }
 }
+///@}
 
-/* ==========================================================================
-   RUN_INTERACTIVE_MODE
-   ==========================================================================
+/** @name RUN_INTERACTIVE_MODE Main Interactive Game Loop
  */
-
+///@{
 void
 run_interactive_mode (game_config_t *config)
 {
@@ -119,13 +120,13 @@ run_interactive_mode (game_config_t *config)
   rl_attempted_completion_function = amazons_completion;
   cli_clear_screen ();
 
-  // 1. Démarrage
+  // Startup initialization
   if (config->start_server)
     {
       if (NetworkManager_ServerStart (ctx->net_manager, config->server_port)
           == 0)
         {
-          ctx->in_main_menu = false; // On passe en mode Lobby
+          ctx->in_main_menu = false; // Switch to Lobby mode
           printf (_ ("[INFO] Server started directly from command line on "
                      "port %d.\n"),
                   config->server_port);
@@ -144,7 +145,7 @@ run_interactive_mode (game_config_t *config)
     }
   else
     {
-      cli_display_main_menu (); // Mode normal
+      cli_display_main_menu (); // Normal mode initialization
     }
 
   rl_callback_handler_install ("", linehandler);
@@ -291,3 +292,4 @@ run_interactive_mode (game_config_t *config)
   free (ctx);
   g_cli_ctx = NULL;
 }
+///@}

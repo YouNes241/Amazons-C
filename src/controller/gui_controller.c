@@ -10,12 +10,19 @@
 #include "gui_utils.h"
 #include <gtk/gtk.h>
 
-// --- FORWARD DECLARATIONS ---
+/** @name Forward Declarations
+ */
+///@{
 void guiHandlePlayerMove (AppContext *ctx, Move move);
+///@}
 
-// --- GLOBAL VARIABLES (Only for GUI AI for now) ---
-static AI_Interface g_gui_ai;
-static bool g_gui_ai_initialized = false;
+/** @name Global Variables
+ * @brief GUI AI instance and state
+ */
+///@{
+static AI_Interface g_gui_ai;             ///< Global AI interface for GUI
+static bool g_gui_ai_initialized = false; ///< AI initialization flag
+///@}
 
 static bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)

@@ -166,10 +166,10 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
 
   if (is_move_legal (server_board, parsed_move))
     {
-      // 1. On met VRAIMENT à jour le plateau de l'arbitre (le serveur)
+      // Update the referee's board (the server) with the actual move
       apply_move (server_board, parsed_move);
 
-      // 2. On prépare un paquet propre pour l'adversaire
+      // Prepare a clean packet for the opponent
       Packet relay_pkt;
       relay_pkt.type = S2C_MOVE;
       strncpy (relay_pkt.payload, payload, MAX_PAYLOAD_SIZE - 1);
@@ -177,7 +177,7 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
 
       char out_buffer[MAX_FORMATTED_PKT_SIZE];
 
-      // SerializePacket va ajouter le type ET le \n vital à la fin !
+      // SerializePacket will add the type and the essential newline at the end
       if (SerializePacket (&relay_pkt, out_buffer, sizeof (out_buffer)) >= 0)
         {
           NetworkManager_Send (manager, opponent_idx, out_buffer);
@@ -505,10 +505,10 @@ process_decline_packet (NetworkManager *manager, ServerContext *ctx,
   if (challenger_index >= FIRST_CLIENT_INDEX && challenger_index <= MAX_CLIENTS
       && ctx->fds[challenger_index].fd != INVALID_SOCKET)
     {
-      // On le libère de son statut d'attente
+      // Release the challenger from waiting status
       ctx->clients[challenger_index].status = CLIENT_STATUS_IDLE;
 
-      // On le prévient que son invitation a été refusée !
+      // Inform the challenger that the invitation was refused
       send_server_message (manager, challenger_index, S2C_DECLINE,
                            _ ("Invitation declined by the opponent."));
     }

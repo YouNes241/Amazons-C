@@ -53,12 +53,11 @@ parse_options (int argc, char *argv[], game_config_t *config)
 
   load_config_file (config);
 
-  // getopt_long parcourt les arguments de la ligne de commande et les compare
-  // aux options définies dans long_options.
-  // il prend en arguments argc et argv, qui sont les paramètres standard de la
-  // fonction main représentant le nombre d'arguments et les arguments
-  // eux-mêmes. ainsi que une chaîne de caractères "n:bt:cga::dvVh" qui indique
-  // les options courtes acceptées par le programme.
+  // getopt_long parses command-line arguments and compares them to the options
+  // defined in long_options. It takes argc and argv as arguments (the standard
+  // main function parameters representing the number of arguments and the
+  // arguments themselves), plus a string "n:bt:cga::dvVh" indicating the
+  // short options accepted by the program
   while ((opt = getopt_long (argc, argv, "n:bt:cga::s::dvVh", long_options,
                              &option_index))
          != -1)
@@ -104,12 +103,11 @@ parse_options (int argc, char *argv[], game_config_t *config)
           break;
 
         case 'a':
-          // Par défaut, si l'option est présente, on active l'IA pour les
-          // Noirs
+          // By default, if the option is present, activate AI for Black
           config->ai_white = false;
           config->ai_black = true;
 
-          // optarg contient l'argument si l'utilisateur a fait -aW ou --ai=W
+          // optarg contains the argument if user specified -aW or --ai=W
           if (optarg != NULL)
             {
               if (strcmp (optarg, "W") == 0)

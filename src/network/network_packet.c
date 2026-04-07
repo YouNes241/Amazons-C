@@ -63,24 +63,24 @@ DeserializePacket (const char *buffer_in, Packet *pkt_out)
 
   memset (pkt_out, 0, sizeof (Packet));
 
-  // 1. Find the separator PACKET_SEPARATOR
+  // Step 1: Find the separator character
   const char *separator = strchr (buffer_in, PACKET_SEPARATOR);
   if (!separator)
     {
-      return false; // invalid format
+      return false; ///< Invalid format without separator
     }
 
-  // 2. Extract the type (the numbers before the PACKET_SEPARATOR)
+  // Step 2: Extract the packet type value before the separator
   int type_val = 0;
   if (sscanf (buffer_in, TYPE_PARSE_FORMAT, &type_val) != EXPECTED_TYPE_TOKENS)
     {
-      return false; // cant read int
+      return false; ///< Cannot parse type value
     }
   if (type_val <= PKT_UNKNOWN || type_val >= PKT_TYPE_MAX)
     return false;
   pkt_out->type = (PacketType)type_val;
 
-  // 3. Extract the payload (everything after the PACKET_SEPARATOR)
+  // Step 3: Extract the payload after the separator
   const char *payload_start = separator + PAYLOAD_PTR_OFFSET;
   strncpy (pkt_out->payload, payload_start,
            MAX_PAYLOAD_SIZE - NULL_CHAR_SPACE);

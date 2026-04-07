@@ -308,8 +308,8 @@ NetworkManager_Cleanup (NetworkManager *manager)
       printf ("%s", _ ("\n[NETWORK] Disconnected from the server.\n"));
     }
 
-  // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
-  // Car on l'a alloué dans NetworkManager_Init, peu importe le mode !
+  // Address book cleanup must always be performed since it was allocated in
+  // NetworkManager_Init, regardless of the mode
 
   manager->current_mode = NET_MODE_NONE;
 }
@@ -329,8 +329,9 @@ NetworkManager_Tick (NetworkManager *manager)
   if (manager == NULL)
     {
       return;
-      // ATTENTION: On a enlevé le "|| manager->current_mode == NET_MODE_NONE"
-      // Car on VEUT que le tick s'exécute dans le menu pour l'écoute UDP !
+      // NOTE: We removed "|| manager->current_mode == NET_MODE_NONE"
+      // because we WANT the tick to execute in menu for UDP discovery
+      // listening
     }
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
@@ -695,10 +696,10 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
             {
               int challenger_idx = ctx->clients[i].pending_invite_from;
 
-              // 1. On efface l'invitation périmée chez la cible
+              // Delete the expired invitation at the target
               ctx->clients[i].pending_invite_from = -1;
 
-              // On prévient la cible que l'invitation a expiré
+              // Warn the target that the invitation has expired
               Packet pkt_target;
               pkt_target.type = S2C_ERROR;
               strncpy (pkt_target.payload,
@@ -712,7 +713,7 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
                   NetworkManager_Send (manager, i, out_buf_target);
                 }
 
-              // 2. On libère le challenger qui attendait depuis 5 minutes !
+              // Release the challenger who was waiting for 5 minutes
               if (challenger_idx >= FIRST_CLIENT_INDEX
                   && challenger_idx <= MAX_CLIENTS
                   && ctx->fds[challenger_idx].fd != INVALID_SOCKET
@@ -760,7 +761,7 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
         {
           NetworkManager_Send (manager, TARGET_SERVER, out_buf);
         }
-      ctx->last_heartbeat = now; // On remet le chrono à zéro
+      ctx->last_heartbeat = now; ///< Reset the heartbeat timer
     }
   int poll_count
       = poll (&ctx->fd_info, SINGLE_FD_COUNT, POLL_TIMEOUT_IMMEDIATE);

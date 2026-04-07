@@ -81,14 +81,12 @@ amazons_completion (const char *text, int start, int end)
   return NULL;
 }
 
-/* ==========================================================================
-   HELPERS UI & PROMPT
-   ==========================================================================
+/** @name UI Helpers and Prompt Management
  */
+///@{
 
 /**
- * @brief Constructs the prompt string and applies it to Readline (without
- * displaying it).
+ * @brief Constructs the prompt string and applies it to Readline.
  */
 void
 update_prompt_string (CliContext *ctx)
@@ -139,23 +137,22 @@ update_prompt_string (CliContext *ctx)
 }
 
 /**
- * @brief Forces immediate prompt refresh (used for network events)
- * network
+ * @brief Forces immediate prompt refresh and display update (used for network
+ * events)
  */
 void
 refresh_prompt (CliContext *ctx)
 {
   update_prompt_string (ctx);
-  rl_replace_line ("", READLINE_NO_CLEAR); // Clears the current line's memory
-  rl_on_new_line ();                       // Prepares ReadLine for a new line
-  rl_redisplay ();                         // Forces the display
+  rl_replace_line ("",
+                   READLINE_NO_CLEAR); ///< Clears the current line's buffer
+  rl_on_new_line ();                   ///< Prepares ReadLine for a new line
+  rl_redisplay ();                     ///< Forces the display refresh
 }
 
-/* ==========================================================================
-   COMMAND LOGIC (handle_command)
-   ==========================================================================
+/**
+ * @brief Executes a hint command using AI to suggest the best move
  */
-
 void
 execute_hint (CliContext *ctx)
 {
@@ -193,6 +190,8 @@ execute_hint (CliContext *ctx)
   printf (" - Move the queen from %s to %s\n", src, dst);
   printf (" - Shoot the arrow at %s\n", arr);
 }
+
+///@}
 
 /**
  * @brief Updates a configuration parameter based on a key and value.
@@ -379,8 +378,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          // Si le port est pris, on prévient l'utilisateur et on REST dans
-          // le menu
+          // If port is taken, warn the user and remain in menu
           printf (_ ("[ERROR] Failed to start server. Port %d might be in "
                      "use.\n"),
                   port);
@@ -561,9 +559,9 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          // Le Client doit faire une requête réseau !
-          // (Tu devras créer cette fonction, sur le même modèle que
-          // SendScoreboardRequest)
+          // Client must make a network request to the server
+          /// @todo Create NetworkManager_SendStatusRequest function following
+          /// the same pattern as SendScoreboardRequest
           // NetworkManager_SendStatusRequest(ctx->net_manager);
 
           printf (_ ("\n[NETWORK] Requesting server status...\n"));
@@ -578,12 +576,12 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          // On crée une fonction NetworkManager_SendScoreboardRequest
+          // Request scoreboard from server
           NetworkManager_SendScoreboardRequest (ctx->net_manager);
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
-          // Le serveur peut l'afficher directement en lisant son fichier
+          // Server displays the scoreboard directly from file
           if (system ("cat scoreboard.txt") != 0)
             {
               printf (_ ("[ERROR] Failed to read scoreboard.txt\n"));
@@ -607,16 +605,15 @@ handle_command (char *input_buffer, CliContext *ctx)
 
   else if (strncmp (input_buffer, "players", 7) == 0)
     {
-      int target_id
-          = -1; // -1 signifie "aucun ID fourni, on veut tout le monde"
+      int target_id = -1; ///< -1 means no specific ID provided, list all
 
-      // On cherche un chiffre après "players"
+      // Look for a number after "players"
       sscanf (input_buffer + 7, "%d", &target_id);
 
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
           NetworkManager_SendListRequest (ctx->net_manager,
-                                          target_id); // On passe l'ID
+                                          target_id); ///< Pass the ID to query
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
@@ -659,7 +656,7 @@ handle_command (char *input_buffer, CliContext *ctx)
   else if (strncmp (input_buffer, "new", CMD_LEN_NEW) == 0)
     {
       int target_id;
-      // On regarde s'il y a un ID après "new " (ex: "new 2")
+      // Check if there's an ID after "new" (e.g., "new 2")
       if (sscanf (input_buffer + CMD_LEN_NEW, "%d", &target_id) == 1)
         {
           if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
@@ -677,7 +674,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          // Pas d'ID ? Alors c'est une partie locale !
+          // No ID provided, so this is a local game
           printf (_ ("New local game.\n"));
           game_init (ctx->current_game);
           ctx->current_game->blitz_mode = ctx->config->blitz_mode;

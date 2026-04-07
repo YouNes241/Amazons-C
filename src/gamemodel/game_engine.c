@@ -173,7 +173,7 @@ game_init (GameState *state)
   state->blitz_mode = false;
   state->white_time_left = 0;
   state->black_time_left = 0;
-  int max_possible_moves = 2000; // Largement suffisant pour une partie
+  int max_possible_moves = 2000; ///< More than enough for any game
 
   state->undo_stack.capacity = max_possible_moves;
   state->undo_stack.top = -1;

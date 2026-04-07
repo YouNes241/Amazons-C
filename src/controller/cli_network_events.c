@@ -16,14 +16,16 @@
 #include "game_engine.h"
 #include <stdio.h>
 
-// A local global pointer to this module so that callbacks can access it.
+// Module-local global pointer to access callbacks
 static CliContext *g_net_ctx = NULL;
 
-/* ==========================================================================
-   network callback
-   ==========================================================================
+/** @name Network Callback Handlers
  */
+///@{
 
+/**
+ * @brief Called when the game starts
+ */
 static void
 on_game_started (PlayerColor color, int board_size)
 {
@@ -52,8 +54,7 @@ on_network_move_received (Move m)
       apply_move (g_net_ctx->current_game, m);
       printf (_ ("[NETWORK] The opponent played !\n"));
 
-      // Reset the timer because it's our turn now
-
+      // Reset the timer since it is now our turn
       g_net_ctx->timeout_sent = false;
       g_net_ctx->turn_start_time = time (NULL);
 
@@ -74,17 +75,17 @@ on_network_timeout_received ()
       _ ("\n[NETWORK] The opponent has exceeded their time limit! It's your "
          "turn to play!.\n"));
 
-  // 1. We are changing the current player locally
+  // Update the current player locally
   g_net_ctx->current_game->current_player
       = (g_net_ctx->current_game->current_player == PLAYER_WHITE)
             ? PLAYER_BLACK
             : PLAYER_WHITE;
 
-  // 2. MOST IMPORTANTLY: We reset our timer to begin our own 60 seconds !
-
+  // Reset our timer to begin our own 60 second turn
   g_net_ctx->timeout_sent = false;
   g_net_ctx->turn_start_time = time (NULL);
-  // 3. We refresh the display
+
+  // Refresh the display
   cli_display_board (g_net_ctx->current_game);
   refresh_prompt (g_net_ctx);
 }
@@ -146,16 +147,12 @@ on_invitation_received (int challenger_id)
   refresh_prompt (g_net_ctx);
 }
 static void
-
 on_invitation_declined (const char *message)
-
 {
   if (!g_net_ctx)
     return;
 
-  printf (_ ("\n[LOBBY] %s\n"),
-
-          message); // Affichera: [LOBBY] Invitation declined.
+  printf (_ ("\n[LOBBY] %s\n"), message); ///< Displays the decline message
 
   refresh_prompt (g_net_ctx);
 }
@@ -169,10 +166,16 @@ on_list_received (const char *list_text)
   refresh_prompt (g_net_ctx);
 }
 
+///@}
+
+/**
+ * @brief Creates and returns a NetworkEvents structure configured for CLI
+ * callbacks
+ */
 NetworkEvents
 create_cli_network_events (CliContext *ctx)
 {
-  g_net_ctx = ctx; // On relie le contexte
+  g_net_ctx = ctx; ///< Link the context for callback access
 
   NetworkEvents events = { 0 };
   events.OnMoveReceived = on_network_move_received;

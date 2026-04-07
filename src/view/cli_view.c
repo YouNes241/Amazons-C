@@ -15,10 +15,10 @@ cli_display_board (const GameState *state)
     }
   printf ("\n");
 
-  // Affichage des lignes
+  // Display the board rows
   for (int row = state->size - 1; row >= 0; row--)
     {
-      printf ("%2d ", row + 1); // Numéro de ligne
+      printf ("%2d ", row + 1); ///< Row number (1-indexed)
 
       for (int col = 0; col < state->size; col++)
         {
