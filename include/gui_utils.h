@@ -1,6 +1,7 @@
 #ifndef GUI_UTILS_H
 #define GUI_UTILS_H
 
+#include "ai_interface.h"
 #include "config.h"
 #include "game_types.h"
 #include "network_common.h"
@@ -45,6 +46,8 @@ typedef struct
   bool isNetworkMatch;
   PlayerColor selfPlayerColor;
   bool isHintActive;
+  AI_Interface ai_engine;
+  bool is_ai_initialized;
 } GuiContext;
 
 GuiContext *initGuiContext (game_config_t *config);
@@ -61,5 +64,6 @@ void updateTurnDisplay (GuiContext *ctx);
 void showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
                       Position a_dst);
 void gui_log_to_server_console (GuiContext *ctx, const char *format, ...);
+void guiShowPopup (GuiContext *ctx, const char *message);
 
 #endif // GUI_UTILS_H

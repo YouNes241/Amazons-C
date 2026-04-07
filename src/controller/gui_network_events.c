@@ -85,20 +85,8 @@ on_gui_player_disconnected (const char *reason)
       gtk_stack_set_visible_child_name (g_gui_net_ctx->mainStack,
                                         "client_panel_page");
 
-#if GTK_CHECK_VERSION(4, 10, 0)
-      GtkAlertDialog *dialog = gtk_alert_dialog_new (
-          "Opponent disconnected. Returning to Lobby.");
-      gtk_alert_dialog_show (dialog, GTK_WINDOW (g_gui_net_ctx->mainWindow));
-      g_object_unref (dialog);
-#else
-      GtkWidget *dialog = gtk_message_dialog_new (
-          GTK_WINDOW (g_gui_net_ctx->mainWindow),
-          GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO,
-          GTK_BUTTONS_OK, "Opponent disconnected. Returning to Lobby.");
-      g_signal_connect_swapped (dialog, "response",
-                                G_CALLBACK (gtk_window_destroy), dialog);
-      gtk_window_present (GTK_WINDOW (dialog));
-#endif
+      guiShowPopup (g_gui_net_ctx,
+                    "Opponent disconnected. Returning to Lobby.");
     }
 }
 

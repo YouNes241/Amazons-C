@@ -26,6 +26,7 @@ initGuiContext (game_config_t *config)
   ctx->currentPhase = PHASE_MOVE_QUEEN;
   ctx->isNetworkMatch = false;
   ctx->isHintActive = false;
+  ctx->is_ai_initialized = false;
 
   memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
   strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);
@@ -496,4 +497,25 @@ gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
       = gtk_text_buffer_create_mark (text_buf, NULL, &end, FALSE);
   gtk_text_view_scroll_mark_onscreen (GTK_TEXT_VIEW (consoleView), mark);
   gtk_text_buffer_delete_mark (text_buf, mark);
+}
+
+void
+guiShowPopup (GuiContext *ctx, const char *message)
+{
+  if (!ctx || !ctx->mainWindow)
+    return;
+
+#if GTK_CHECK_VERSION(4, 10, 0)
+  GtkAlertDialog *dialog = gtk_alert_dialog_new ("%s", message);
+  gtk_alert_dialog_show (dialog, GTK_WINDOW (ctx->mainWindow));
+  g_object_unref (dialog);
+#else
+  GtkWidget *dialog = gtk_message_dialog_new (
+      GTK_WINDOW (ctx->mainWindow),
+      GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT, GTK_MESSAGE_INFO,
+      GTK_BUTTONS_OK, "%s", message);
+  g_signal_connect_swapped (dialog, "response",
+                            G_CALLBACK (gtk_window_destroy), dialog);
+  gtk_window_present (GTK_WINDOW (dialog));
+#endif
 }

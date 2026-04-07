@@ -58,7 +58,9 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
           PlayerColor winner = get_winner (ctx->gameState);
           const char *winnerStr = (winner == PLAYER_WHITE) ? "White" : "Black";
 
-          g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
+          char msg[128];
+          snprintf (msg, sizeof (msg), "GAME OVER ! \n%s won !", winnerStr);
+          g_print ("\n %s \n", msg);
 
           if (ctx->isNetworkMatch)
             {
@@ -67,23 +69,7 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
               ctx->isNetworkMatch = false;
             }
 
-#if GTK_CHECK_VERSION(4, 10, 0)
-          GtkAlertDialog *dialog
-              = gtk_alert_dialog_new ("GAME OVER ! \n%s won !", winnerStr);
-          gtk_alert_dialog_show (dialog, GTK_WINDOW (ctx->mainWindow));
-          g_object_unref (dialog);
-#else
-          GtkWidget *dialog = gtk_message_dialog_new (
-              ctx->mainWindow,
-              GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-              GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "GAME OVER ! \n%s won !",
-              winnerStr);
-
-          g_signal_connect_swapped (dialog, "response",
-                                    G_CALLBACK (gtk_window_destroy), dialog);
-          gtk_window_present (GTK_WINDOW (dialog));
-#endif
-
+          guiShowPopup (ctx, msg);
           return;
         }
 
@@ -243,6 +229,5 @@ guiAIPlayTurn (gpointer user_data)
       = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));
 
   guiHandlePlayerMove (ctx, ai_move);
-
   return G_SOURCE_REMOVE;
 }
