@@ -190,6 +190,12 @@ undoButtonClick (GtkButton *button, gpointer user_data)
   if (!ctx || !ctx->gameState)
     return;
 
+  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
+    {
+      onRightClick (NULL, 0, 0, 0, ctx);
+      return;
+    }
+
   bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
   if (!has_ai)
     return;
@@ -216,6 +222,12 @@ redoButtonClick (GtkButton *button, gpointer user_data)
 
   if (!ctx || !ctx->gameState)
     return;
+
+  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
+    {
+      onRightClick (NULL, 0, 0, 0, ctx);
+      return;
+    }
 
   bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
   if (!has_ai)
@@ -1101,6 +1113,14 @@ saveButtonClick (GtkButton *button, gpointer user_data)
 
   if (!ctx || !ctx->gameState)
     return;
+
+  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
+    {
+      guiShowPopup (
+          ctx, "Please finish your move (shoot the arrow) before saving.");
+      return;
+    }
+
   GtkFileChooserNative *native = gtk_file_chooser_native_new (
       "Save the current game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_SAVE,
       "Save", "Cancel");
