@@ -19,28 +19,28 @@ msgstr ""
 
 #: src/controller/cli_commands.c:75 src/controller/cli_commands.c:688
 msgid "White"
-msgstr ""
+msgstr "Blanc"
 
 #: src/controller/cli_commands.c:76 src/controller/cli_commands.c:688
 msgid "Black"
-msgstr ""
+msgstr "Noir"
 
 #: src/controller/cli_commands.c:92
 msgid "W"
-msgstr ""
+msgstr "B"
 
 #: src/controller/cli_commands.c:92
 msgid "B"
-msgstr ""
+msgstr "N"
 
 #: src/controller/cli_commands.c:93
 #, c-format
 msgid "[%s] Turn: %s >> "
-msgstr ""
+msgstr "[%s] Tour: %s >> "
 
 #: src/controller/cli_commands.c:101
 msgid "[AWAY] >> "
-msgstr ""
+msgstr "[ABSCENT] >> "
 
 #: src/controller/cli_commands.c:106 src/network/network_handler_client.c:70
 #: src/network/network_handler_client.c:93
@@ -48,12 +48,12 @@ msgstr ""
 #: src/network/network_handler_server.c:603
 #: src/network/network_handler_server.c:627
 msgid "[LOBBY] >> "
-msgstr ""
+msgstr "[SALON] >> "
 
 #: src/controller/cli_commands.c:113
 #, c-format
 msgid "[%s] >> "
-msgstr ""
+msgstr "[%s] >> "
 
 #: src/controller/cli_commands.c:182
 #, c-format
@@ -65,42 +65,42 @@ msgstr ""
 #: src/controller/cli_commands.c:183
 #, c-format
 msgid "--- Game Management ---\n"
-msgstr ""
+msgstr "--- Gestion de match ---\n"
 
 #: src/controller/cli_commands.c:184
 #, c-format
 msgid "  new         : Start a new local game\n"
-msgstr ""
+msgstr "  new         : Commence une nouvelle partie locale\n"
 
 #: src/controller/cli_commands.c:185
 #, c-format
 msgid "  quit        : Exit the application\n"
-msgstr ""
+msgstr "  quit        : Sort de l'application ou du SALON\n"
 
 #: src/controller/cli_commands.c:186
 #, c-format
 msgid "  show        : Display the board\n"
-msgstr ""
+msgstr "  show        : Affiche le plateau\n"
 
 #: src/controller/cli_commands.c:187
 #, c-format
 msgid "  undo/redo   : Cancel or replay a move\n"
-msgstr ""
+msgstr "  undo/redo   : Annule / Rejoue un coup\n"
 
 #: src/controller/cli_commands.c:188
 #, c-format
 msgid "  save/load   : Save or load a game state\n"
-msgstr ""
+msgstr "  save/load   : Sauvegarde / Charge un état de partie\n"
 
 #: src/controller/cli_commands.c:189
 #, c-format
 msgid "  hint        : Get AI assistance\n"
-msgstr ""
+msgstr "  hint        : Obtenir une sugestion de coup de l'ia\n"
 
 #: src/controller/cli_commands.c:190
 #, c-format
-msgid "  set/details : Configure game options\n"
-msgstr ""
+msgid "  set : Configure game options\n"
+msgstr "  set : Configure les options de jeu\n"
 
 #: src/controller/cli_commands.c:192
 #, c-format
@@ -112,22 +112,22 @@ msgstr ""
 #: src/controller/cli_commands.c:193
 #, c-format
 msgid "  server start [port]  : Host a new server\n"
-msgstr ""
+msgstr "  server start [port]  : Héberger un nouveau serveur sur le port choisit\n"
 
 #: src/controller/cli_commands.c:194
 #, c-format
 msgid "  server stop          : Stop hosting the server\n"
-msgstr ""
+msgstr "  server stop          : Arrêter d'héberger le serveur\n"
 
 #: src/controller/cli_commands.c:195
 #, c-format
 msgid "  server status        : Show connected clients and active games\n"
-msgstr ""
+msgstr "  server status        : Affiche le nombre de clients connectés et des parties en cours sur le serveur\n"
 
 #: src/controller/cli_commands.c:198
 #, c-format
 msgid "  server list          : Discover local servers on the network\n"
-msgstr ""
+msgstr "  server list          : Montre les serveurs disponibles sur le réseaux\n"
 
 #: src/controller/cli_commands.c:200
 #, c-format
@@ -139,53 +139,53 @@ msgstr ""
 #: src/controller/cli_commands.c:201
 #, c-format
 msgid "  join [IP:Port] [name]: Connect to a server\n"
-msgstr ""
+msgstr "  join [IP:Port] [name]: Connecte au serveur choisit\n"
 
 #: src/controller/cli_commands.c:202
 #, c-format
 msgid ""
 "  players [ID]         : List all players in the LOBBY (or detail an ID)\n"
-msgstr ""
+msgstr "  players [ID]         : Liste tous les joueurs dans le SALON (ou détailler un ID)\n"
 
 #: src/controller/cli_commands.c:204
 #, c-format
 msgid "  scoreboard           : Display the server's global scoreboard\n"
-msgstr ""
+msgstr "  scoreboard           : Affiche les statistiques des joueurs du serveur\n"
 
 #: src/controller/cli_commands.c:207
 #, c-format
 msgid "  ping                 : Check your latency with the server\n"
-msgstr ""
+msgstr "  ping                 : Teste et affiche votre latence avec le serveur\n"
 
 #: src/controller/cli_commands.c:208
 #, c-format
 msgid "  new <ID>             : Invite a player to a game\n"
-msgstr ""
+msgstr "  new <ID>             : Invite le joueur choisit dans la partie\n"
 
 #: src/controller/cli_commands.c:209
 #, c-format
 msgid "  accept <ID>          : Accept an invitation\n"
-msgstr ""
+msgstr "  accept <ID>          : Accepte l'invitation\n"
 
 #: src/controller/cli_commands.c:210
 #, c-format
 msgid "  decline <ID>         : Decline an invitation\n"
-msgstr ""
+msgstr "  decline <ID>         : Décline l'invitation\n"
 
 #: src/controller/cli_commands.c:211
 #, c-format
 msgid "  cancel <ID>          : Cancel an invitation you sent\n"
-msgstr ""
+msgstr "  cancel <ID>          : Annule l'invitation envoyée\n"
 
 #: src/controller/cli_commands.c:212
 #, c-format
 msgid "  away                 : Mark yourself as AWAY\n"
-msgstr ""
+msgstr "  away                 : Vous signale ABSCENT\n"
 
 #: src/controller/cli_commands.c:213
 #, c-format
 msgid "  back                 : Mark yourself as BACK/IDLE\n"
-msgstr ""
+msgstr "  back                 : Vous enlève du statut ABSCENT\n"
 
 #: src/controller/cli_commands.c:215
 #, c-format
@@ -197,7 +197,7 @@ msgstr ""
 #: src/controller/cli_commands.c:217
 #, c-format
 msgid "  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"
-msgstr ""
+msgstr "  Format: [ReineDébut]-[ReineFin]([FlècheFin])  Ex: d10-d9(d8)\n"
 
 #: src/controller/cli_commands.c:218
 #, c-format
@@ -206,15 +206,16 @@ msgid ""
 "\n"
 msgstr ""
 
+Spacycat — 21:50
 #: src/controller/cli_commands.c:241
 #, c-format
-msgid "([INFO] Server started successfully on port %d.\n"
-msgstr ""
+msgid "[INFO] Server started successfully on port %d.\n"
+msgstr "[INFO] Succès du démarrage du serveur sur le port %d.\n"
 
 #: src/controller/cli_commands.c:247
 #, c-format
 msgid "[ERROR] Failed to start server. Port %d might be in use.\n"
-msgstr ""
+msgstr "[ERROR] Démarrage de serveur non réussi. Le Port %d pourrais déja être utilisé.\n"
 
 #: src/controller/cli_commands.c:258
 #, c-format
@@ -226,7 +227,7 @@ msgstr ""
 #: src/controller/cli_commands.c:266
 #, c-format
 msgid "You are already connected to a network.\n"
-msgstr ""
+msgstr "Vous êtes déjà connectés à un réseaux\n"
 
 #: src/controller/cli_commands.c:316
 #, c-format
@@ -247,22 +248,22 @@ msgstr ""
 #: src/controller/cli_commands.c:342 src/controller/cli_commands.c:487
 #, c-format
 msgid "You must start or join a server first to see players.\n"
-msgstr ""
+msgstr "Vous devez d'abort rejoindre un serveur pour voir ses joueurs\n"
 
 #: src/controller/cli_commands.c:352
 #, c-format
 msgid "You are now marked as AWAY.\n"
-msgstr ""
+msgstr "Vous êtes maintenant ABSCENT.\n"
 
 #: src/controller/cli_commands.c:362
 #, c-format
 msgid "Welcome back! You are now IDLE.\n"
-msgstr ""
+msgstr "Bienvenue ! Vous êtes maintenant IDLE.\n"
 
 #: src/controller/cli_commands.c:371
 #, c-format
 msgid "Invitation to player %d canceled.\n"
-msgstr ""
+msgstr "Invitation à joueur %d annulée.\n"
 
 #: src/controller/cli_commands.c:385
 #, c-format
@@ -281,7 +282,7 @@ msgstr ""
 #: src/controller/cli_commands.c:405
 #, c-format
 msgid "Error: No server is running.\n"
-msgstr ""
+msgstr "[ERROR] Aucun serveur en cours d'exécution.\n"
 
 #: src/controller/cli_commands.c:418
 #, c-format
@@ -293,137 +294,137 @@ msgstr ""
 #: src/controller/cli_commands.c:419
 #, c-format
 msgid "Status: Active\n"
-msgstr ""
+msgstr "Statut: Actif\n"
 
 #: src/controller/cli_commands.c:420
 #, c-format
 msgid "Port: %d\n"
-msgstr ""
+msgstr "Port: %d\n"
 
 #: src/controller/cli_commands.c:421
 #, c-format
 msgid "Connected clients: %d\n"
-msgstr ""
+msgstr "Clients connectés: %d\n"
 
 #: src/controller/cli_commands.c:422
 #, c-format
 msgid "Games in progress: %d\n"
-msgstr ""
+msgstr "Parties en cours: %d\n"
 
 #: src/controller/cli_commands.c:423
 #, c-format
 msgid "=====================\n"
-msgstr ""
+msgstr "=====================\n"
 
 #: src/controller/cli_commands.c:427
 #, c-format
 msgid "[CLIENT] Error: You are not running a server.\n"
-msgstr ""
+msgstr "[CLIENT] Erreur: Vous n'héberger pas un serveur.\n"
 
 #: src/controller/cli_commands.c:443
 #, c-format
 msgid "Failed to read scoreboard.txt\n"
-msgstr ""
+msgstr "Échec de lecture du scoreboard\n"
 
 #: src/controller/cli_commands.c:457
 #, c-format
 msgid "You must join a server first to ping it.\n"
-msgstr ""
+msgstr "Vous devez d'abort rejoindre un serveur pour le ping.\n"
 
 #: src/controller/cli_commands.c:497
 #, c-format
 msgid "[CLIENT] accepting invitation\n"
-msgstr ""
+msgstr "[CLIENT] Acceptation de l'invitation\n"
 
 #: src/controller/cli_commands.c:507
 #, c-format
 msgid "Declined invitation from challenger.\n"
-msgstr ""
+msgstr "Invitation refusée\n"
 
 #: src/controller/cli_commands.c:521
 #, c-format
 msgid "You must join a server first to invite someone.\n"
-msgstr ""
+msgstr "Vous devez d'abort rejoindre un serveur pour inviter quelqu'un.\n"
 
 #: src/controller/cli_commands.c:529
 #, c-format
 msgid "Invitation sent to player %d.\n"
-msgstr ""
+msgstr "Invitation envoyée au joueur %d.\n"
 
 #: src/controller/cli_commands.c:535
 #, c-format
 msgid "New local game.\n"
-msgstr ""
+msgstr "Nouvelle partie locale.\n"
 
 #: src/controller/cli_commands.c:553
 #, c-format
 msgid "Move(s) undone successfully.\n"
-msgstr ""
+msgstr "Coup(s) annulé(s) avec succès.\n"
 
 #: src/controller/cli_commands.c:558
 #, c-format
 msgid "Impossible to undo.\n"
-msgstr ""
+msgstr "Impossible d'annuler.\n"
 
 #: src/controller/cli_commands.c:564
 #, c-format
 msgid "The 'undo' command is only available in solo mode against the AI.\n"
-msgstr ""
+msgstr "La commande 'undo' n'est disponible qu'en mode solo contre l'IA.\n"
 
 #: src/controller/cli_commands.c:580
 #, c-format
 msgid "Move(s) redone successfully.\n"
-msgstr ""
+msgstr "Coup(s) refait(s) avec succès.\n"
 
 #: src/controller/cli_commands.c:585
 #, c-format
 msgid "Impossible to redo : no move to redo.\n"
-msgstr ""
+msgstr "Impossible de refaire : aucun coup à refaire.\n"
 
 #: src/controller/cli_commands.c:591
 #, c-format
 msgid "The 'redo' command is only available in solo mode against the AI.\n"
-msgstr ""
+msgstr "La commande 'redo' n'est disponible qu'en mode solo contre l'IA.\n"
 
 #: src/controller/cli_commands.c:602
 #, c-format
 msgid "Game saved successfully to: %s\n"
-msgstr ""
+msgstr "Partie sauvegardée avec succès vers: %s\n"
 
 #: src/controller/cli_commands.c:606
 #, c-format
 msgid "Failed to save the game.\n"
-msgstr ""
+msgstr "Échec de la sauvegarde de la partie.\n"
 
 #: src/controller/cli_commands.c:622
 #, c-format
 msgid "Failed to load the game.\n"
-msgstr ""
+msgstr "Échec du chargement de la partie.\n"
 
 #: src/controller/cli_commands.c:628
 #, c-format
 msgid "Game paused...\n"
-msgstr ""
+msgstr "Partie mise en pause...\n"
 
 #: src/controller/cli_commands.c:647
 #, c-format
 msgid "ERROR : Start a game ('new' ou 'join') to play.\n"
-msgstr ""
+msgstr "ERREUR : Démarrez une partie ('new' ou 'join') pour jouer.\n"
 
 #: src/controller/cli_commands.c:656
 #, c-format
 msgid "[ERROR] You are in the LOBBY! Use 'invite' to start a game.\n"
-msgstr ""
+msgstr "[ERROR] Vous êtes dans le LOBBY! Utilisez 'invite' pour démarrer une partie.\n"
 
 #: src/controller/cli_commands.c:664
 #, c-format
 msgid "[ERROR] It's not your turn! Wait for your opponent.\n"
-msgstr ""
+msgstr "[ERROR] Ce n'est pas votre tour! Attendez votre adversaire.\n"
 
 #: src/controller/cli_commands.c:687
 #, c-format
 msgid "Player %s won !\n"
-msgstr ""
+msgstr "Joueur %s a gagné !\n"
 
 #: src/controller/cli_commands.c:694
 #, c-format
@@ -435,17 +436,17 @@ msgstr ""
 #: src/controller/cli_commands.c:705
 #, c-format
 msgid "An illegal blow according to the rules.\n"
-msgstr ""
+msgstr "Coup illégal selon les règles.\n"
 
 #: src/controller/cli_commands.c:710
 #, c-format
 msgid "Invalid format. Use: a1-a3(a4) format or type 'help'.\n"
-msgstr ""
+msgstr "Format invalide. Utilisez le format a1-a3(a4) ou tapez 'help'.\n"
 
 #: src/network/network_handler_client.c:49
 #, c-format
 msgid "[CLIENT] Connection rejected: %s\n"
-msgstr ""
+msgstr "[CLIENT] Connexion refusée: %s\n"
 
 #: src/network/network_handler_client.c:91
 #, c-format
@@ -464,44 +465,44 @@ msgstr ""
 #: src/network/network_handler_client.c:134
 #, c-format
 msgid "[CLIENT] Game is starting!\n"
-msgstr ""
+msgstr "[CLIENT] La partie commence!\n"
 
 #: src/network/network_handler_client.c:159
 #, c-format
 msgid "[CLIENT] Error: Received unreadable move format from server: %s\n"
-msgstr ""
+msgstr "[CLIENT] Erreur: Format de coup illisible reçu du serveur: %s\n"
 
 #: src/network/network_handler_client.c:175
 #, c-format
 msgid "[CLIENT] Unmanaged package (Type: %d)\n"
-msgstr ""
+msgstr "[CLIENT] Paquet non géré (Type: %d)\n"
 
 #: src/network/network_handler_server.c:56
 msgid "Opponent disconnected. You win by forfeit!"
-msgstr ""
+msgstr "Adversaire déconnecté. Vous gagnez par forfait!"
 
 #: src/network/network_handler_server.c:75
 msgid "Network disconnection"
-msgstr ""
+msgstr "Déconnexion réseau"
 
 #: src/network/network_handler_server.c:90
 msgid "[SERVER]"
-msgstr ""
+msgstr "[SERVEUR]"
 
 #: src/network/network_handler_server.c:99
 #, c-format
 msgid "%s Warning: oversized message discarded.\n"
-msgstr ""
+msgstr "%s Avertissement: message trop volumineux rejeté.\n"
 
 #: src/network/network_handler_server.c:107
 #, c-format
 msgid "%s Incorrect format of received package : %s\n"
-msgstr ""
+msgstr "%s Format incorrect du paquet reçu : %s\n"
 
 #: src/network/network_handler_server.c:162
 #, c-format
 msgid "[SERVER] Hack attempt! Invalid move format from Client %d.\n"
-msgstr ""
+msgstr "[SERVEUR] Tentative de triche! Format de coup invalide du Client %d.\n"
 
 #: src/network/network_handler_server.c:192
 #, c-format
@@ -512,11 +513,11 @@ msgstr ""
 
 #: src/network/network_handler_server.c:198
 msgid "Illegal move detected! You have been desynced."
-msgstr ""
+msgstr "Coup illégal détecté! Vous avez été désynchronisé."
 
 #: src/network/network_handler_server.c:265
 msgid "Username already taken"
-msgstr ""
+msgstr "Nom d'utilisateur déjà pris"
 
 #: src/network/network_handler_server.c:284
 #, c-format
@@ -527,54 +528,53 @@ msgstr ""
 
 #: src/network/network_handler_server.c:289
 msgid "Welcome to the Lobby!"
-msgstr ""
+msgstr "Bienvenue dans le SALON!"
 
 #: src/network/network_handler_server.c:366
 msgid "Error: Invalid player ID."
-msgstr ""
+msgstr "Erreur: ID joueur invalide."
 
 #: src/network/network_handler_server.c:375
 msgid "Error: Player not found."
-msgstr ""
-
+msgstr "Erreur: Joueur non trouvé."
 #: src/network/network_handler_server.c:383
 msgid "Error: Player is AWAY."
-msgstr ""
+msgstr "Erreur: Joueur ABSCENT."
 
 #: src/network/network_handler_server.c:389
 msgid "Error: Player is not available."
-msgstr ""
+msgstr "Erreur: Joueur non disponible."
 
 #: src/network/network_handler_server.c:396
 msgid "Error: Player is already considering another invitation."
-msgstr ""
+msgstr "Erreur: Joueur déjà en train de considérer une autre invitation."
 
 #: src/network/network_handler_server.c:429
 #: src/network/network_handler_server.c:498
 msgid "Error: You have no pending invitations."
-msgstr ""
+msgstr "Erreur: Vous n'avez aucune invitation en attente."
 
 #: src/network/network_handler_server.c:442
 msgid "Error: The challenger left or the invite expired."
-msgstr ""
+msgstr "Erreur: Le challenger est parti ou l'invitation a expiré."
 
 #: src/network/network_handler_server.c:513
 msgid "Invitation declined by the opponent."
-msgstr ""
+msgstr "Invitation refusée par l'adversaire."
 
 #: src/network/network_handler_server.c:592
 #, c-format
 msgid "[SERVER] Player %d is now AWAY.\n"
-msgstr ""
+msgstr "[SERVEUR] Joueur %d est maintenant ABSENT.\n"
 
 #: src/network/network_handler_server.c:602
 #, c-format
 msgid "[SERVER] Player %d is BACK.\n"
-msgstr ""
+msgstr "[SERVEUR] Joueur %d est de retour.\n"
 
 #: src/network/network_handler_server.c:621
 msgid "Invitation canceled by challenger."
-msgstr ""
+msgstr "Invitation annulée par le challenger."
 
 #: src/network/network_handler_server.c:625
 #, c-format
@@ -585,67 +585,67 @@ msgstr ""
 
 #: src/network/network_handler_server.c:635
 msgid "Name | Wins | Losses | Played"
-msgstr ""
+msgstr "Nom | Victoires | Défaites | Joués"
 
 #: src/network/network_handler_server.c:662
 msgid "No scores recorded yet."
-msgstr ""
+msgstr "Aucun score enregistré pour le moment."
 
 #: src/network/network_handler_server.c:705
 #, c-format
 msgid "[SERVER] Unmanaged package (Type: %d)\n"
-msgstr ""
+msgstr "[SERVEUR] Paquet non géré (Type: %d)\n"
 
 #: src/network/network_manager.c:103
 msgid "[NETWORK] Manager is already active!\n"
-msgstr ""
+msgstr "[RESEAUX] Le gestionnaire est déjà actif!\n"
 
 #: src/network/network_manager.c:109
 msgid "Server socket creation error"
-msgstr ""
+msgstr "Socket de serveur non créé"
 
 #: src/network/network_manager.c:132
 msgid "Listen error"
-msgstr ""
+msgstr "Erreur d'écoute"
 
 #: src/network/network_manager.c:143
 msgid "Server memory allocation error"
-msgstr ""
+msgstr "Erreur d'allocation de mémoire du serveur"
 
 #: src/network/network_manager.c:190
 msgid "[WARNING] Could not create UDP discovery socket.\n"
-msgstr ""
+msgstr "[AVERTISSEMENT] Impossible de créer le socket de découverte UDP.\n"
 
 #: src/network/network_manager.c:193
 #, c-format
 msgid "[NETWORK] Server started on port %d\n"
-msgstr ""
+msgstr "[RESEAUX] Le serveur a démarré sur le port %d\n"
 
 #: src/network/network_manager.c:216
 msgid "[NETWORK] Already connected or active!\n"
-msgstr ""
+msgstr "[RESEAUX] Déjà connecté ou actif!\n"
 
 #: src/network/network_manager.c:222
 msgid "Client socket creation error"
-msgstr ""
+msgstr "Erreur de création du socket client"
 
 #: src/network/network_manager.c:234
 #, c-format
 msgid "[NETWORK] Invalid IP : %s\n"
-msgstr ""
+msgstr "[RESEAUX] IP invalide : %s\n"
 
 #: src/network/network_manager.c:243
 msgid "Server connection error"
-msgstr ""
+msgstr "Erreur de connexion au serveur"
 
 #: src/network/network_manager.c:253
 msgid "Client memory allocation error"
-msgstr ""
+msgstr "Erreur d'allocation de mémoire du client"
 
 #: src/network/network_manager.c:263
 #, c-format
 msgid "[NETWORK] Connected to the server %s:%d\n"
-msgstr ""
+msgstr "[RESEAUX] Connecté au serveur %s:%d\n"
 
 #: src/network/network_manager.c:295
 msgid ""
@@ -662,7 +662,7 @@ msgstr ""
 #: src/network/network_manager.c:474
 #, c-format
 msgid "%s Error: Invalid target.\n"
-msgstr ""
+msgstr "%s Erreur: Cible invalide.\n"
 
 #: src/network/network_manager.c:574
 #, c-format
@@ -694,15 +694,15 @@ msgstr ""
 #: src/network/network_manager.c:662
 #, c-format
 msgid "Kicked for inactivity (%d sec)."
-msgstr ""
+msgstr "Viré pour inactivité (%d sec)."
 
 #: src/network/network_manager.c:689
 msgid "The invitation has expired (5 minutes)."
-msgstr ""
+msgstr "L'invitation a expiré (5 minutes).\n"
 
 #: src/network/network_manager.c:711
 msgid "Your invitation expired without an answer."
-msgstr ""
+msgstr "Votre invitation a expiré sans réponse.\n"
 
 #: src/network/network_manager.c:759
 msgid ""
@@ -718,17 +718,17 @@ msgstr ""
 
 #: src/network/network_manager.c:798
 msgid "Server is shutting down."
-msgstr ""
+msgstr "Le serveur est en cours d'arrêt."
 
 #: src/network/network_queries.c:84
 #, c-format
 msgid "No servers found on the local network.\n"
-msgstr ""
+msgstr "Pas de serveurs trouvés sur le réseau local.\n"
 
 #: src/network/network_queries.c:157
 #, c-format
 msgid "Player %d not found or not connected.\n"
-msgstr ""
+msgstr "Joueur %d non trouvé ou non connecté.\n"
 
 #: src/network/network_queries.c:189
 #, c-format
@@ -739,4 +739,4 @@ msgstr ""
 #: src/network/network_queries.c:230
 #, c-format
 msgid "No players currently in the lobby.\n"
-msgstr ""
+msgstr "Aucun joueur actuellement dans le salon.\n"
