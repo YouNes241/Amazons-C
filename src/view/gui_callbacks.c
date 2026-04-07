@@ -955,6 +955,11 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
           clearHighlights (ctx);
           drawBoard (ctx);
           updateTurnDisplay (ctx);
+
+          if (ctx->mainStack)
+            {
+              gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
+            }
         }
       else
         {
@@ -1067,6 +1072,12 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
               clearHighlights (ctx);
               drawBoard (ctx);
               updateTurnDisplay (ctx);
+
+              if (ctx->mainStack)
+                {
+                  gtk_stack_set_visible_child_name (ctx->mainStack,
+                                                    "game_page");
+                }
             }
           else
             {

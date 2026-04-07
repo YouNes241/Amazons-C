@@ -51,18 +51,21 @@ createSingleplayerMenuPage (GuiContext *ctx)
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *newGameBtn;
+  GtkWidget *loadGameBtn;
   GtkWidget *returnBtn;
 
   builder = gtk_builder_new_from_resource ("/amazons/ui/singleplayer.ui");
   box = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_box"));
 
   newGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  loadGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
   returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
 
   g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
                     ctx);
+  g_signal_connect (loadGameBtn, "clicked", G_CALLBACK (loadButtonClick), ctx);
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
   g_object_ref (box);
