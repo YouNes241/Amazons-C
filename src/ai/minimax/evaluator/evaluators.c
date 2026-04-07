@@ -146,12 +146,50 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
 float
 eval_me (const BitboardState *state)
 {
+  if (state == NULL)
+    return 0.0f;
+
   Bitboard empty = bitboard_masked_not (get_obstacles (state), state->size);
 
   int white = calculate_mobility_sum (state->white_queens, empty, state->size);
   int black = calculate_mobility_sum (state->black_queens, empty, state->size);
 
+  // If black has 0 moves, white has won (black lost).
+  if (black == 0)
+    return 10000.0f + white;
+
+  // If white has 0 moves, black has won (white lost).
+  if (white == 0)
+    return -10000.0f - black;
+
   return (float)(white - black);
+}
+
+/**
+ * @brief Checks for immediate win/loss conditions and returns a large score if
+ * the game is already decided.
+ *
+ * @param state The current board state to evaluate.
+ * @return int Returns 10000.0f if White has won, -10000.0f if Black has won,
+ * or 0 if the game is not decided yet.
+ */
+static inline int
+check_init_win (const BitboardState *state)
+{
+  Bitboard obstacles = get_obstacles (state);
+  Bitboard empty = bitboard_masked_not (obstacles, state->size);
+
+  // If Black cannot move at all, White has won.
+  if (bitboard_is_zero (
+          expand_king_step (state->black_queens, empty, state->size)))
+    return 10000.0f;
+
+  // If White cannot move at all, Black has won.
+  if (bitboard_is_zero (
+          expand_king_step (state->white_queens, empty, state->size)))
+    return -10000.0f;
+
+  return 0;
 }
 
 /**
@@ -166,6 +204,12 @@ eval_me (const BitboardState *state)
 static float
 eval_rth (const BitboardState *state)
 {
+  if (state == NULL)
+    return 0.0f;
+
+  if (check_init_win (state) != 0)
+    return check_init_win (state);
+
   int max_moves_nb = state->size * state->size;
   uint8_t dist_white[max_moves_nb];
   uint8_t dist_black[max_moves_nb];
@@ -298,6 +342,11 @@ get_absolute_territory (Bitboard w_starts, Bitboard b_starts, Bitboard empty,
 static float
 eval_qdkd (const BitboardState *state)
 {
+  if (state == NULL)
+    return 0.0f;
+
+  if (check_init_win (state) != 0)
+    return check_init_win (state);
   Bitboard obstacles = get_obstacles (state);
 
   // Pre-calculate empty squares once
