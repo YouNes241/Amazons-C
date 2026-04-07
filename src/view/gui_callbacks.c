@@ -527,6 +527,12 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
   (void)button;
   GuiContext *ctx = (GuiContext *)user_data;
 
+  if (ctx->isNetworkMatch)
+    {
+      guiShowPopup (ctx, "Action disabled during a network match.");
+      return;
+    }
+
   GtkWidget *boardGrid = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
 
@@ -631,13 +637,6 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
 
-  if (ctx->currentPhase != PHASE_MOVE_QUEEN
-      || (ctx->isNetworkMatch
-          && ctx->gameState->current_player != ctx->selfPlayerColor))
-    {
-      return NULL;
-    }
-
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
 
@@ -654,6 +653,22 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
     }
 
   PlayerColor currentPlayer = ctx->gameState->current_player;
+
+  if ((ctx->isNetworkMatch && currentPlayer != ctx->selfPlayerColor)
+      || ctx->currentPhase != PHASE_MOVE_QUEEN)
+    {
+      return NULL;
+    }
+
+  bool is_ai_turn
+      = (currentPlayer == PLAYER_WHITE && ctx->gameConfig->ai_white)
+        || (currentPlayer == PLAYER_BLACK && ctx->gameConfig->ai_black);
+
+  if (is_ai_turn && !ctx->isNetworkMatch)
+    {
+      return NULL;
+    }
+
   if ((currentPlayer == PLAYER_WHITE && piece != CONTENT_WHITE_QUEEN)
       || (currentPlayer == PLAYER_BLACK && piece != CONTENT_BLACK_QUEEN))
     {
@@ -671,6 +686,12 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
         {
           foundCells++;
         }
+    }
+
+  if (foundCells == 0)
+    {
+      clearHighlights (ctx);
+      return NULL;
     }
 
   char strIndex[8];
@@ -1136,6 +1157,13 @@ loadButtonClick (GtkButton *button, gpointer user_data)
 
   if (!ctx || !ctx->gameState)
     return;
+
+  if (ctx->isNetworkMatch)
+    {
+      guiShowPopup (ctx, "Action disabled during a network match.");
+      return;
+    }
+
   GtkFileChooserNative *native = gtk_file_chooser_native_new (
       "Load a game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_OPEN, "Open",
       "Cancel");
