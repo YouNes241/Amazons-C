@@ -209,13 +209,13 @@ parse_settings_line (const char *trimmed, game_config_t *config,
               config->ai_white_cfg.enabled = true;
               if (strcmp (val_str, "true") == 0)
                 {
-                  strncpy (config->ai_white_cfg.name, "minimax",
-                           MAX_AI_STR_LEN - 1);
+                  snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN,
+                            "minimax");
                 }
               else
                 {
-                  strncpy (config->ai_white_cfg.name, val_str,
-                           MAX_AI_STR_LEN - 1);
+                  snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN, "%.31s",
+                            val_str);
                 }
             }
         }
@@ -230,13 +230,13 @@ parse_settings_line (const char *trimmed, game_config_t *config,
               config->ai_black_cfg.enabled = true;
               if (strcmp (val_str, "true") == 0)
                 {
-                  strncpy (config->ai_black_cfg.name, "minimax",
-                           MAX_AI_STR_LEN - 1);
+                  snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN,
+                            "minimax");
                 }
               else
                 {
-                  strncpy (config->ai_black_cfg.name, val_str,
-                           MAX_AI_STR_LEN - 1);
+                  snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN, "%.31s",
+                            val_str);
                 }
             }
         }

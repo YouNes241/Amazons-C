@@ -121,7 +121,7 @@ make_data (uint64_t time_limit_ms = 5000, int max_depth = 3)
 static float
 perfect_eval (const BitboardState *)
 {
-  return INT_MAX;
+  return (float)INT_MAX;
 }
 
 // ============================================================

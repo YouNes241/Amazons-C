@@ -18,6 +18,7 @@
  * without.
  */
 #include "bitboard.h"
+#include "config.h"
 #include "evaluator.h"
 #include "game_types.h"
 #include "utils.h"
@@ -210,9 +211,8 @@ eval_rth (const BitboardState *state)
   if (check_init_win (state) != 0)
     return check_init_win (state);
 
-  int max_moves_nb = state->size * state->size;
-  uint8_t dist_white[max_moves_nb];
-  uint8_t dist_black[max_moves_nb];
+  uint8_t dist_white[MAX_BOARD_SQUARES];
+  uint8_t dist_black[MAX_BOARD_SQUARES];
   Bitboard obstacles = get_obstacles (state);
 
   // BFS for both
