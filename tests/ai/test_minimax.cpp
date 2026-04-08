@@ -812,12 +812,12 @@ TEST_F (MinimaxAI, MallocFailureLeavesContextNull)
 {
   ai.vtable->clean (&ai);
 
-  {
-    MallocFailGuard guard;
-    ai.vtable->init (&ai, NULL);
-  }
-
-  EXPECT_EQ (ai.context, nullptr);
+  EXPECT_DEATH (
+      {
+        MallocFailGuard guard;
+        ai.vtable->init (&ai, NULL);
+      },
+      ".*");
 }
 
 // ============================================================
