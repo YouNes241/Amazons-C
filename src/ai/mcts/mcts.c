@@ -24,7 +24,6 @@
 #include "evaluator.h"
 #include "i_selector.h"
 #include "mcts_includes/mcts_internal.h"
-#include "mcts_types.h"
 #include "uct.h"
 #include "utils.h"
 #include <omp.h>

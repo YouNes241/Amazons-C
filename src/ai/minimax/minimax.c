@@ -557,9 +557,6 @@ minimax_get_best_move (const AI_Interface *self, GameState state)
 
   Move best_move_overall = available_moves[0];
 
-  printf ("ID is %s\n",
-          data->iterative_deepening_enabled ? "enabled" : "disabled");
-
   if (!data->iterative_deepening_enabled)
     {
       best_move_overall = run_root_search (data, &root_state, data->max_depth,

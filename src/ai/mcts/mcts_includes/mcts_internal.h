@@ -29,7 +29,6 @@
 #include "game_types.h"
 #include "i_selector.h"
 #include "mcts.h"
-#include "mcts_types.h"
 
 /** @brief Default time constraint for MCTS (milliseconds). */
 extern const uint64_t DEFAULT_TIME_CONSTRAINT;

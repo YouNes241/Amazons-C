@@ -9,7 +9,6 @@ extern "C"
 #include "ai_factory.h"
 #include "bitboard_state.h"
 #include "mcts.h"
-#include "mcts_types.h"
 #include "uct.h"
 #include "utils.h"
 }

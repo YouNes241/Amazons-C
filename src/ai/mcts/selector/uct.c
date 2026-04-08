@@ -7,7 +7,7 @@
  * (exploitation) and a term that encourages exploration of less visited nodes.
  */
 #include "i_selector.h"
-#include "mcts_types.h"
+#include "mcts.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
