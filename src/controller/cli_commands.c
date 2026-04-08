@@ -513,7 +513,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       return;
     }
-  if (strcmp (input_buffer, "quit") == 0)
+  if (strncmp (input_buffer, "quit", CMD_LEN_QUIT) == 0)
     {
       execute_quit (ctx);
       return;
@@ -748,7 +748,20 @@ handle_command (char *input_buffer, CliContext *ctx)
 
       if (load_game (filename, ctx->config, ctx->current_game) == 0)
         {
-          printf ("Game loaded successfully from: %s\n", filename);
+
+          ctx->in_main_menu = false;
+          if (ctx->config->blitz_mode)
+            {
+              ctx->current_game->blitz_mode = true;
+              ctx->current_game->blitz_turn_start = (double)time (NULL);
+              ctx->turn_start_time = time (NULL);
+              g_ctx_ref = ctx;
+              rl_event_hook = check_blitz_timeout;
+              rl_set_keyboard_input_timeout (100000);
+            }
+
+          cli_clear_screen ();
+          printf (_ ("Game loaded successfully from: %s\n\n"), filename);
         }
       else
         {
