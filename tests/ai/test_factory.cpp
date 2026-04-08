@@ -100,15 +100,13 @@ TEST (AIFactoryTest, CreateMinimaxReturnsCorrectImplementation)
 }
 
 // Testing creating an unknown AI using the factory
-TEST (AIFactoryTest, CreateUnknownReturnsNull)
+TEST (AIFactoryTest, CreateUnknownReturnsDefault)
 {
   ConfigMap empty_params = { 0, NULL };
 
-  // On demande un truc qui n'existe pas
+  // Request unexisting AI
   AI_Interface ai = create_ai ("skynet", empty_params);
 
-  // On s'attend à ce que la vtable soit NULL (selon ton implémentation de
-  // factory)
-  EXPECT_EQ (ai.vtable, nullptr);
-  EXPECT_EQ (ai.context, nullptr);
+  // We expect that it defaulted on random.
+  EXPECT_NE (ai.vtable, nullptr);
 }

@@ -13,6 +13,19 @@
 #include <time.h>
 #include <unistd.h>
 
+typedef enum
+{
+  OPT_DAEMON = 1000,
+  OPT_AI_WHITE,            // 1001
+  OPT_AI_BLACK,            // 1002
+  OPT_AI_MODE,             // 1003
+  OPT_AI_MINIMAX_DEPTH,    // 1004
+  OPT_AI_MINIMAX_SCORING,  // 1005
+  OPT_AI_MCTS_SELECTION,   // 1006
+  OPT_AI_TIME,             // 1007
+  OPT_AI_MINIMAX_FWPRUNING // 1008
+} CliOption;
+
 static NetworkManager *g_daemon_net_manager = NULL;
 
 void
@@ -21,10 +34,26 @@ handle_shutdown_signal (int sig)
   (void)sig;
   if (g_daemon_net_manager)
     {
-
       NetworkManager_ShutdownServer (g_daemon_net_manager);
     }
   exit (EXIT_SUCCESS);
+}
+
+// Fonction utilitaire pour ajouter facilement un paramètre dynamique à l'IA
+// courante
+static void
+add_ai_param (ai_config_t *ai, const char *key, const char *val)
+{
+  if (ai->param_count < MAX_AI_PARAMS)
+    {
+      strncpy (ai->param_keys[ai->param_count], key, MAX_AI_STR_LEN - 1);
+      ai->param_keys[ai->param_count][MAX_AI_STR_LEN - 1] = '\0';
+
+      strncpy (ai->param_vals[ai->param_count], val, MAX_AI_STR_LEN - 1);
+      ai->param_vals[ai->param_count][MAX_AI_STR_LEN - 1] = '\0';
+
+      ai->param_count++;
+    }
 }
 
 int
@@ -34,31 +63,37 @@ parse_options (int argc, char *argv[], game_config_t *config)
   int opt;
   int option_index = 0;
   bool d_short_passed = false;
-  static struct option long_options[]
-      = { { "size", required_argument, 0, 'n' },
-          { "blitz", no_argument, 0, 'b' },
-          { "time", required_argument, 0, 't' },
-          { "contest", no_argument, 0, 'c' },
-          { "gui", no_argument, 0, 'g' },
-          { "ai", optional_argument, 0, 'a' },
-          { "debug", no_argument, 0, 'd' },
-          { "server", optional_argument, 0, 's' },
-          { "daemon", no_argument, 0, 1000 },
-          { "verbose", no_argument, 0, 'v' },
-          { "help", no_argument, 0, 'h' },
-          { "version", no_argument, 0, 'V' },
-          { 0, 0, 0, 0 } };
+
+  // Pointe par défaut sur l'IA Noire (l'humain joue blanc par défaut)
+  ai_config_t *current_ai = &config->ai_black_cfg;
+
+  static struct option long_options[] = {
+    { "size", required_argument, 0, 'n' },
+    { "blitz", no_argument, 0, 'b' },
+    { "time", required_argument, 0, 't' },
+    { "contest", no_argument, 0, 'c' },
+    { "gui", no_argument, 0, 'g' },
+    { "ai-white", no_argument, 0, OPT_AI_WHITE },
+    { "ai-black", no_argument, 0, OPT_AI_BLACK },
+    { "ai-mode", required_argument, 0, OPT_AI_MODE },
+    { "ai-minimax-depth", required_argument, 0, OPT_AI_MINIMAX_DEPTH },
+    { "ai-minimax-scoring", required_argument, 0, OPT_AI_MINIMAX_SCORING },
+    { "ai-minimax-fwpruning", required_argument, 0, OPT_AI_MINIMAX_FWPRUNING },
+    { "ai-mcts-selection", required_argument, 0, OPT_AI_MCTS_SELECTION },
+    { "ai-time", required_argument, 0, OPT_AI_TIME },
+    { "debug", no_argument, 0, 'd' },
+    { "server", optional_argument, 0, 's' },
+    { "daemon", no_argument, 0, OPT_DAEMON },
+    { "verbose", no_argument, 0, 'v' },
+    { "help", no_argument, 0, 'h' },
+    { "version", no_argument, 0, 'V' },
+    { 0, 0, 0, 0 }
+  };
 
   init_default_config (config);
-
   load_config_file (config);
 
-  // getopt_long parses command-line arguments and compares them to the options
-  // defined in long_options. It takes argc and argv as arguments (the standard
-  // main function parameters representing the number of arguments and the
-  // arguments themselves), plus a string "n:bt:cga::dvVh" indicating the
-  // short options accepted by the program
-  while ((opt = getopt_long (argc, argv, "n:bt:cga::s::dvVh", long_options,
+  while ((opt = getopt_long (argc, argv, "n:bt:cgs::dvVh", long_options,
                              &option_index))
          != -1)
     {
@@ -102,41 +137,66 @@ parse_options (int argc, char *argv[], game_config_t *config)
           config->mode = MODE_GUI;
           break;
 
-        case 'a':
-          // By default, if the option is present, activate AI for Black
-          config->ai_white = false;
-          config->ai_black = true;
+        case OPT_AI_WHITE:
+          current_ai = &config->ai_white_cfg;
+          current_ai->enabled = true;
+          break;
 
-          // optarg contains the argument if user specified -aW or --ai=W
-          if (optarg != NULL)
+        case OPT_AI_BLACK:
+          current_ai = &config->ai_black_cfg;
+          current_ai->enabled = true;
+          break;
+
+        case OPT_AI_MODE:
+          current_ai->enabled = true;
+
+          strncpy (current_ai->name, optarg, MAX_AI_STR_LEN - 1);
+          current_ai->name[MAX_AI_STR_LEN - 1] = '\0';
+
+          if (strcmp (optarg, "iterative") == 0)
             {
-              if (strcmp (optarg, "W") == 0)
-                {
-                  config->ai_white = true;
-                  config->ai_black = false;
-                }
-              else if (strcmp (optarg, "B") == 0)
-                {
-                  config->ai_white = false;
-                  config->ai_black = true;
-                }
-              else if (strcmp (optarg, "A") == 0)
-                {
-                  config->ai_white = true;
-                  config->ai_black = true;
-                }
-              else
-                {
-                  if (strcmp (optarg, "emon") == 0)
-                    {
-                      fprintf (stderr,
-                               "Error : To launch daemon mode, use the option "
-                               "'--daemon' or '-d'.\n");
-                      return EXIT_FAILURE;
-                    }
-                }
+              add_ai_param (current_ai, "iterative_deepening", "1");
             }
           break;
+        case OPT_AI_MINIMAX_DEPTH:
+          current_ai->enabled = true;
+          add_ai_param (current_ai, "depth", optarg);
+          break;
+
+        case OPT_AI_MINIMAX_SCORING:
+          current_ai->enabled = true;
+          add_ai_param (current_ai, "evaluator", optarg);
+          break;
+
+        case OPT_AI_MINIMAX_FWPRUNING:
+          current_ai->enabled = true;
+          if (strcmp (optarg, "0") == 0 || strcasecmp (optarg, "false") == 0
+              || strcasecmp (optarg, "disabled") == 0)
+            {
+              add_ai_param (current_ai, "forward_pruning", "0");
+            }
+          else
+            {
+              add_ai_param (current_ai, "forward_pruning", "1");
+            }
+          break;
+
+        case OPT_AI_MCTS_SELECTION:
+          current_ai->enabled = true;
+          add_ai_param (current_ai, "selection", optarg);
+          break;
+
+        case OPT_AI_TIME:
+          current_ai->enabled = true;
+          {
+            int time_sec = atoi (optarg);
+            char time_ms_str[32];
+            snprintf (time_ms_str, sizeof (time_ms_str), "%d",
+                      time_sec * 1000);
+            add_ai_param (current_ai, "time_limit", time_ms_str);
+          }
+          break;
+
         case 's':
           config->start_server = true;
           if (optarg)
@@ -158,11 +218,10 @@ parse_options (int argc, char *argv[], game_config_t *config)
           break;
 
         case 'd':
-
           d_short_passed = true;
           break;
-        case 'v':
 
+        case 'v':
           config->verbose = true;
           break;
 
@@ -175,15 +234,30 @@ parse_options (int argc, char *argv[], game_config_t *config)
           printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n",
                   MIN_BOARD_SIZE, MAX_BOARD_SIZE, DEFAULT_BOARD_SIZE);
           printf ("  -b, --blitz     Activer le mode blitz\n");
-          printf ("  -t, --time T     Temps de réflexion par joueur en "
-                  "minutes (défaut: 30)\n");
+          printf ("  -t, --time T    Temps de réflexion par joueur en minutes "
+                  "(défaut: 30)\n");
           printf ("  -c, --contest   Lancer en mode contest\n");
           printf ("  -g, --gui       Lancer en mode graphique\n");
-          printf ("  -a, --ai [C]    Activer l'IA\n");
+
+          printf ("\n  --- Options IA ---\n");
+          printf ("  --ai-white      Appliquer les options IA suivantes au "
+                  "joueur Blanc\n");
+          printf ("  --ai-black      Appliquer les options IA suivantes au "
+                  "joueur Noir\n");
+          printf ("  --ai-mode M     M = minimax, iterative, mcts\n");
+          printf (
+              "  --ai-minimax-depth D   Profondeur maximale pour minimax\n");
+          printf ("  --ai-minimax-scoring S Fonction d'évaluation (me, rth, "
+                  "qdkd)\n");
+          printf ("  --ai-mcts-selection S  Sélection MCTS (uct, ml)\n");
+          printf (
+              "  --ai-time T     Temps de réflexion de l'IA en secondes\n");
+
+          printf ("\n  --- Autres ---\n");
           printf ("  -d, --debug     Afficher les messages de debug\n");
           printf ("  -s, --server [P] Lancer en tant que serveur (Port "
                   "optionnel)\n");
-          printf ("  -d, --daemon    Lancer le serveur en arrière-plan "
+          printf ("  --daemon        Lancer le serveur en arrière-plan "
                   "(Headless)\n");
           printf ("  -v, --verbose   Activer le mode bavard\n");
           printf ("  -h, --help      Afficher cette aide\n");
@@ -212,7 +286,6 @@ parse_options (int argc, char *argv[], game_config_t *config)
     {
       if (config->start_server)
         {
-          // Si le serveur est demandé, -d devient Daemon
           config->daemon_mode = true;
         }
       else
@@ -239,9 +312,7 @@ main (int argc, char *argv[])
     }
 
   setlocale (LC_ALL, "");
-
   bindtextdomain ("amazons", "./locale");
-
   textdomain ("amazons");
 
   game_config_t *config = malloc (sizeof (game_config_t));
@@ -270,16 +341,11 @@ main (int argc, char *argv[])
           return EXIT_FAILURE;
         }
       NetworkManager net_manager;
-      NetworkEvents callbacks = { 0 }; // no use for callbacks in daemon mode,
-                                       // but we need to pass something valid
+      NetworkEvents callbacks = { 0 };
       NetworkManager_Init (&net_manager, callbacks);
       g_daemon_net_manager = &net_manager;
-      signal (SIGINT,
-              handle_shutdown_signal); // capture the Ctrl+C signal to allow
-                                       // graceful shutdown in daemon mode
-      signal (SIGTERM,
-              handle_shutdown_signal); // Capture SIGTERM for graceful shutdown
-                                       // when using 'pkill'
+      signal (SIGINT, handle_shutdown_signal);
+      signal (SIGTERM, handle_shutdown_signal);
 
       if (NetworkManager_ServerStart (&net_manager, config->server_port) == 0)
         {

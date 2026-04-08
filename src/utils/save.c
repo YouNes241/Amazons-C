@@ -17,8 +17,13 @@ write_settings (FILE *file, game_config_t *config)
   fprintf (file, "time_per_player=%d\n", config->time_per_player);
 
   fprintf (file, "blitz_mode=%s\n", config->blitz_mode ? "true" : "false");
-  fprintf (file, "ai_white=%s\n", config->ai_white ? "true" : "false");
-  fprintf (file, "ai_black=%s\n", config->ai_black ? "true" : "false");
+
+  // NOUVELLE LOGIQUE D'ECRITURE DES IA
+  fprintf (file, "ai_white=%s\n",
+           config->ai_white_cfg.enabled ? config->ai_white_cfg.name : "false");
+  fprintf (file, "ai_black=%s\n",
+           config->ai_black_cfg.enabled ? config->ai_black_cfg.name : "false");
+
   fprintf (file, "verbose=%s\n", config->verbose ? "true" : "false");
 
   const char *lang_str = (config->language == LANG_FR) ? "fr" : "en";
@@ -195,11 +200,45 @@ parse_settings_line (const char *trimmed, game_config_t *config,
         }
       else if (strcmp (key, "ai_white") == 0)
         {
-          config->ai_white = (strcmp (val_str, "true") == 0);
+          if (strcmp (val_str, "false") == 0)
+            {
+              config->ai_white_cfg.enabled = false;
+            }
+          else
+            {
+              config->ai_white_cfg.enabled = true;
+              if (strcmp (val_str, "true") == 0)
+                {
+                  strncpy (config->ai_white_cfg.name, "minimax",
+                           MAX_AI_STR_LEN - 1);
+                }
+              else
+                {
+                  strncpy (config->ai_white_cfg.name, val_str,
+                           MAX_AI_STR_LEN - 1);
+                }
+            }
         }
       else if (strcmp (key, "ai_black") == 0)
         {
-          config->ai_black = (strcmp (val_str, "true") == 0);
+          if (strcmp (val_str, "false") == 0)
+            {
+              config->ai_black_cfg.enabled = false;
+            }
+          else
+            {
+              config->ai_black_cfg.enabled = true;
+              if (strcmp (val_str, "true") == 0)
+                {
+                  strncpy (config->ai_black_cfg.name, "minimax",
+                           MAX_AI_STR_LEN - 1);
+                }
+              else
+                {
+                  strncpy (config->ai_black_cfg.name, val_str,
+                           MAX_AI_STR_LEN - 1);
+                }
+            }
         }
       else if (strcmp (key, "verbose") == 0)
         {
@@ -222,10 +261,10 @@ parse_settings_line (const char *trimmed, game_config_t *config,
 }
 
 /**
- * @brief Parses a line from the [game] section and fills the GameState's board
- * or current player accordingly. The row_index pointer is used to keep track
- * of which row of the board we are filling, and it is updated as we read lines
- * of the board.
+ * @brief Parses a line from the [game] section and fills the GameState's
+ * board or current player accordingly. The row_index pointer is used to keep
+ * track of which row of the board we are filling, and it is updated as we
+ * read lines of the board.
  */
 static void
 parse_board_line (const char *trimmed, GameState *state, int *row_index)

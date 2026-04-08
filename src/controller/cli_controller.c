@@ -41,9 +41,9 @@ TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
-    return config->ai_white;
+    return config->ai_white_cfg.enabled;
   if (current_p == PLAYER_BLACK)
-    return config->ai_black;
+    return config->ai_black_cfg.enabled;
   return false;
 }
 
@@ -155,17 +155,40 @@ run_interactive_mode (game_config_t *config)
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
 
-  if ((config->ai_white || config->ai_black))
+  ctx->ai_white_initialized = false;
+  ctx->ai_black_initialized = false;
+
+  if (config->ai_white_cfg.enabled)
     {
-      Param p_mini[] = { { (char *)"depth", (char *)"4" },
-                         { (char *)"evaluator", (char *)"qd&kd" } };
-      ConfigMap cm_mini = { .list = p_mini, .count = 2 };
-      ctx->ai = create_ai ("minimax", cm_mini);
-      ctx->ai_initialized = (ctx->ai.vtable != NULL);
+      Param params[MAX_AI_PARAMS];
+      for (int i = 0; i < config->ai_white_cfg.param_count; i++)
+        {
+          params[i].key = config->ai_white_cfg.param_keys[i];
+          params[i].value = config->ai_white_cfg.param_vals[i];
+        }
+      ConfigMap cm
+          = { .count = config->ai_white_cfg.param_count, .list = params };
+      ctx->ai_white = create_ai (config->ai_white_cfg.name, cm);
+      ctx->ai_white_initialized = (ctx->ai_white.vtable != NULL);
+    }
+
+  if (config->ai_black_cfg.enabled)
+    {
+      Param params[MAX_AI_PARAMS];
+      for (int i = 0; i < config->ai_black_cfg.param_count; i++)
+        {
+          params[i].key = config->ai_black_cfg.param_keys[i];
+          params[i].value = config->ai_black_cfg.param_vals[i];
+        }
+      ConfigMap cm
+          = { .count = config->ai_black_cfg.param_count, .list = params };
+      ctx->ai_black = create_ai (config->ai_black_cfg.name, cm);
+      ctx->ai_black_initialized = (ctx->ai_black.vtable != NULL);
     }
 
   while (ctx->game_running)
     {
+      NetworkManager_Tick (ctx->net_manager);
       if (is_game_over (ctx->current_game, ctx->current_game->current_player))
         {
           cli_display_board (ctx->current_game);
@@ -196,9 +219,16 @@ run_interactive_mode (game_config_t *config)
               break;
             }
         }
-      NetworkManager_Tick (ctx->net_manager);
 
-      if (ctx->ai_initialized
+      bool is_white_turn = (ctx->current_game->current_player == PLAYER_WHITE);
+      AI_Interface *current_ai
+          = is_white_turn ? &ctx->ai_white : &ctx->ai_black;
+      bool current_ai_init = is_white_turn ? ctx->ai_white_initialized
+                                           : ctx->ai_black_initialized;
+      bool game_is_active = (!ctx->in_main_menu
+                             && ctx->current_game->status == GAME_IN_PROGRESS);
+
+      if (game_is_active && current_ai_init
           && is_it_ai_turn (ctx->config, ctx->current_game->current_player))
         {
 
@@ -217,9 +247,8 @@ run_interactive_mode (game_config_t *config)
           if (allowed_to_play)
             {
               printf (_ ("\n[AI] Thinking...\n"));
-              Move ai_move = ctx->ai.vtable->get_best_move (
-                  &ctx->ai, *ctx->current_game);
-
+              Move ai_move = current_ai->vtable->get_best_move (
+                  current_ai, *ctx->current_game);
               if (is_move_legal (ctx->current_game, ai_move))
                 {
                   apply_move (ctx->current_game, ai_move);
@@ -285,10 +314,10 @@ run_interactive_mode (game_config_t *config)
     }
 
   rl_callback_handler_remove ();
-  if (ctx->ai_initialized && ctx->ai.vtable->clean)
-    {
-      ctx->ai.vtable->clean (&ctx->ai);
-    }
+  if (ctx->ai_white_initialized && ctx->ai_white.vtable->clean)
+    ctx->ai_white.vtable->clean (&ctx->ai_white);
+  if (ctx->ai_black_initialized && ctx->ai_black.vtable->clean)
+    ctx->ai_black.vtable->clean (&ctx->ai_black);
   NetworkManager_Cleanup (ctx->net_manager);
   game_cleanup (ctx->current_game);
   free (ctx);

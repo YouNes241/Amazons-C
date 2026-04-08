@@ -1,5 +1,6 @@
 #include "controller_test_fixture.h"
 #include <chrono>
+#include <string.h>
 #include <thread>
 
 extern "C"
@@ -38,13 +39,13 @@ TEST_F (CliControllerTest, IsItAiTurnLogic)
   game_config_t cfg;
   memset (&cfg, 0, sizeof (game_config_t));
 
-  cfg.ai_white = true;
-  cfg.ai_black = false;
+  cfg.ai_white_cfg.enabled = true;
+  cfg.ai_black_cfg.enabled = false;
   EXPECT_TRUE (is_it_ai_turn (&cfg, PLAYER_WHITE));
   EXPECT_FALSE (is_it_ai_turn (&cfg, PLAYER_BLACK));
 
-  cfg.ai_white = false;
-  cfg.ai_black = true;
+  cfg.ai_white_cfg.enabled = false;
+  cfg.ai_black_cfg.enabled = true;
   EXPECT_FALSE (is_it_ai_turn (&cfg, PLAYER_WHITE));
   EXPECT_TRUE (is_it_ai_turn (&cfg, PLAYER_BLACK));
 }
@@ -221,14 +222,21 @@ TEST_F (CliControllerTest, AITurnLogic)
           game_config_t cfg;
           memset (&cfg, 0, sizeof (game_config_t));
           cfg.board_size = 10;
-          cfg.ai_white = true;
+
+          cfg.ai_white_cfg.enabled = true;
+          strncpy (cfg.ai_white_cfg.name, "random", MAX_AI_STR_LEN - 1);
+
           run_interactive_mode (&cfg);
         });
 
-  while (!g_cli_ctx || !g_cli_ctx->ai_initialized)
+  while (!g_cli_ctx || !g_cli_ctx->ai_white_initialized)
     {
       std::this_thread::sleep_for (std::chrono::milliseconds (5));
     }
+
+  g_cli_ctx->in_main_menu = false;
+  g_cli_ctx->current_game->status = GAME_IN_PROGRESS;
+  g_cli_ctx->current_game->current_player = PLAYER_WHITE;
 
   bool ai_played = false;
   for (int i = 0; i < 500; i++)
