@@ -20,6 +20,23 @@ typedef enum
   EVAL_RTH,
   EVAL_QD_KD
 } EvaluatorType;
+typedef struct
+{
+  EvaluatorType type;
+  const char *name;
+} EvaluatorMap;
+
+static const EvaluatorMap EVALUATOR_DICT[]
+    = { { EVAL_ME, "me" }, { EVAL_RTH, "rth" }, { EVAL_QD_KD, "qd&kd" } };
+
+/**
+ * @brief Checks if the given evaluator name exists.
+ * @param name Name of evaluator.
+ * @return true if the evaluator exists.
+ * @return false otherwise.
+ */
+
+bool is_valid_evaluator_name (const char *name);
 
 /**
  * @brief Turns an EvaluatorType into a string parameter that can be passed to
