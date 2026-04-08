@@ -498,7 +498,7 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
 
   // 3. One single sending call for everyone!
   int total_sent = 0;
-  int bytes_left = strlen (message); // +1 pour inclure le '\0'
+  int bytes_left = strlen (message);
   int n;
 
   while (total_sent < bytes_left)
@@ -706,7 +706,7 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
         {
           double elapsed_time
               = difftime (now, ctx->clients[i].invite_timestamp);
-          if (elapsed_time >= 300.0) // 5 minutes = 300 secondes
+          if (elapsed_time >= TIMEOUT_INVITE)
             {
               int challenger_idx = ctx->clients[i].pending_invite_from;
 

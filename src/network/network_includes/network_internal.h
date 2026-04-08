@@ -47,7 +47,7 @@
 #define UDP_DISCOVERY_PORT 12346
 #define BROADCAST_INTERVAL_SEC 10
 #define SERVER_TIMEOUT_SEC 30
-
+#define TIMEOUT_INVITE 300.0 // 5 minutes in seconds
 #define CLIENT_TIMEOUT_SEC 60
 
 // Buffer Sizes & Limits
