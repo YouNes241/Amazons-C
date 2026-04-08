@@ -143,6 +143,10 @@ game_init (GameState *state)
     }
   uint8_t size = state->size;
 
+  state->board = NULL;
+  state->undo_stack.data = NULL;
+  state->redo_stack.data = NULL;
+
   // Memory allocation for the board
   state->board = malloc (size * sizeof (CellContent *));
   if (state->board == NULL)
@@ -156,6 +160,12 @@ game_init (GameState *state)
       state->board[y] = malloc (size * sizeof (CellContent));
       if (state->board[y] == NULL)
         {
+          for (uint8_t i = 0; i < y; i++)
+            {
+              free (state->board[i]);
+            }
+          free (state->board);
+          state->board = NULL;
           return;
         }
 
@@ -173,15 +183,28 @@ game_init (GameState *state)
   state->blitz_mode = false;
   state->white_time_left = 0;
   state->black_time_left = 0;
-  int max_possible_moves = 2000; ///< More than enough for any game
+  // Max board size is 11x11 (121 squares). Minus 8 starting queens = 113 empty
+  // squares. One arrow is shot per turn, so a game absolutely cannot exceed
+  // 113 moves.
+  int max_possible_moves = 121;
 
   state->undo_stack.capacity = max_possible_moves;
   state->undo_stack.top = -1;
   state->undo_stack.data = malloc (max_possible_moves * sizeof (Move));
+  if (state->undo_stack.data == NULL)
+    {
+      game_cleanup (state);
+      return;
+    }
 
   state->redo_stack.capacity = max_possible_moves;
   state->redo_stack.top = -1;
   state->redo_stack.data = malloc (max_possible_moves * sizeof (Move));
+  if (state->redo_stack.data == NULL)
+    {
+      game_cleanup (state);
+      return;
+    }
   place_initial_queens (state);
 }
 
