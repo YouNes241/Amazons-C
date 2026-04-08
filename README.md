@@ -24,13 +24,17 @@ sudo apt update && sudo apt install -y \
 After successfully installing them, you can simply build the project via :
 
 ```bash
-mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Coverage ..
+ mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Coverage .. && make
 ```
 
 And run the executable :
 
 ```bash
-./src/amazons-c
+./amazons <options>
 ```
 
-You may also run ``make`` and ``make clean``, for your convenience.
+If you want to use tensorflow, build the project like this instead : (please note tests will take longer and that this may not work on all architectures, as it uses tensorflow x86.)
+
+```bash
+ mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Coverage -DENABLE_ML=ON .. && make
+```

@@ -23,8 +23,7 @@
 #include "bitboard.h"
 #include "config.h"
 #include "evaluator.h"
-#include "i_selector.h"
-#include "mcts_includes/mcts_internal.h"
+#include "selector.h"
 #include "uct.h"
 #include "utils.h"
 #include <omp.h>
@@ -35,10 +34,13 @@ const uint64_t DEFAULT_TIME_CONSTRAINT = 5000;
 const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
 const float EXPLORATION_CONSTANT = 1.414f;
 const int DEFAULT_MAX_WORKERS = 1;
+const char *DEFAULT_SELECTOR = "uct";
+const float DEFAULT_UCT_COEF = 1.414f;
+const float DEFAULT_PUCT_COEF = 1.5f;
 
 /**
- * @brief Checks if a move is null (queen source and destination are the same).
- * Body defined in mcts.c under MCTS_STATIC.
+ * @brief Checks if a move is null (queen source and destination are the
+ * same). Body defined in mcts.c under MCTS_STATIC.
  *
  * @param m The move to check.
  * @return true if the move is null, false otherwise.
@@ -243,6 +245,7 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
   node->move_from_parent = move ? *move : (Move){ 0 };
   node->state
       = parent ? apply_move_bitboard (&parent->state, *move) : *current_state;
+  node->ai_eval = -1.0f;
   return node;
 }
 
@@ -523,6 +526,11 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
   data->time_constraint = DEFAULT_TIME_CONSTRAINT;
   data->max_iterations = DEFAULT_MAX_ITERATIONS;
   data->max_workers = DEFAULT_MAX_WORKERS;
+  const char *selection = DEFAULT_SELECTOR;
+
+  double c_uct = DEFAULT_UCT_COEF;
+  double c_puct = DEFAULT_PUCT_COEF;
+  const char *model_path = "../amazons_model_v3_hidden";
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
   if (data->strategy_select == NULL)
@@ -542,11 +550,24 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
           check_param (params->list[i], "max_iterations",
                        &data->max_iterations);
           check_param (params->list[i], "max_workers", &data->max_workers);
+          check_param (params->list[i], "selection", &selection);
         }
     }
 
+  data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
+  if (data->strategy_select == NULL)
+    {
+      perror ("[MCTS] malloc strategy_select");
+      free (data);
+      exit (EXIT_FAILURE);
+    }
+
+  SelectorID target_id = get_selector_id_from_name (selection);
+  *data->strategy_select = get_selector (target_id, c_uct, c_puct, model_path);
+
   self->context = data;
-  printf ("[MCTS] Init OK (Time: %ldms)\n", data->time_constraint);
+  printf ("[MCTS] Init OK (Selector: %s, ID: %d)\n",
+          get_selector_name_from_id (target_id), target_id);
 }
 
 const AI_VTable mcts_vtable = { .init = mcts_init,
