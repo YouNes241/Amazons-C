@@ -21,6 +21,7 @@
 #include "mcts.h"
 #include "ai_interface.h"
 #include "bitboard.h"
+#include "config.h"
 #include "evaluator.h"
 #include "i_selector.h"
 #include "mcts_includes/mcts_internal.h"
@@ -32,6 +33,7 @@
 
 const uint64_t DEFAULT_TIME_CONSTRAINT = 5000;
 const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
+const float EXPLORATION_CONSTANT = 1.414f;
 const int DEFAULT_MAX_WORKERS = 1;
 
 /**
@@ -261,12 +263,8 @@ expand (MCTS_Node *parent)
   // Cache moves into the parent
   if (parent->untried_moves == NULL)
     {
-      int limit = get_move_limit (&parent->state);
-      Move *temp_moves = malloc (limit * sizeof (Move));
-      if (!temp_moves)
-        {
-          return parent;
-        }
+      Move temp_moves[MAX_POSSIBLE_MOVES];
+
       int total = get_legal_moves (&parent->state, temp_moves);
 
       if (total == 0)
@@ -275,11 +273,15 @@ expand (MCTS_Node *parent)
           return parent;
         }
 
-      // Allocate exactly what we need
       parent->untried_moves = (Move *)malloc (total * sizeof (Move));
+
+      if (!parent->untried_moves)
+        {
+          return parent;
+        }
+
       memcpy (parent->untried_moves, temp_moves, total * sizeof (Move));
       parent->num_untried = total;
-      free (temp_moves);
     }
 
   // Take the next untried move.
@@ -361,11 +363,17 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
 
   // Allocate roots and data for each thread
   data->roots = calloc (num_threads, sizeof (MCTS_Node *));
+  if (!data->roots)
+    {
+      fprintf (stderr,
+               "[MCTS] Critical error : roots couldn't be allocated.\n");
+      return get_direct_random_move (&root_state);
+    }
 
   int *thread_iterations = malloc (num_threads * sizeof (int));
   if (!thread_iterations)
     {
-      fprintf (stderr, "Error while allocating threads.\n");
+      fprintf (stderr, "[MCTS] Error while allocating threads.\n");
       return (Move){ 0 };
     }
   for (int i = 0; i < num_threads; i++)
@@ -517,7 +525,13 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
   data->max_workers = DEFAULT_MAX_WORKERS;
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
-  create_select_uct (data->strategy_select, 1.414f);
+  if (data->strategy_select == NULL)
+    {
+      perror ("[MCTS] malloc strategy_select");
+      exit (EXIT_FAILURE);
+    }
+
+  create_select_uct (data->strategy_select, EXPLORATION_CONSTANT);
   // ^ (sqrt2) is a common default for the exploration constant
 
   if (params != NULL)

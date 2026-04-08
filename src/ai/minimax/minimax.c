@@ -11,6 +11,7 @@
  * cutting off less promising moves. (Use with caution as it can miss some
  * winning moves)
  */
+#include "config.h"
 #include "minimax_includes/minimax_internal.h"
 #include <assert.h>
 
