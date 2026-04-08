@@ -684,7 +684,7 @@ TEST (RunRootSearch, FindsMove)
       = { { { 0, 0 }, { 0, 1 }, { 0, 2 } }, { { 0, 0 }, { 1, 0 }, { 2, 0 } } };
   Move best = run_root_search (&data, &state, 1, get_time_ms (), available, 2);
 
-  EXPECT_FALSE (moves_are_equal (best, (Move){}));
+  EXPECT_FALSE (moves_are_equal (best, Move{}));
 }
 
 // With start_time=0 and time_limit=0 the loop exits before evaluating any
@@ -699,7 +699,7 @@ TEST (RunRootSearch, ImmediateTimeoutReturnsEmptyMove)
   Move available[] = { { { 0, 0 }, { 0, 1 }, { 0, 2 } } };
   Move best = run_root_search (&data, &state, 1, 0, available, 1);
 
-  EXPECT_TRUE (moves_are_equal (best, (Move){}));
+  EXPECT_TRUE (moves_are_equal (best, Move{}));
 }
 
 // A perfect evaluator saturates alpha on the first move, causing all
@@ -866,7 +866,7 @@ TEST_F (MinimaxAI, IterativeDeepeningTimesOutImmediately)
 
   Move best = ai.vtable->get_best_move (&ai, state);
 
-  EXPECT_TRUE (moves_are_equal (best, (Move){}));
+  EXPECT_TRUE (moves_are_equal (best, Move{}));
 
   free_board (state.board, state.size);
 }
@@ -888,7 +888,7 @@ TEST_F (MinimaxAI, IterativeDeepeningReturnsValidMove)
 
   Move best = ai.vtable->get_best_move (&ai, state);
 
-  EXPECT_FALSE (moves_are_equal (best, (Move){}));
+  EXPECT_FALSE (moves_are_equal (best, Move{}));
 
   free_board (state.board, state.size);
 }
@@ -907,7 +907,7 @@ TEST_F (MinimaxAI, GetBestMoveStandardPath)
 
   Move best = ai.vtable->get_best_move (&ai, state);
 
-  EXPECT_FALSE (moves_are_equal (best, (Move){}));
+  EXPECT_FALSE (moves_are_equal (best, Move{}));
 
   free_board (state.board, state.size);
 }

@@ -1,6 +1,10 @@
 #include <cmath>
 #include <gtest/gtest.h>
 
+// This is just a value that's above 10x10 limit. (which is around
+// 3000+)
+#define MOVE_LIMIT 5000
+
 #define MCTS_TEST_MODE
 
 extern "C"
@@ -195,7 +199,7 @@ TEST (AllocMctsNode, ChildLinksParentAndAppliesMove)
   BitboardState state = make_open_state ();
   MCTS_Node *root = make_root (&state);
 
-  Move moves[get_move_limit (&state)];
+  Move moves[MOVE_LIMIT];
   int count = get_legal_moves (&state, moves);
   ASSERT_GT (count, 0);
 
@@ -260,7 +264,7 @@ TEST (Expand, RepeatedExpandFullyExpandsNode)
   BitboardState state = make_open_state ();
   MCTS_Node *root = make_root (&state);
 
-  Move dummy_buffer[get_move_limit (&state)];
+  Move dummy_buffer[MOVE_LIMIT];
   int legal = get_legal_moves (&state, dummy_buffer);
 
   for (int i = 0; i < legal + 10 && !root->is_fully_expanded; i++)
@@ -281,7 +285,7 @@ TEST (Expand, ChildCountMatchesLegalMoveCount)
   BitboardState state = make_open_state ();
   MCTS_Node *root = make_root (&state);
 
-  Move moves[get_move_limit (&state)];
+  Move moves[MOVE_LIMIT];
   int legal = get_legal_moves (&state, moves);
 
   while (!root->is_fully_expanded)
@@ -320,7 +324,7 @@ TEST (Backpropagate, ScoreAlternatesUpChain)
   BitboardState state = make_open_state ();
   MCTS_Node *root = make_root (&state);
 
-  Move moves[get_move_limit (&state)];
+  Move moves[MOVE_LIMIT];
   get_legal_moves (&state, moves);
 
   MCTS_Node *child = alloc_mcts_node (&moves[0], NULL, root);
@@ -513,7 +517,7 @@ TEST (SelectNode, NeverReturnsNull)
 TEST (MergeAndGetBest, SingleThreadPicksMostVisited)
 {
   BitboardState state = make_open_state ();
-  Move moves[get_move_limit (&state)];
+  Move moves[MOVE_LIMIT];
   get_legal_moves (&state, moves);
 
   MCTS_Node *root = make_root (&state);
@@ -555,7 +559,7 @@ TEST (MergeAndGetBest, EmptyRootReturnsZeroMove)
 TEST (MergeAndGetBest, TwoThreadsCombineVisits)
 {
   BitboardState state = make_open_state ();
-  Move moves[get_move_limit (&state)];
+  Move moves[MOVE_LIMIT];
   get_legal_moves (&state, moves);
 
   MCTS_Node *root0 = make_root (&state);
