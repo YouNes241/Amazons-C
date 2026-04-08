@@ -124,7 +124,7 @@ bfs_bitboard (Bitboard starts, Bitboard obstacles, uint8_t width, int mode,
  * @param queens Bitboard with the positions of the player's queens.
  * @param empty Bitboard with all empty squares (not occupied).
  * @param size The width of the board.
- * @return The total count of legal moves available to these player's queens.
+ * @return The mobility score for the given queens.
  */
 static int
 calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
