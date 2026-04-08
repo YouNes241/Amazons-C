@@ -669,7 +669,8 @@ handle_command (char *input_buffer, CliContext *ctx)
               = (double)ctx->config->time_per_player;
           ctx->current_game->black_time_left
               = (double)ctx->config->time_per_player;
-          ctx->current_game->blitz_turn_start = (double)time (NULL);
+          ctx->current_game->blitz_turn_start
+              = (double)get_time_ms () / 1000.0;
           ctx->turn_start_time = time (NULL);
           ctx->in_main_menu = false;
           g_ctx_ref = ctx;

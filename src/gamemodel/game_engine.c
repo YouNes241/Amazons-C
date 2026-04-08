@@ -1,12 +1,5 @@
 #include "game_engine.h"
 #include <stddef.h>
-#include <time.h>
-
-static double
-get_time_now (void)
-{
-  return (double)time (NULL);
-}
 
 void
 update_blitz_timer (GameState *state)
@@ -14,7 +7,7 @@ update_blitz_timer (GameState *state)
   if (state == NULL || !state->blitz_mode)
     return;
 
-  double now = get_time_now ();
+  double now = (double)get_time_ms () / 1000.0;
   double elapsed = now - state->blitz_turn_start;
 
   if (state->current_player == PLAYER_WHITE)
