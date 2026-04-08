@@ -350,8 +350,8 @@ handle_command (char *input_buffer, CliContext *ctx)
       printf (_ ("  back                 : Mark yourself as BACK/IDLE\n"));
 
       printf (_ ("\n--- Playing a Move ---\n"));
-      printf (_ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: "
-                 "d10-d9(d8)\n"));
+      printf (_ ("  Format: [QueenStart]-[QueenEnd]/[ArrowEnd]  Ex: "
+                 "d10-d9/d8\n"));
       printf (_ ("====================\n\n"));
       return;
     }
@@ -929,6 +929,6 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else
     {
-      printf (_ ("Invalid format. Use: a1-a3(a4) format or type 'help'.\n"));
+      printf (_ ("Invalid format. Use: a1-a3/a4 format or type 'help'.\n"));
     }
 }

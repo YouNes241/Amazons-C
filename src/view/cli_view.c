@@ -90,7 +90,7 @@ cli_display_main_menu (void)
   printf ("\n");
   printf (_ ("  --- Playing a Move ---\n"));
   printf (
-      _ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
+      _ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9/d8\n"));
   printf ("\n");
   printf (_ ("  --- Other ---\n"));
   printf (_ ("  help    Show help\n"));

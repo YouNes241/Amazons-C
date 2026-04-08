@@ -102,7 +102,7 @@ write_history (FILE *file, GameState *state)
       int q_dst_row = m.queen_dst.row + 1;
       int a_dst_row = m.arrow_dst.row + 1;
 
-      fprintf (file, "%c%d-%c%d(%c%d)\n", q_src_col, q_src_row, q_dst_col,
+      fprintf (file, "%c%d-%c%d/%c%d\n", q_src_col, q_src_row, q_dst_col,
                q_dst_row, a_dst_col, a_dst_row);
     }
 
@@ -329,7 +329,7 @@ parse_history_line (const char *trimmed, GameState *state)
   char qs_c, qd_c, ad_c;
   int qs_r, qd_r, ad_r;
 
-  if (sscanf (trimmed, "%c%d-%c%d(%c%d)", &qs_c, &qs_r, &qd_c, &qd_r, &ad_c,
+  if (sscanf (trimmed, "%c%d-%c%d/%c%d", &qs_c, &qs_r, &qd_c, &qd_r, &ad_c,
               &ad_r)
       == 6)
     {

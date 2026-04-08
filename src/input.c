@@ -3,7 +3,7 @@
 #include <string.h>
 
 /**
- * @brief Transforms a string "d4-d7(g10)" into a Move structure.
+ * @brief Transforms a string "d4-d7/g10" into a Move structure.
  * @return 0 on success, -1 if the format is invalid.
  */
 int
@@ -13,7 +13,7 @@ parse_coordinates (const char *input, Move *move)
   int r_src, r_dst, r_arr;  // To store rows
 
   /* sscanf reads the string according to a format. */
-  int result = sscanf (input, " %c%d - %c%d ( %c%d )", &c_src, &r_src, &c_dst,
+  int result = sscanf (input, " %c%d - %c%d / %c%d ", &c_src, &r_src, &c_dst,
                        &r_dst, &c_arr, &r_arr);
 
   // Invalid input when there are not exactly 6 elements
