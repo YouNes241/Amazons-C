@@ -71,10 +71,18 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_IDLE;
   strncpy (server_mgr.server_ctx->clients[1].username, "Alice", 31);
 
+  server_mgr.server_ctx->clients[1].wins = 0;
+  server_mgr.server_ctx->clients[1].losses = 0;
+  server_mgr.server_ctx->clients[1].games_played = 0;
+
   server_mgr.server_ctx->fds[2].fd = 101;
   server_mgr.server_ctx->clients[2].is_joined = true;
   server_mgr.server_ctx->clients[2].status = CLIENT_STATUS_INGAME;
   strncpy (server_mgr.server_ctx->clients[2].username, "Bob", 31);
+
+  server_mgr.server_ctx->clients[2].wins = 0;
+  server_mgr.server_ctx->clients[2].losses = 0;
+  server_mgr.server_ctx->clients[2].games_played = 0;
 
   // Test 2: Full list with 2 players
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer),

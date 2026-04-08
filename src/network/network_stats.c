@@ -75,8 +75,8 @@ LoadScoreboardForClient (ConnectedClient *client)
     return;
 
   char name[MAX_USERNAME_LENGTH];
-  int w, l, g;
-  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+  int w = 0, l = 0, g = 0;
+  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) == 4)
     {
       if (strcmp (name, client->username) == 0)
         {
@@ -112,12 +112,12 @@ NetworkManager_UpdatePlayerStats (const char *username, bool won)
     return;
 
   bool found = false;
-  char name[32];
-  int w, l, g;
+  char name[32] = { 0 };
+  int w = 0, l = 0, g = 0;
 
   if (f)
     {
-      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) == 4)
         {
           if (strcmp (name, username) == 0)
             {
@@ -129,6 +129,11 @@ NetworkManager_UpdatePlayerStats (const char *username, bool won)
                 l++; ///< Increment wins or losses count
             }
           fprintf (temp, "%s %d %d %d\n", name, w, l, g);
+          // we reset w,l,g for the next line to avoid carrying over values if
+          // the file is malformed
+          w = 0;
+          l = 0;
+          g = 0;
         }
       fclose (f);
     }
