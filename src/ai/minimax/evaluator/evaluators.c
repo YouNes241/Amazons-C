@@ -363,6 +363,25 @@ eval_qdkd (const BitboardState *state)
   return (1.0f * t1) + (0.5f * t2);
 }
 
+bool
+is_valid_evaluator_name (const char *name)
+{
+  if (!name)
+    return false;
+
+  int count = sizeof (EVALUATOR_DICT) / sizeof (EVALUATOR_DICT[0]);
+
+  for (int i = 0; i < count; i++)
+    {
+      if (strcasecmp (name, EVALUATOR_DICT[i].name) == 0)
+        {
+          return true;
+        }
+    }
+
+  return false;
+}
+
 Evaluator
 get_evaluator (const EvaluatorType name)
 {

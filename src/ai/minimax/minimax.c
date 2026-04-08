@@ -477,7 +477,7 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
   float beta = TOP_SCORE;
   bool root_is_white = state->white_to_move;
 
-  Move best_move = {}; // Default move in case no moves are available
+  Move best_move = { 0 }; // Default move in case no moves are available
   float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
 
   for (int i = 0; i < count; i++)
