@@ -27,8 +27,8 @@
 #define CMD_LEN_NEW 3
 #define CMD_LEN_UNDO 4
 #define CMD_LEN_REDO 4
-#define CMD_LEN_SAVE 5
-#define CMD_LEN_LOAD 5
+#define CMD_LEN_SAVE 4
+#define CMD_LEN_LOAD 4
 #define CMD_LEN_SHOW 4
 #define CMD_LEN_INVITE 7
 #define CMD_LEN_ACCEPT 7
