@@ -212,7 +212,11 @@ minimax_init (AI_Interface *self, const ConfigMap *params)
 {
   Minimax_Data *data = (Minimax_Data *)malloc (sizeof (Minimax_Data));
   if (!data)
-    return;
+    {
+      fprintf (stderr,
+               "[Minimax] Minimax init failure: memory allocation failed.\n");
+      exit (EXIT_FAILURE);
+    }
 
   data->max_depth = DEFAULT_MAX_DEPTH;
   data->time_limit = DEFAULT_TIME_LIMIT;
