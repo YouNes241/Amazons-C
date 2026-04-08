@@ -11,6 +11,7 @@
 #include "gui_utils.h"
 #include <assert.h>
 #include <gtk/gtk.h>
+#include <stdlib.h>
 
 /** @name Forward Declarations
  */
@@ -38,6 +39,7 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
 {
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (ctx->gameConfig != NULL);
 
   if (is_move_legal (ctx->gameState, move))
     {
@@ -49,6 +51,8 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
       if (ctx->isNetworkMatch
           && ctx->gameState->current_player != ctx->selfPlayerColor)
         {
+          assert (ctx->networkManager != NULL);
+
           NetworkManager_SendMove (ctx->networkManager, move);
         }
 
@@ -68,6 +72,8 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
 
           if (ctx->isNetworkMatch)
             {
+              assert (ctx->networkManager != NULL);
+
               bool i_won = (winner == ctx->selfPlayerColor);
               NetworkManager_SendGameOver (ctx->networkManager, i_won);
               ctx->isNetworkMatch = false;
@@ -99,6 +105,10 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
 void
 guiStartNewGame (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->gameState != NULL);
+
   if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
       && g_gui_ai_white.vtable->clean)
     {
@@ -155,12 +165,11 @@ guiStartNewGame (GuiContext *ctx)
 void
 guiDisconnectAndRestartNetwork (GuiContext *ctx)
 {
-  if (ctx && ctx->networkManager)
-    {
-      NetworkManager_Cleanup (ctx->networkManager);
-      NetworkManager_Init (ctx->networkManager,
-                           create_gui_network_events (ctx));
-    }
+  assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
+
+  NetworkManager_Cleanup (ctx->networkManager);
+  NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
 
   ctx->isNetworkMatch = false;
 }
@@ -168,12 +177,18 @@ guiDisconnectAndRestartNetwork (GuiContext *ctx)
 void
 run_gui_mode (game_config_t *config)
 {
+  assert (config != NULL);
+
   GtkApplication *app = createApplication (config);
+  assert (app != NULL);
 
   GuiContext *ctx
       = (GuiContext *)g_object_get_data (G_OBJECT (app), "GuiContext");
+  assert (ctx != NULL);
 
   ctx->networkManager = malloc (sizeof (NetworkManager));
+  assert (ctx->networkManager != NULL);
+
   ctx->isNetworkMatch = false;
   ctx->selfPlayerColor = PLAYER_WHITE;
 
@@ -201,6 +216,8 @@ run_gui_mode (game_config_t *config)
 static bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
+  assert (config != NULL);
+
   if (current_p == PLAYER_WHITE)
     return config->ai_white_cfg.enabled;
   if (current_p == PLAYER_BLACK)
@@ -212,17 +229,21 @@ static gboolean
 gui_network_tick_loop (gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
-  if (ctx && ctx->networkManager)
-    {
-      NetworkManager_Tick (ctx->networkManager);
-    }
+  assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
+
+  NetworkManager_Tick (ctx->networkManager);
+
   return G_SOURCE_CONTINUE;
 }
 
 static gboolean
 guiAIPlayTurn (gpointer user_data)
 {
-  AppContext *ctx = (AppContext *)user_data;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->ai_engine.vtable != NULL);
 
   g_print ("\n[AI] Thinking...\n");
 
