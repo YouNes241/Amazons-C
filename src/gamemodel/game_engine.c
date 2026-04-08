@@ -26,17 +26,32 @@ update_blitz_timer (GameState *state)
 static void
 push_move (MoveStack *stack, Move m)
 {
-  if (stack->top < stack->capacity - 1)
+  if (stack == NULL || stack->data == NULL)
     {
-      stack->top++;
-      stack->data[stack->top] = m;
+      return false;
     }
+
+  if (stack->top >= stack->capacity - 1)
+    {
+      return false;
+    }
+
+  stack->top++;
+  stack->data[stack->top] = m;
+  return true;
 }
 
 static Move
 pop_move (MoveStack *stack, bool *success)
 {
   Move popped_move = { 0 };
+
+  if (stack == NULL || stack->data == NULL || success == NULL)
+    {
+      if (success != NULL)
+        *success = false;
+      return popped_move;
+    }
 
   if (stack->top >= 0)
     {
