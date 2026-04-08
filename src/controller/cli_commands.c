@@ -18,6 +18,12 @@
 #include <string.h>
 
 static CliContext *g_ctx_ref = NULL;
+
+void
+clear_global_cli_context (void)
+{
+  g_ctx_ref = NULL;
+}
 // --- Autocomplete ---
 static char *commands_list[] = { "new",
                                  "help",

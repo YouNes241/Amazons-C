@@ -62,6 +62,17 @@ void refresh_prompt (CliContext *ctx);
  */
 void update_prompt_string (CliContext *ctx);
 
+/**
+ * @brief Reinitializes the global CLI context reference.
+ * @details This function is primarily used to clean up the state between unit
+ * tests. It sets the global CLI context pointer to NULL, ensuring that no
+ * stale references persist across tests, which could lead to unintended side
+ * effects or memory issues. This is especially important in a testing
+ * environment where multiple tests may create and manipulate their own CLI
+ * contexts, and we want to ensure a clean slate for each test case.
+ */
+void clear_global_cli_context (void);
+
 void execute_hint (CliContext *ctx);
 
 #endif // CLI_COMMANDS_H

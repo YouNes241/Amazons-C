@@ -144,7 +144,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   set_nonblocking (sock);
 
   // initialize Server Context
-  manager->server_ctx = malloc (sizeof (ServerContext));
+  manager->server_ctx = calloc (1, sizeof (ServerContext));
   if (manager->server_ctx == NULL)
     {
       perror (_ ("Server memory allocation error"));
@@ -254,7 +254,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   set_nonblocking (sock);
 
   // initialize Client Context
-  manager->client_ctx = malloc (sizeof (ClientContext));
+  manager->client_ctx = calloc (1, sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
       perror (_ ("[NETWORK] Client memory allocation error"));
