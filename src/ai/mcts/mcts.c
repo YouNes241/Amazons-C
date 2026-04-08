@@ -155,7 +155,7 @@ MCTS_STATIC float
 get_mcts_win_probability (const BitboardState *state,
                           bool starting_player_was_white)
 {
-  float raw_score = eval_me (state);
+  float raw_score = eval_qdkd (state);
 
   if (!starting_player_was_white)
     {
