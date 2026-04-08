@@ -252,7 +252,7 @@ createConfigPage (AppContext *ctx)
                       G_CALLBACK (updateConfigAiBlack), ctx);
 
 #if GTK_CHECK_VERSION(4, 10, 0)
-  const char *langs[] = { "English", "Français", NULL };
+  const char *langs[] = { "English", "French", NULL };
   GtkStringList *stringList = gtk_string_list_new (langs);
   langDropdown = gtk_drop_down_new (G_LIST_MODEL (stringList), NULL);
   gtk_drop_down_set_selected (GTK_DROP_DOWN (langDropdown),
@@ -265,7 +265,7 @@ createConfigPage (AppContext *ctx)
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
                                   "English");
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
-                                  "Français");
+                                  "French");
   gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
                             ctx->gameConfig->language);
 
@@ -508,7 +508,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
                       G_CALLBACK (updateConfigAiBlack), ctx);
 
 #if GTK_CHECK_VERSION(4, 10, 0)
-  const char *langs[] = { "English", "Français", NULL };
+  const char *langs[] = { "English", "French", NULL };
   GtkStringList *stringList = gtk_string_list_new (langs);
   langDropdown = gtk_drop_down_new (G_LIST_MODEL (stringList), NULL);
   gtk_drop_down_set_selected (GTK_DROP_DOWN (langDropdown),
@@ -521,7 +521,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
                                   "English");
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
-                                  "Français");
+                                  "French");
   gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
                             ctx->gameConfig->language);
 

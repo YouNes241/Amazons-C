@@ -764,11 +764,11 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 {
 
   time_t now = time (NULL);
-  if (difftime (now, ctx->last_heartbeat) >= 30.0) // Toutes les 30 secondes
+  if (difftime (now, ctx->last_heartbeat) >= 30.0)
     {
       Packet pkt;
       pkt.type = C2S_HEARTBEAT;
-      pkt.payload[0] = '\0'; // Pas de texte
+      pkt.payload[0] = '\0';
 
       char out_buf[MAX_FORMATTED_PKT_SIZE];
       if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)

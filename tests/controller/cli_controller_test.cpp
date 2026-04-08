@@ -5,12 +5,12 @@
 
 extern "C"
 {
-// 1. On inclut d'abord les headers pour que les types et prototypes soient
-// connus
+// 1. First include the headers so the types and prototypes are known
+// and available.
 #include "cli_controller.h"
 #include "controller.h"
 
-  // 2. On déclare les variables TEST_STATIC en extern pour y accéder
+  // 2. Declare the TEST_STATIC variables as extern so they can be accessed
   extern CliContext *g_cli_ctx;
   bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
   void linehandler (char *line);
@@ -31,7 +31,7 @@ protected:
 };
 
 /* ==========================================================================
- * 1. TESTS DES FONCTIONS INTERNES
+ * 1. INTERNAL FUNCTION TESTS
  * ==========================================================================
  */
 TEST_F (CliControllerTest, IsItAiTurnLogic)

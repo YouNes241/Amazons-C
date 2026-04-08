@@ -103,7 +103,7 @@ TEST (EngineCore, InitialQueenPlacementSize10)
   uint8_t size = state.size;
 
   /* Expected board :
-     Légende : (.) Vide, (W) Reine Blanche, (B) Reine Noire
+     Legend: (.) Empty, (W) White Queen, (B) Black Queen
 
        0 1 2 3 4 5 6 7 8 9 (Columns)
      0 . . . W . . W . . .

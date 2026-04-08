@@ -91,11 +91,11 @@ TEST (NetworkIntegrationTest, AI_Plays_Over_TCP)
   SerializePacket (&move_pkt, packet_buffer, sizeof (packet_buffer));
   printf ("[TEST] AI playing, packet sent : %s\n", packet_buffer);
 
-  // 5. TCP SEND: Le Serveur envoie le paquet au Client 1
-  // (L'index 1 correspond au premier client connecté au serveur)
+  // 5. TCP SEND: The server sends the packet to Client 1
+  // (Index 1 corresponds to the first client connected to the server)
   ASSERT_EQ (NetworkManager_Send (&server_mgr, 1, packet_buffer), 0);
 
-  // 6. TCP RECEPTION: Le Client tick, désérialise, et appelle le callback
+  // 6. TCP RECEIVE: The client ticks, deserializes, and calls the callback
   NetworkManager_Tick (&client_mgr);
 
   // 7. VERIFICATION
@@ -153,13 +153,12 @@ TEST (NetworkProtocolTest, StringToMove_OutOfBoundsCoordinates)
 
   // --- SOURCE QUEEN ---
   EXPECT_FALSE (
-      Protocol_StringToMove ("MOVE A1-a2-a3\n", &m)); // Majuscule (Invalide)
+      Protocol_StringToMove ("MOVE A1-a2-a3\n", &m)); // Uppercase (Invalid)
   EXPECT_FALSE (
-      Protocol_StringToMove ("MOVE !1-a2-a3\n", &m)); // Caractère spécial
+      Protocol_StringToMove ("MOVE !1-a2-a3\n", &m)); // Special character
   EXPECT_FALSE (
-      Protocol_StringToMove ("MOVE a0-a2-a3\n", &m)); // Zéro (Invalide)
-  EXPECT_FALSE (
-      Protocol_StringToMove ("MOVE a27-a2-a3\n", &m)); // Au-delà de 26
+      Protocol_StringToMove ("MOVE a0-a2-a3\n", &m)); // Zero (Invalid)
+  EXPECT_FALSE (Protocol_StringToMove ("MOVE a27-a2-a3\n", &m)); // Beyond 26
 
   // --- DESTINATION QUEEN ---
   EXPECT_FALSE (Protocol_StringToMove ("MOVE a1-A2-a3\n", &m));

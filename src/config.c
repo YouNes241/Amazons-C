@@ -30,12 +30,12 @@ init_default_config (game_config_t *config)
 void
 display_config (game_config_t *config)
 {
-  printf ("\n--- CONFIGURATION ACTUELLE ---\n");
-  printf ("Mode de jeu       : ");
+  printf ("\n--- CURRENT CONFIGURATION ---\n");
+  printf ("Game mode         : ");
   switch (config->mode)
     {
     case MODE_INTERACTIVE:
-      printf ("Interactif\n");
+      printf ("Interactive\n");
       break;
     case MODE_CONTEST:
       printf ("Contest\n");
@@ -44,32 +44,32 @@ display_config (game_config_t *config)
       printf ("GUI\n");
       break;
     default:
-      printf ("Inconnu\n");
+      printf ("Unknown\n");
       break;
     }
-  printf ("\n--- CONFIGURATION ACTUELLE ---\n");
-  printf ("Taille du plateau : %d x %d\n", config->board_size,
+  printf ("\n--- CURRENT CONFIGURATION ---\n");
+  printf ("Board size        : %d x %d\n", config->board_size,
           config->board_size);
-  printf ("Mode Blitz        : %s\n",
-          config->blitz_mode ? "Activé" : "Désactivé");
-  printf ("Temps par joueur  : %d s\n", config->time_per_player);
+  printf ("Blitz mode        : %s\n",
+          config->blitz_mode ? "Enabled" : "Disabled");
+  printf ("Time per player   : %d s\n", config->time_per_player);
 
   if (config->ai_white_cfg.enabled)
-    printf ("IA joueur Blanc   : Oui (%s, %d paramètre(s))\n",
+    printf ("White player AI   : Yes (%s, %d parameter(s))\n",
             config->ai_white_cfg.name, config->ai_white_cfg.param_count);
   else
-    printf ("IA joueur Blanc   : Non\n");
+    printf ("White player AI   : No\n");
 
   if (config->ai_black_cfg.enabled)
-    printf ("IA joueur Noir    : Oui (%s, %d paramètre(s))\n",
+    printf ("Black player AI   : Yes (%s, %d parameter(s))\n",
             config->ai_black_cfg.name, config->ai_black_cfg.param_count);
   else
-    printf ("IA joueur Noir    : Non\n");
+    printf ("Black player AI   : No\n");
 
-  printf ("Mode Verbose      : %s\n",
-          config->verbose ? "Activé" : "Désactivé");
-  printf ("Langue : %s\n",
-          config->language == LANG_FR ? "Français" : "Anglais");
+  printf ("Verbose mode      : %s\n",
+          config->verbose ? "Enabled" : "Disabled");
+  printf ("Language          : %s\n",
+          config->language == LANG_FR ? "French" : "English");
   printf ("------------------------------\n");
 }
 
@@ -102,7 +102,7 @@ load_config_file (game_config_t *config)
       file = fopen (path, "w");
       if (file != NULL)
         {
-          fprintf (file, "# Fichier de configuration Amazons v%s\n", VERSION);
+          fprintf (file, "# Amazons configuration file v%s\n", VERSION);
           fprintf (file, "[defaults]\n");
 
           fprintf (file, "board_size = %d\n", config->board_size);
@@ -130,8 +130,8 @@ load_config_file (game_config_t *config)
                    (config->language == LANG_FR) ? "french" : "english");
 
           fclose (file);
-          printf ("Note : Fichier .amazonsrc généré à partir de la "
-                  "configuration initiale.\n");
+          printf ("Note: .amazonsrc file generated from the "
+                  "initial configuration.\n");
         }
       return;
     }
@@ -227,8 +227,7 @@ load_config_file (game_config_t *config)
         }
       else
         {
-          fprintf (stderr, "Avertissement : ligne invalide ignorée : %s",
-                   line);
+          fprintf (stderr, "Warning: invalid line ignored: %s", line);
         }
     }
   fclose (file);

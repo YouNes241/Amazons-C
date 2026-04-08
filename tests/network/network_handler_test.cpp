@@ -517,7 +517,7 @@ TEST_F (NetworkManagerTest, ClientNullCallbacksRobustness)
   send (s_fd, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&client_no_cb));
 
-  pkt = { S2C_DECLINE, "Invitation refusée" };
+  pkt = { S2C_DECLINE, "Invitation declined" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (s_fd, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&client_no_cb));
@@ -873,14 +873,14 @@ TEST_F (NetworkManagerTest, UltimateCoverage)
   game_init (board);
   board->current_player = PLAYER_WHITE;
 
-  /* Coup légal depuis la position initiale standard */
+  /* Legal move from the standard initial position */
   pkt = { C2S_MOVE, "MOVE d1-d2-d3" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice_fd, buf, strlen (buf), 0);
   std::this_thread::sleep_for (std::chrono::milliseconds (10));
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
 
-  /* Coup illégal bien formatté (case vide) */
+  /* Well-formatted illegal move (empty square) */
   pkt = { C2S_MOVE, "MOVE a1-a2-a3" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice_fd, buf, strlen (buf), 0);
@@ -955,8 +955,8 @@ TEST_F (NetworkManagerTest, ClientCallbacksTrueBranches)
   NetworkManager_Tick (&client_full);
   EXPECT_EQ (s_declined_cb_count, 2);
 
-  /* 4a. S2C_GAME_START ROLE_WHITE → OnGameStarted (branche true, couleur
-   * blanche) */
+  /* 4a. S2C_GAME_START ROLE_WHITE → OnGameStarted (true branch, white color)
+   */
   pkt = { S2C_GAME_START, "0 10" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (s_fd, buf, strlen (buf), 0);
@@ -1020,7 +1020,7 @@ TEST_F (NetworkManagerTest, ProcessMoveLegalAndIllegalPaths)
   NetworkManager_ClientJoin (&bob, "127.0.0.1", test_port);
   NetworkManager_Tick (&server_mgr);
 
-  /* Force les deux clients dans la même partie avec un plateau initialisé */
+  /* Force both clients into the same game with an initialized board */
   server_mgr.server_ctx->clients[1].is_joined = true;
   server_mgr.server_ctx->clients[2].is_joined = true;
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_INGAME;
@@ -1036,24 +1036,24 @@ TEST_F (NetworkManagerTest, ProcessMoveLegalAndIllegalPaths)
   char buf[MAX_FORMATTED_PKT_SIZE];
   Packet pkt;
 
-  /* Tentative de coup légal : reine blanche depuis d1 (col 3, row 0) */
+  /* Attempt a legal move: white queen from d1 (col 3, row 0) */
   pkt = { C2S_MOVE, "MOVE d1-d2-d3" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   EXPECT_NO_THROW (NetworkManager_Tick (&bob));
   game_cleanup (board);
-  /* Ré-initialise pour le prochain test */
+  /* Reinitialize for the next test */
   game_init (board);
   board->current_player = PLAYER_WHITE;
 
-  /* Tentative depuis g1 (col 6, row 0) */
+  /* Attempt from g1 (col 6, row 0) */
   pkt = { C2S_MOVE, "MOVE g1-g2-g3" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   game_cleanup (board);
-  /* Coup illégal bien formatté (case vide b5) */
+  /* Well-formed illegal move (empty square b5) */
   game_init (board);
   board->current_player = PLAYER_WHITE;
   pkt = { C2S_MOVE, "MOVE b5-b6-b7" };
@@ -1089,8 +1089,8 @@ TEST_F (NetworkManagerTest, MovePacketEdgeCasesNoGameNoOpponent)
   send (client_mgr.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
 
-  /* 2. game_id valide mais aucun adversaire avec le même game_id */
-  server_mgr.server_ctx->clients[1].game_id = 7; /* aucun autre client ici */
+  /* 2. valid game_id but no opponent with the same game_id */
+  server_mgr.server_ctx->clients[1].game_id = 7; /* no other client here */
   pkt = { C2S_MOVE, "MOVE a4-a5-a6" };
   SerializePacket (&pkt, buf, sizeof (buf));
   send (client_mgr.client_ctx->server_socket, buf, strlen (buf), 0);
@@ -1129,7 +1129,7 @@ TEST_F (NetworkManagerTest, ServerStatusPacketNoOpBranches)
   char buf[MAX_FORMATTED_PKT_SIZE];
   Packet pkt;
 
-  /* BACK quand IDLE (status != AWAY → no-op) */
+  /* BACK when IDLE (status != AWAY → no-op) */
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_IDLE;
   pkt = { C2S_BACK, "" };
   SerializePacket (&pkt, buf, sizeof (buf));
@@ -1137,7 +1137,7 @@ TEST_F (NetworkManagerTest, ServerStatusPacketNoOpBranches)
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   EXPECT_EQ (server_mgr.server_ctx->clients[1].status, CLIENT_STATUS_IDLE);
 
-  /* AWAY quand déjà AWAY (status != IDLE → no-op) */
+  /* AWAY when already AWAY (status != IDLE → no-op) */
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_AWAY;
   pkt = { C2S_AWAY, "" };
   SerializePacket (&pkt, buf, sizeof (buf));
@@ -1145,7 +1145,7 @@ TEST_F (NetworkManagerTest, ServerStatusPacketNoOpBranches)
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   EXPECT_EQ (server_mgr.server_ctx->clients[1].status, CLIENT_STATUS_AWAY);
 
-  /* CANCEL quand IDLE (status != WAITGAME → no-op) */
+  /* CANCEL when IDLE (status != WAITGAME → no-op) */
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_IDLE;
   pkt = { C2S_CANCEL, "" };
   SerializePacket (&pkt, buf, sizeof (buf));
@@ -1167,7 +1167,7 @@ TEST_F (NetworkManagerTest, JoinPacketNullUsernamePath)
              NET_SUCCESS);
   NetworkManager_Tick (&server_mgr);
 
-  /* Paquet avec payload NULL-équivalent (chaîne vide) */
+  /* Packet with NULL-equivalent payload (empty string) */
   Packet pkt = { C2S_JOIN, "" };
   char buf[MAX_FORMATTED_PKT_SIZE];
   SerializePacket (&pkt, buf, sizeof (buf));

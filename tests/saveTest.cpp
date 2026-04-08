@@ -2,7 +2,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 
-// On inclut les fichiers C dans un bloc extern "C"
+// We include the C files in an extern "C" block
 extern "C"
 {
 #include "../include/config.h"
@@ -73,7 +73,7 @@ TEST_F (SaveLoadTest, FullCycle)
 
   ASSERT_EQ (save_game (path, &config, &state), 0);
 
-  // On réinitialise pour être sûr que le load travaille
+  // Reinitialize to make sure load is actually working
   state.board[9][0] = CONTENT_EMPTY;
 
   ASSERT_EQ (load_game (path, &config, &state), 0);
@@ -81,7 +81,7 @@ TEST_F (SaveLoadTest, FullCycle)
   EXPECT_EQ (state.current_player, PLAYER_BLACK);
 }
 
-// test 2 : fichier corrompu (il manque des données)
+// test 2: corrupted file (missing data)
 TEST_F (SaveLoadTest, CorruptedFile)
 {
   const char *path = "test_corrupt.txt";
@@ -89,13 +89,13 @@ TEST_F (SaveLoadTest, CorruptedFile)
   f << "[settings]\nboard_size=10\n[game]\n"; // pas de plateau, pas de tour
   f.close ();
 
-  // On s'attend à ce que le programme ne crash pas
+  // We expect the program not to crash
   EXPECT_EQ (load_game (path, &config, &state), 0);
 }
 
-// test 3 :plateau plus grand que prévu
-// On teste si le code déborde de la mémoire allouée ou s'il s'arrête
-// correctement à la taille définie dans config.board_size
+// test 3: board larger than expected
+// Test whether the code overruns allocated memory or stops
+// correctly at the size defined in config.board_size
 TEST_F (SaveLoadTest, BoardOverflowInFile)
 {
   const char *path = "test_overflow.txt";
@@ -104,19 +104,19 @@ TEST_F (SaveLoadTest, BoardOverflowInFile)
   f << "Q Q Q Q Q Q Q Q Q Q\n"; // 10 reines pour un board_size=4
   f.close ();
 
-  // Le code doit s'arrêter à col < state->size (4)
+  // The code must stop at col < state->size (4)
   ASSERT_EQ (load_game (path, &config, &state), 0);
   EXPECT_EQ (config.board_size, 4);
 }
 
-// test 4 : historique saturé
+// test 4: history saturated
 TEST_F (SaveLoadTest, HistorySaturated)
 {
   const char *path = "test_hist.txt";
   std::ofstream f (path);
   f << "[settings]\nboard_size=10\n[history]\n";
   for (int i = 0; i < 150; i++)
-    { // 150 coups pour une capacité de 100
+    { // 150 moves for a capacity of 100
       f << "a1-a2(a3)\n";
     }
   f.close ();
@@ -125,7 +125,7 @@ TEST_F (SaveLoadTest, HistorySaturated)
   EXPECT_LE (state.undo_stack.top, 99);
 }
 
-// test 5: commentaires complexes
+// test 5: complex commentary
 TEST_F (SaveLoadTest, ComplexComments)
 {
   const char *path = "test_comments.txt";

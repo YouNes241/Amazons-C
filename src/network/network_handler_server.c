@@ -52,8 +52,7 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
 
               Packet pkt;
               pkt.type = S2C_OPPONENT_LEFT;
-              // CORRECTION: Utilisation de snprintf pour éviter l'erreur de
-              // troncature
+
               snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%s",
                         _ ("Opponent disconnected. You win by forfeit!"));
 
@@ -182,7 +181,7 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
       // Prepare a clean packet for the opponent
       Packet relay_pkt;
       relay_pkt.type = S2C_MOVE;
-      // CORRECTION: Utilisation de snprintf
+
       snprintf (relay_pkt.payload, MAX_PAYLOAD_SIZE, "%s", payload);
 
       char out_buffer[MAX_FORMATTED_PKT_SIZE];
@@ -204,7 +203,7 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
 
       Packet err_pkt;
       err_pkt.type = S2C_ERROR;
-      // CORRECTION: Utilisation de snprintf
+
       snprintf (err_pkt.payload, MAX_PAYLOAD_SIZE, "%s",
                 _ ("Illegal move detected! You have been desynced."));
 
@@ -549,7 +548,7 @@ process_list_packet (NetworkManager *manager, ServerContext *ctx,
 
   Packet resp;
   resp.type = S2C_LIST;
-  // CORRECTION: Utilisation de snprintf
+
   snprintf (resp.payload, MAX_PAYLOAD_SIZE, "%s", list_buffer);
 
   char out_buffer[MAX_FORMATTED_PKT_SIZE];

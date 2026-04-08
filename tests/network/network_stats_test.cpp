@@ -120,7 +120,7 @@ TEST_F (NetworkStatsTest, SaveScoreboardLogic)
   std::string content = ReadScoreboard ();
   EXPECT_NE (content.find ("Frank 3 1 4"), std::string::npos);
   EXPECT_EQ (content.find ("Ghost"),
-             std::string::npos); // Le fantôme n'y est pas
+             std::string::npos); // The ghost is not there
   EXPECT_NE (content.find ("Grace 0 0 0"), std::string::npos);
 
   NetworkManager_Cleanup (&mgr);

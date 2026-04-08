@@ -64,18 +64,18 @@ TEST_F (NetworkManagerTest, MissingSendersHappyPath)
              NET_SUCCESS);
   NetworkManager_Tick (&server_mgr);
 
-  // Vérification de toutes les nouvelles commandes
+  // Verify all new commands
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendAway (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendBack (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendCancel (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendPing (&client_mgr), NET_SUCCESS);
 
-  // Game over dans les deux sens (victoire/défaite)
+  // Game over both ways (win/loss)
   EXPECT_EQ (NetworkManager_SendGameOver (&client_mgr, true), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendGameOver (&client_mgr, false), NET_SUCCESS);
 
-  // SendListRequest avec -1 (pour tester la branche 'else' de cette fonction)
+  // SendListRequest with -1 (to test the 'else' branch of this function)
   EXPECT_EQ (NetworkManager_SendListRequest (&client_mgr, -1), NET_SUCCESS);
 }
 
@@ -86,8 +86,8 @@ TEST_F (NetworkManagerTest, MissingSendersHappyPath)
 
 TEST_F (NetworkManagerTest, SendersRobustnessNullPointers)
 {
-  // Appeler les fonctions avec un pointeur NULL ne doit JAMAIS causer de
-  // SegFault, et doit sagement retourner NET_ERROR.
+  // Calling these functions with a NULL pointer must NEVER cause a
+  // segfault, and should safely return NET_ERROR.
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (nullptr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (nullptr), NET_ERROR);
@@ -109,8 +109,8 @@ TEST_F (NetworkManagerTest, SendersRobustnessInvalidState)
   NetworkManager_Init (&none_mgr,
                        test_callbacks); // Manager vide (NET_MODE_NONE)
 
-  // 1. Un Serveur ne devrait pas pouvoir envoyer de requêtes réservées aux
-  // Clients
+  // 1. A server should not be able to send requests reserved for
+  // clients
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (&server_mgr), NET_ERROR);
@@ -118,7 +118,7 @@ TEST_F (NetworkManagerTest, SendersRobustnessInvalidState)
   EXPECT_EQ (NetworkManager_SendPing (&server_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendGameOver (&server_mgr, true), NET_ERROR);
 
-  // 2. Un Manager non-connecté ne doit rien pouvoir envoyer non plus
+  // 2. A non-connected manager should not be able to send anything either
   EXPECT_EQ (NetworkManager_SendScoreboardRequest (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendAway (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendBack (&none_mgr), NET_ERROR);

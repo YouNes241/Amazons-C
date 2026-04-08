@@ -39,8 +39,7 @@ handle_shutdown_signal (int sig)
   exit (EXIT_SUCCESS);
 }
 
-// Fonction utilitaire pour ajouter facilement un paramètre dynamique à l'IA
-// courante
+// Utility function to easily add a dynamic parameter to the current AI
 static void
 add_ai_param (ai_config_t *ai, const char *key, const char *val)
 {
@@ -64,7 +63,7 @@ parse_options (int argc, char *argv[], game_config_t *config)
   int option_index = 0;
   bool d_short_passed = false;
 
-  // Pointe par défaut sur l'IA Noire (l'humain joue blanc par défaut)
+  // Default target is the black AI (human plays white by default)
   ai_config_t *current_ai = &config->ai_black_cfg;
 
   static struct option long_options[] = {
@@ -231,37 +230,34 @@ parse_options (int argc, char *argv[], game_config_t *config)
 
         case 'h':
           printf ("Usage: ./amazons [OPTIONS]\n");
-          printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n",
+          printf ("  -n, --size N    Board size (%d-%d, default: %d)\n",
                   MIN_BOARD_SIZE, MAX_BOARD_SIZE, DEFAULT_BOARD_SIZE);
-          printf ("  -b, --blitz     Activer le mode blitz\n");
-          printf ("  -t, --time T    Temps de réflexion par joueur en minutes "
-                  "(défaut: 30)\n");
-          printf ("  -c, --contest   Lancer en mode contest\n");
-          printf ("  -g, --gui       Lancer en mode graphique\n");
+          printf ("  -b, --blitz     Enable blitz mode\n");
+          printf ("  -t, --time T    Thinking time per player in minutes "
+                  "(default: 30)\n");
+          printf ("  -c, --contest   Launch in contest mode\n");
+          printf ("  -g, --gui       Launch in graphical mode\n");
 
-          printf ("\n  --- Options IA ---\n");
-          printf ("  --ai-white      Appliquer les options IA suivantes au "
-                  "joueur Blanc\n");
-          printf ("  --ai-black      Appliquer les options IA suivantes au "
-                  "joueur Noir\n");
+          printf ("\n  --- AI Options ---\n");
+          printf ("  --ai-white      Apply the following AI options to the "
+                  "White player\n");
+          printf ("  --ai-black      Apply the following AI options to the "
+                  "Black player\n");
           printf ("  --ai-mode M     M = minimax, iterative, mcts\n");
-          printf (
-              "  --ai-minimax-depth D   Profondeur maximale pour minimax\n");
-          printf ("  --ai-minimax-scoring S Fonction d'évaluation (me, rth, "
+          printf ("  --ai-minimax-depth D   Maximum depth for minimax\n");
+          printf ("  --ai-minimax-scoring S Evaluation function (me, rth, "
                   "qdkd)\n");
-          printf ("  --ai-mcts-selection S  Sélection MCTS (uct, ml)\n");
-          printf (
-              "  --ai-time T     Temps de réflexion de l'IA en secondes\n");
+          printf ("  --ai-mcts-selection S  MCTS selection (uct, ml)\n");
+          printf ("  --ai-time T     AI thinking time in seconds\n");
 
-          printf ("\n  --- Autres ---\n");
-          printf ("  -d, --debug     Afficher les messages de debug\n");
-          printf ("  -s, --server [P] Lancer en tant que serveur (Port "
-                  "optionnel)\n");
-          printf ("  --daemon        Lancer le serveur en arrière-plan "
+          printf ("\n  --- Other ---\n");
+          printf ("  -d, --debug     Display debug messages\n");
+          printf ("  -s, --server [P] Launch as server (optional Port)\n");
+          printf ("  --daemon        Launch server in background "
                   "(Headless)\n");
-          printf ("  -v, --verbose   Activer le mode bavard\n");
-          printf ("  -h, --help      Afficher cette aide\n");
-          printf ("  -V, --version   Affiche la version du jeu\n");
+          printf ("  -v, --verbose   Enable verbose mode\n");
+          printf ("  -h, --help      Display this help\n");
+          printf ("  -V, --version   Display game version\n");
           return EXIT_SUCCESS;
 
         default:
@@ -331,13 +327,13 @@ main (int argc, char *argv[])
 
   if (config->daemon_mode)
     {
-      printf ("\n[DAEMON] Démarrage du serveur en mode Headless...\n");
-      printf ("[DAEMON] Le terminal va vous rendre la main. Tapez 'pkill "
-              "amazons' plus tard pour l'arrêter.\n");
+      printf ("\n[DAEMON] Starting server in Headless mode...\n");
+      printf ("[DAEMON] The terminal will return control to you. Type 'pkill "
+              "amazons' later to stop it.\n");
 
       if (daemon (1, 0) == -1)
         {
-          perror ("Erreur lors de la création du daemon");
+          perror ("Error creating daemon");
           return EXIT_FAILURE;
         }
       NetworkManager net_manager;

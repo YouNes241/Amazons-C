@@ -18,7 +18,7 @@ write_settings (FILE *file, game_config_t *config)
 
   fprintf (file, "blitz_mode=%s\n", config->blitz_mode ? "true" : "false");
 
-  // NOUVELLE LOGIQUE D'ECRITURE DES IA
+  // NEW AI WRITING LOGIC
   fprintf (file, "ai_white=%s\n",
            config->ai_white_cfg.enabled ? config->ai_white_cfg.name : "false");
   fprintf (file, "ai_black=%s\n",
@@ -137,10 +137,10 @@ save_game (const char *filepath, game_config_t *config, GameState *state)
 static void
 clean_line (const char *input, char *output, bool *in_block_comment)
 {
-  int j = 0; // Index pour la ligne de sortie, il n'avance que lorsque l'on
-             // ajoute un caractère utile
+  int j = 0; // Output line index; it advances only when we add a useful
+             // character
   for (int i = 0; input[i] != '\0' && input[i] != '\n' && input[i] != '\r';
-       i++) // i parcourt la ligne d'entrée
+       i++) // i iterates over the input line
     {
       if (*in_block_comment)
         {
@@ -152,8 +152,8 @@ clean_line (const char *input, char *output, bool *in_block_comment)
       if (input[i] == '{')
         {
           *in_block_comment = true;
-          continue; // on ignore le caractère d'ouverture et tout ce qui suit
-                    // jusqu'à la fermeture
+          continue; // ignore the opening brace and everything that follows
+                    // until the closing brace
         }
 
       if (input[i] == '#')

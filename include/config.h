@@ -7,21 +7,21 @@
 #define MIN_BOARD_SIZE 4
 #define MAX_BOARD_SIZE 11
 #define DEFAULT_BOARD_SIZE 10
-#define DEFAULT_TIME_BLITZ 1800 // 30 minutes par défaut
-#define DEFAULT_AI_COLOR 1      // L'IA joue en noir par défaut
+#define DEFAULT_TIME_BLITZ 1800 // 30 minutes default
+#define DEFAULT_AI_COLOR 1      // AI plays black by default
 #define VERSION "0.1.0"
 #define MAX_AI_PARAMS 10
 #define MAX_AI_STR_LEN 32
 
 /*
- * Le jeu ne peut être que dans
- * un seul de ces modes à la fois.
+ * The game can only be in
+ * one of these modes at a time.
  */
 typedef enum
 {
-  MODE_INTERACTIVE, // Mode console par défaut
-  MODE_CONTEST,     // Mode tournoi sans interface
-  MODE_GUI          // Mode interface graphique
+  MODE_INTERACTIVE, // Default console mode
+  MODE_CONTEST,     // Tournament mode without interface
+  MODE_GUI          // Graphical interface mode
 } game_mode_t;
 
 typedef enum

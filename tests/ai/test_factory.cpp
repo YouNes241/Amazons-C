@@ -79,7 +79,7 @@ TEST (AIFactoryTest, CreateRandomReturnsCorrectImplementation)
   ASSERT_EQ (ai.context, nullptr);
 
   EXPECT_EQ (ai.vtable, &random_vtable)
-      << "La Factory n'a pas renvoyé la bonne implémentation pour 'random'";
+      << "The Factory did not return the correct implementation for 'random'";
 
   ai.vtable->clean (&ai);
 }
@@ -94,7 +94,7 @@ TEST (AIFactoryTest, CreateMinimaxReturnsCorrectImplementation)
   ASSERT_NE (ai.context, nullptr);
 
   EXPECT_EQ (ai.vtable, &minimax_vtable)
-      << "La Factory n'a pas renvoyé la bonne implémentation pour 'minimax'";
+      << "The Factory did not return the correct implementation for 'minimax'";
 
   ai.vtable->clean (&ai);
 }

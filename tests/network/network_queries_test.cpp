@@ -76,7 +76,7 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   server_mgr.server_ctx->clients[2].status = CLIENT_STATUS_INGAME;
   strncpy (server_mgr.server_ctx->clients[2].username, "Bob", 31);
 
-  // Test 2: Liste complète avec 2 joueurs
+  // Test 2: Full list with 2 players
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer),
                                       -1);
   EXPECT_NE (std::string (buffer).find ("[ID 1] Alice - (idle)"),
@@ -84,12 +84,12 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   EXPECT_NE (std::string (buffer).find ("[ID 2] Bob - (ingame)"),
              std::string::npos);
 
-  // Test 3: Infos détaillées sur le joueur 1 (IDLE)
+  // Test 3: Detailed info for player 1 (IDLE)
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Name: Alice | Status: idle"),
              std::string::npos);
 
-  // Test 4: Différents statuts pour couvrir le switch-case
+  // Test 4: Different statuses to cover the switch-case
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_AWAY;
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Status: away"), std::string::npos);
@@ -99,7 +99,8 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   EXPECT_NE (std::string (buffer).find ("Status: waitgame"),
              std::string::npos);
 
-  server_mgr.server_ctx->clients[1].status = (ClientStatus)99; // Cas "default"
+  server_mgr.server_ctx->clients[1].status
+      = (ClientStatus)99; // "default" case
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Status: connected"),
              std::string::npos);
@@ -124,7 +125,7 @@ TEST_F (NetworkManagerTest, GetServerList_Success)
                  "[1] TestServer (IP: 192.168.1.50, Port: 1234)"),
              std::string::npos);
 
-  // Test: Un serveur "fantôme" qui a timeout (vu il y a 60 secondes)
+  // Test: A "ghost" server that timed out (seen 60 seconds ago)
   client_mgr.discovery_ctx->servers[0].last_seen = time (NULL) - 60;
   count = NetworkManager_GetServerList (&client_mgr, buffer, sizeof (buffer));
   EXPECT_EQ (count, 0);
@@ -233,7 +234,7 @@ TEST_F (NetworkManagerTest, GetServerList_Robustness)
                                            sizeof (buffer)),
              -1);
 
-  // CORRECTION : On nettoie le BON manager
+  // FIX: clean up the CORRECT manager
   NetworkManager_Cleanup (&no_discovery_mgr);
 
   // 3. Buffer Overflow protection with very long server names
