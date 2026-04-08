@@ -58,7 +58,8 @@ freeGuiContext (GuiContext *ctx)
 void
 drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 {
-  assert (ctx != NULL && ctx->gameState != NULL);
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
   assert (ctx->gameBoard != NULL);
 
   int size = ctx->gameState->size;
@@ -146,7 +147,8 @@ clearHintHighlights (GuiContext *ctx)
 void
 highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 {
-  assert (ctx != NULL && ctx->gameState != NULL);
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   int size = ctx->gameState->size;
   assert (srcX >= 0 && srcX < size);
@@ -161,6 +163,7 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
   Bitboard obstacles = bitboard_or (bb.white_queens,
                                     bitboard_or (bb.black_queens, bb.arrows));
   bitboard_clear_bit (&obstacles, start_index);
+
   Bitboard reachable = get_reachable_squares (obstacles, start_index, size);
 
   for (int i = 0; i < size * size; i++)
@@ -171,12 +174,9 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
           g_object_set_data (G_OBJECT (ctx->gameBoard[i]), "is_legal_move",
                              GINT_TO_POINTER (1));
         }
-      else
-        {
-          g_object_set_data (G_OBJECT (ctx->gameBoard[i]), "is_legal_move",
-                             GINT_TO_POINTER (0));
-        }
     }
+
+  gtk_widget_add_css_class (ctx->gameBoard[start_index], "active-queen");
 }
 
 void
@@ -485,8 +485,8 @@ showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
 void
 gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
 {
-  if (!ctx || !ctx->mainStack)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   GtkWidget *consoleView = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "server_console_view"));
@@ -515,8 +515,8 @@ gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
 void
 guiShowPopup (GuiContext *ctx, const char *message)
 {
-  if (!ctx || !ctx->mainWindow)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
 
 #if GTK_CHECK_VERSION(4, 10, 0)
   GtkAlertDialog *dialog = gtk_alert_dialog_new ("%s", message);

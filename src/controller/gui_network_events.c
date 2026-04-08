@@ -1,4 +1,5 @@
 #include "gui_network_events.h"
+#include "assert.h"
 #include "gui_controller.h"
 #include "gui_utils.h"
 #include <stdarg.h>
@@ -30,8 +31,7 @@ create_gui_network_events (GuiContext *ctx)
 static void
 on_gui_game_started (PlayerColor color, int board_size)
 {
-  if (!g_gui_net_ctx)
-    return;
+  assert (g_gui_net_ctx != NULL);
 
   g_gui_net_ctx->selfPlayerColor = color;
   g_gui_net_ctx->isNetworkMatch = true;
@@ -50,8 +50,7 @@ on_gui_game_started (PlayerColor color, int board_size)
 static void
 on_gui_move_received (Move m)
 {
-  if (!g_gui_net_ctx)
-    return;
+  assert (g_gui_net_ctx != NULL);
 
   guiHandlePlayerMove (g_gui_net_ctx, m);
 }
@@ -59,8 +58,7 @@ on_gui_move_received (Move m)
 static void
 on_gui_invitation_received ()
 {
-  if (!g_gui_net_ctx)
-    return;
+  assert (g_gui_net_ctx != NULL);
 
   g_print ("[GUI NETWORK] Auto accept activated... (WIP)\n");
 
@@ -70,8 +68,7 @@ on_gui_invitation_received ()
 static void
 on_gui_player_disconnected (const char *reason)
 {
-  if (!g_gui_net_ctx)
-    return;
+  assert (g_gui_net_ctx != NULL);
 
   if (g_gui_net_ctx->networkManager->current_mode == NET_MODE_SERVER)
     {
@@ -93,8 +90,7 @@ on_gui_player_disconnected (const char *reason)
 static void
 on_gui_player_joined (const char *player_name)
 {
-  if (!g_gui_net_ctx)
-    return;
+  assert (g_gui_net_ctx != NULL);
 
   if (g_gui_net_ctx->networkManager->current_mode == NET_MODE_SERVER)
     {

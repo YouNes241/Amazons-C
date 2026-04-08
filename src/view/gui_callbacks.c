@@ -12,10 +12,13 @@ void
 navigationClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
+
   const char *targetPage
       = (const char *)g_object_get_data (G_OBJECT (button), "target_page");
 
-  if (ctx->mainStack != NULL && targetPage != NULL)
+  if (targetPage != NULL)
     {
       gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
     }
@@ -25,19 +28,22 @@ void
 quitButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (ctx && ctx->mainWindow)
-    {
-      gtk_window_close (GTK_WINDOW (ctx->mainWindow));
-    }
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
+
+  gtk_window_close (GTK_WINDOW (ctx->mainWindow));
 }
 
 void
 infoPopupButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/info_popup.ui");
@@ -54,7 +60,10 @@ void
 configPopupButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/config_popup.ui");
@@ -186,10 +195,10 @@ void
 undoButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -197,17 +206,22 @@ undoButtonClick (GtkButton *button, gpointer user_data)
       return;
     }
 
-  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
-  if (!has_ai)
-    return;
+  if (ctx->isNetworkMatch)
+    {
+      guiShowPopup (ctx, "Action disabled during a network match.");
+      return;
+    }
 
   if (undo_move (ctx->gameState))
     {
+      bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+      if (has_ai && ctx->gameState->undo_stack.top >= 0)
+        {
+          undo_move (ctx->gameState);
+        }
+
       clearHintHighlights (ctx);
       ctx->isHintActive = false;
-
-      undo_move (ctx->gameState);
-
       ctx->currentPhase = PHASE_MOVE_QUEEN;
       clearHighlights (ctx);
       drawBoard (ctx);
@@ -219,10 +233,10 @@ void
 redoButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -230,17 +244,22 @@ redoButtonClick (GtkButton *button, gpointer user_data)
       return;
     }
 
-  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
-  if (!has_ai)
-    return;
+  if (ctx->isNetworkMatch)
+    {
+      guiShowPopup (ctx, "Action disabled during a network match.");
+      return;
+    }
 
   if (redo_move (ctx->gameState))
     {
+      bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+      if (has_ai && ctx->gameState->redo_stack.top >= 0)
+        {
+          redo_move (ctx->gameState);
+        }
+
       clearHintHighlights (ctx);
       ctx->isHintActive = false;
-
-      redo_move (ctx->gameState);
-
       ctx->currentPhase = PHASE_MOVE_QUEEN;
       clearHighlights (ctx);
       drawBoard (ctx);
@@ -254,15 +273,12 @@ hintButtonClick (GtkButton *button, gpointer user_data)
   (void)button;
   GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    {
-      g_print ("[ERROR] No game in progress to get advice.\n");
-      return;
-    }
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
     {
-      g_print ("[INFO] Finish your current move first.\n");
+      guiShowPopup (ctx, "Finish your current move first.");
       return;
     }
 
@@ -276,14 +292,9 @@ hintButtonClick (GtkButton *button, gpointer user_data)
   ConfigMap empty_params = { 0, NULL };
   AI_Interface hint_ai = create_ai ("minimax", empty_params);
 
-  if (hint_ai.vtable == NULL)
-    {
-      g_print ("[GUI ERROR] Failed to load the advice engine.\n");
-      return;
-    }
+  assert (hint_ai.vtable != NULL);
 
   g_print ("[AI] Initializing advice engine...\n");
-
   Move move = hint_ai.vtable->get_best_move (&hint_ai, *(ctx->gameState));
 
   if (hint_ai.vtable->clean)
@@ -299,7 +310,9 @@ void
 quitGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   if (ctx->isNetworkMatch)
     {
@@ -318,6 +331,7 @@ void
 joinServerButtonClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   const char *ip_str
       = (const char *)g_object_get_data (G_OBJECT (button), "server_ip");
@@ -365,6 +379,8 @@ void
 refreshServerListButtonClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+
   GtkListBox *listbox
       = GTK_LIST_BOX (g_object_get_data (G_OBJECT (button), "server_listbox"));
   GtkWidget *username_entry
@@ -447,7 +463,9 @@ void
 disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   guiDisconnectAndRestartNetwork (ctx);
 
@@ -461,7 +479,9 @@ void
 createGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/popups/create_game_popup.ui");
@@ -497,6 +517,7 @@ void
 sendInviteButtonClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   GtkEditable *target_id_entry = GTK_EDITABLE (
       g_object_get_data (G_OBJECT (button), "target_id_entry"));
@@ -526,7 +547,9 @@ void
 newGameButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   if (ctx->isNetworkMatch)
     {
@@ -550,7 +573,9 @@ void
 hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/popups/create_server_popup.ui");
@@ -585,6 +610,7 @@ void
 startServerButtonClick (GtkButton *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   GtkSpinButton *port_spin
       = GTK_SPIN_BUTTON (g_object_get_data (G_OBJECT (button), "port_spin"));
@@ -618,7 +644,9 @@ void
 stopServerButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   g_print ("[SERVER] Shutting down server...\n");
 
@@ -637,7 +665,8 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   (void)y;
 
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL && ctx->gameState != NULL);
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
@@ -645,13 +674,12 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 
   int srcX = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_x"));
   int srcY = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_y"));
+  int srcIndex
+      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_index"));
 
   int size = ctx->gameState->size;
   assert (srcX >= 0 && srcX < size);
   assert (srcY >= 0 && srcY < size);
-
-  int srcIndex
-      = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_index"));
 
   CellContent piece = ctx->gameState->board[srcY][srcX];
 
@@ -723,7 +751,8 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   (void)y;
 
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL && ctx->gameState != NULL);
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
     {
@@ -753,6 +782,8 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
 
   int srcX = srcIndex % size;
   int srcY = srcIndex / size;
+  assert (srcX >= 0 && srcX < size);
+  assert (srcY >= 0 && srcY < size);
 
   if (ctx->gameState->board[destY][destX] != CONTENT_EMPTY)
     {
@@ -774,8 +805,6 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   ctx->currentPhase = PHASE_SHOOT_ARROW;
   highlightReachableSquares (ctx, destX, destY);
 
-  g_print ("Moved from (%d, %d) to (%d, %d)\n", srcX, srcY, destX, destY);
-
   return TRUE;
 }
 
@@ -786,7 +815,9 @@ onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
   (void)source;
   (void)drag;
   (void)delete_data;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   if (ctx->currentPhase == PHASE_MOVE_QUEEN)
     {
@@ -799,6 +830,8 @@ void
 fireArrow (GtkWidget *button, gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase != PHASE_SHOOT_ARROW
       || (ctx->isNetworkMatch
@@ -810,13 +843,15 @@ fireArrow (GtkWidget *button, gpointer user_data)
   int targetY
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "cell_y"));
 
+  int size = ctx->gameState->size;
+  assert (targetX >= 0 && targetX < size);
+  assert (targetY >= 0 && targetY < size);
+
   int isLegal = GPOINTER_TO_INT (
       g_object_get_data (G_OBJECT (button), "is_legal_move"));
+
   if (!isLegal)
-    {
-      g_print ("Invalid shot at (%d, %d).\n", targetX, targetY);
-      return;
-    }
+    return;
 
   CellContent piece
       = ctx->gameState->board[ctx->tmpQueenDst.row][ctx->tmpQueenDst.col];
@@ -830,7 +865,6 @@ fireArrow (GtkWidget *button, gpointer user_data)
   current_move.arrow_dst.col = targetX;
   current_move.arrow_dst.row = targetY;
 
-  int size = ctx->gameState->size;
   gtk_widget_remove_css_class (
       ctx->gameBoard[ctx->tmpQueenDst.row * size + ctx->tmpQueenDst.col],
       "active-queen");
@@ -846,7 +880,9 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
   (void)n_press;
   (void)x;
   (void)y;
+
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -877,8 +913,10 @@ onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
   (void)n_press;
   (void)x;
   (void)y;
+
   GtkWidget *cellBox
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
+
   fireArrow (cellBox, user_data);
 }
 
@@ -886,6 +924,7 @@ void
 updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
+
   ((GuiContext *)user_data)->gameConfig->verbose
       = gtk_switch_get_active (widget);
 }
@@ -894,6 +933,7 @@ void
 updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
+
   ((GuiContext *)user_data)->gameConfig->blitz_mode
       = gtk_switch_get_active (widget);
 }
@@ -916,6 +956,7 @@ void
 updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
+
   ((GuiContext *)user_data)->gameConfig->ai_white
       = gtk_switch_get_active (widget);
 }
@@ -924,6 +965,7 @@ void
 updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
+
   ((GuiContext *)user_data)->gameConfig->ai_black
       = gtk_switch_get_active (widget);
 }
@@ -933,6 +975,7 @@ void
 updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
+
   guint active = gtk_drop_down_get_selected (GTK_DROP_DOWN (object));
   if (active == 0 || active == 1)
     {
@@ -945,6 +988,8 @@ on_save_file_selected (GObject *source_object, GAsyncResult *res,
                        gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
   GFile *file = gtk_file_dialog_save_finish (dialog, res, &error);
@@ -967,6 +1012,8 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
                        gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
   GFile *file = gtk_file_dialog_open_finish (dialog, res, &error);
@@ -1023,10 +1070,11 @@ void
 saveButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
+
   GtkFileDialog *dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_title (dialog, "Save the current game");
   gtk_file_dialog_save (dialog, ctx->mainWindow, NULL, on_save_file_selected,
@@ -1037,10 +1085,11 @@ void
 loadButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
+
   GtkFileDialog *dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_title (dialog, "Load a game");
   gtk_file_dialog_open (dialog, ctx->mainWindow, NULL, on_load_file_selected,
@@ -1063,6 +1112,8 @@ on_save_response (GtkNativeDialog *native, int response, gpointer user_data)
   if (response == GTK_RESPONSE_ACCEPT)
     {
       GuiContext *ctx = (GuiContext *)user_data;
+      assert (ctx != NULL);
+
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
       if (file)
@@ -1086,6 +1137,8 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
   if (response == GTK_RESPONSE_ACCEPT)
     {
       GuiContext *ctx = (GuiContext *)user_data;
+      assert (ctx != NULL);
+
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
       if (file)
@@ -1143,10 +1196,10 @@ void
 saveButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -1166,10 +1219,10 @@ void
 loadButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
-  if (!ctx || !ctx->gameState)
-    return;
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->isNetworkMatch)
     {
@@ -1190,6 +1243,7 @@ shortcutNewGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   newGameButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1199,6 +1253,7 @@ shortcutInfo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   infoPopupButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1208,6 +1263,7 @@ shortcutConfig (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   configPopupButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1226,6 +1282,7 @@ shortcutUndo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   undoButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1235,6 +1292,7 @@ shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   redoButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1244,6 +1302,7 @@ shortcutSaveGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   saveButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1253,6 +1312,7 @@ shortcutLoadGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   loadButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1262,6 +1322,7 @@ shortcutHint (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
+
   hintButtonClick (NULL, user_data);
   return TRUE;
 }
@@ -1272,6 +1333,7 @@ shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
   (void)widget;
   (void)args;
   (void)user_data;
+
   g_print ("Not implemented.\n");
   return TRUE;
 }

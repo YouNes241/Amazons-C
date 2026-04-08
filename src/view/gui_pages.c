@@ -1,10 +1,13 @@
 #include "gui_pages.h"
 #include "gui_callbacks.h"
+#include <assert.h>
 #include <gtk/gtk.h>
 
 GtkWidget *
 createMainMenuPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *singleplayerBtn;
@@ -48,6 +51,8 @@ createMainMenuPage (GuiContext *ctx)
 GtkWidget *
 createSingleplayerMenuPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *newGameBtn;
@@ -77,6 +82,8 @@ createSingleplayerMenuPage (GuiContext *ctx)
 GtkWidget *
 createMultiplayerMenuPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
@@ -119,6 +126,8 @@ createMultiplayerMenuPage (GuiContext *ctx)
 GtkWidget *
 createConfigPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
@@ -257,6 +266,8 @@ createConfigPage (GuiContext *ctx)
 GtkWidget *
 createInfoPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder;
   GtkWidget *box;
   GtkWidget *returnBtn;
@@ -278,6 +289,9 @@ createInfoPage (GuiContext *ctx)
 GtkWidget *
 createGamePage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
+
   GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
   GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
 
@@ -344,6 +358,8 @@ createGamePage (GuiContext *ctx)
 GtkWidget *
 createJoinServerPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/join_server.ui");
   GtkWidget *box
@@ -376,6 +392,8 @@ createJoinServerPage (GuiContext *ctx)
 GtkWidget *
 createHostPanelPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/host_panel.ui");
   GtkWidget *box
@@ -404,6 +422,8 @@ createHostPanelPage (GuiContext *ctx)
 GtkWidget *
 createClientPanelPage (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/client_panel.ui");
   GtkWidget *box
