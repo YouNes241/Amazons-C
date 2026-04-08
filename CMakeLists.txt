@@ -79,9 +79,3 @@ if (DOXYGEN_FOUND)
 else (DOXYGEN_FOUND)
   message("Doxygen is required to generate the documentation")
 endif (DOXYGEN_FOUND)
-
-# --- TEST BITBOARD (TEMP) ---
-add_executable(test_bitboard tests/test_bitboard.c)
-target_include_directories(test_bitboard PRIVATE "${CMAKE_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/gamemodel")
-target_link_libraries(test_bitboard PRIVATE amazons_core)
-add_test(NAME TestBitboard COMMAND test_bitboard)

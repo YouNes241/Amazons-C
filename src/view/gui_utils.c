@@ -117,12 +117,10 @@ highlightReachableSquares (AppContext *ctx, int srcX, int srcY)
   int size = ctx->gameState->size;
   uint8_t start_index = coords_to_index (srcX, srcY, size);
 
-  Bitboard bb_white, bb_black, bb_arrows;
-  extract_bitboards_from_state (ctx->gameState, &bb_white, &bb_black,
-                                &bb_arrows);
+  BitboardState bb = sync_from_logic (ctx->gameState);
 
-  Bitboard obstacles
-      = bitboard_or (bb_white, bitboard_or (bb_black, bb_arrows));
+  Bitboard obstacles = bitboard_or (bb.white_queens,
+                                    bitboard_or (bb.black_queens, bb.arrows));
   bitboard_clear_bit (&obstacles, start_index);
   Bitboard reachable = get_reachable_squares (obstacles, start_index, size);
 

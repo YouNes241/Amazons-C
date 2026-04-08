@@ -318,23 +318,22 @@ is_move_legal (const GameState *state, Move move)
     }
 
   // Matrix to bitboards
-  Bitboard bb_white, bb_black, bb_arrows;
-  extract_bitboards_from_state (state, &bb_white, &bb_black, &bb_arrows);
+  BitboardState bb = sync_from_logic (state);
 
-  Bitboard obstacles
-      = bitboard_or (bb_white, bitboard_or (bb_black, bb_arrows));
+  Bitboard obstacles = bitboard_or (bb.white_queens,
+                                    bitboard_or (bb.black_queens, bb.arrows));
 
   // Check that the starting square contains a queen of the current player
   uint8_t src_idx
       = coords_to_index (move.queen_src.col, move.queen_src.row, size);
   if (state->current_player == PLAYER_WHITE)
     {
-      if (!bitboard_get_bit (bb_white, src_idx))
+      if (!bitboard_get_bit (bb.white_queens, src_idx))
         return false;
     }
   else
     {
-      if (!bitboard_get_bit (bb_black, src_idx))
+      if (!bitboard_get_bit (bb.black_queens, src_idx))
         return false;
     }
 
@@ -402,16 +401,15 @@ is_game_over (const GameState *state, PlayerColor current_player)
   uint8_t size = state->size;
   uint8_t max_index = size * size;
 
-  Bitboard bb_white, bb_black, bb_arrows;
-  extract_bitboards_from_state (state, &bb_white, &bb_black, &bb_arrows);
+  BitboardState bb = sync_from_logic (state);
 
   // Merge all obstacles
-  Bitboard obstacles
-      = bitboard_or (bb_white, bitboard_or (bb_black, bb_arrows));
+  Bitboard obstacles = bitboard_or (bb.white_queens,
+                                    bitboard_or (bb.black_queens, bb.arrows));
 
   // Determine which queens to check
   Bitboard current_queens
-      = (current_player == PLAYER_WHITE) ? bb_white : bb_black;
+      = (current_player == PLAYER_WHITE) ? bb.white_queens : bb.black_queens;
 
   // Traverse all squares on the board (from 0 to size*size - 1)
   for (uint8_t idx = 0; idx < max_index; idx++)
@@ -427,38 +425,6 @@ is_game_over (const GameState *state, PlayerColor current_player)
     }
 
   return true;
-}
-
-void
-extract_bitboards_from_state (const GameState *state, Bitboard *bb_white,
-                              Bitboard *bb_black, Bitboard *bb_arrows)
-{
-  *bb_white = bitboard_create_empty ();
-  *bb_black = bitboard_create_empty ();
-  *bb_arrows = bitboard_create_empty ();
-
-  for (uint8_t r = 0; r < state->size; r++)
-    {
-      for (uint8_t c = 0; c < state->size; c++)
-        {
-          uint8_t idx = coords_to_index (c, r, state->size);
-
-          switch (state->board[r][c])
-            {
-            case CONTENT_WHITE_QUEEN:
-              bitboard_set_bit (bb_white, idx);
-              break;
-            case CONTENT_BLACK_QUEEN:
-              bitboard_set_bit (bb_black, idx);
-              break;
-            case CONTENT_ARROW:
-              bitboard_set_bit (bb_arrows, idx);
-              break;
-            default:
-              break;
-            }
-        }
-    }
 }
 
 Bitboard

@@ -2,6 +2,7 @@
 #define GAME_ENGINE_H
 
 #include "bitboard.h"
+#include "bitboard_state.h"
 #include "game_types.h"
 #include <stdbool.h>
 #include <stdint.h>
