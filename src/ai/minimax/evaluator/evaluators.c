@@ -144,7 +144,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
  * @return A float score representing the mobility advantage. Positive means
  * the current player has more mobility, negative means less.
  */
-float
+static float
 eval_me (const BitboardState *state)
 {
   if (state == NULL)

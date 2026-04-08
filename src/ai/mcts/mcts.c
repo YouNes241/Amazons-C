@@ -30,7 +30,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#define SCORE_EVALUATOR get_evaluator (EVAL_QD_KD)
 const uint64_t DEFAULT_TIME_CONSTRAINT = 5000;
 const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
 const float EXPLORATION_CONSTANT = 1.414f;
@@ -155,7 +155,7 @@ MCTS_STATIC float
 get_mcts_win_probability (const BitboardState *state,
                           bool starting_player_was_white)
 {
-  float raw_score = eval_qdkd (state);
+  float raw_score = SCORE_EVALUATOR (state);
 
   if (!starting_player_was_white)
     {

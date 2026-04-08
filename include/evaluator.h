@@ -60,8 +60,6 @@ get_evaluator_param (EvaluatorType type)
 
 typedef float (*Evaluator) (const BitboardState *state);
 
-float eval_me (const BitboardState *state);
-
 /**
  * @brief Retrieves an Evaluator function pointer based on the provided name.
  * @param name A string representing the name of the desired evaluator ("me",
