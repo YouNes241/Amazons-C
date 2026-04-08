@@ -732,7 +732,9 @@ TEST_F (MCTSAI, FindsOnlyLegalMove)
 // twice in a row (deterministic replay).
 TEST_F (MCTSAI, DeterministicWithSameSeed)
 {
-  Param p[] = { { "time_limit", "25" }, { "max_workers", "1" } };
+  Param p[] = {
+    { "max_iterations", "600" }, { "max_workers", "1" }
+  }; // realistically should find it within the default time limit
   reinit (p, 2);
 
   GameState state = make_game_state (9, 6, 0, 3);

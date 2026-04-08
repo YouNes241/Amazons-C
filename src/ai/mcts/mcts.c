@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const uint64_t DEFAULT_TIME_CONSTRAINT = 5;
+const uint64_t DEFAULT_TIME_CONSTRAINT = 5000;
 const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
 const int DEFAULT_MAX_WORKERS = 1;
 
