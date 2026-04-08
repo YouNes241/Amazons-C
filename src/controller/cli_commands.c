@@ -731,6 +731,15 @@ handle_command (char *input_buffer, CliContext *ctx)
   else if (strncmp (input_buffer, "save ", CMD_LEN_SAVE) == 0)
     {
       const char *filename = input_buffer + CMD_LEN_SAVE;
+      while (*filename == ' ')
+        {
+          filename++;
+        }
+      if (*filename == '\0')
+        {
+          printf (_ ("[ERROR] Missing filename. Usage: save <filename>\n"));
+          return;
+        }
 
       if (save_game (filename, ctx->config, ctx->current_game) == 0)
         {
@@ -745,7 +754,15 @@ handle_command (char *input_buffer, CliContext *ctx)
   else if (strncmp (input_buffer, "load ", CMD_LEN_LOAD) == 0)
     {
       const char *filename = input_buffer + CMD_LEN_LOAD;
-
+      while (*filename == ' ')
+        {
+          filename++;
+        }
+      if (*filename == '\0')
+        {
+          printf (_ ("[ERROR] Missing filename. Usage: load <filename>\n"));
+          return;
+        }
       if (load_game (filename, ctx->config, ctx->current_game) == 0)
         {
 
