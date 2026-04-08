@@ -115,12 +115,13 @@ TEST_F (NetworkStatsTest, SaveScoreboardLogic)
   mgr.server_ctx->clients[3].losses = 0;
   mgr.server_ctx->clients[3].games_played = 0;
 
-  mgr.server_ctx->clients[1].is_joined = true;
-  mgr.server_ctx->clients[1].wins = 0;
-  mgr.server_ctx->clients[1].losses = 0;
-  mgr.server_ctx->clients[1].games_played = 0;
-  strncpy (mgr.server_ctx->clients[1].username, "Alice", 31);
-  mgr.server_ctx->clients[1].username[31] = '\0';
+  mgr.server_ctx->fds[4].fd = 103;
+  mgr.server_ctx->clients[4].is_joined = true;
+  mgr.server_ctx->clients[4].wins = 0;
+  mgr.server_ctx->clients[4].losses = 0;
+  mgr.server_ctx->clients[4].games_played = 0;
+  strncpy (mgr.server_ctx->clients[4].username, "Alice", 31);
+  mgr.server_ctx->clients[4].username[31] = '\0';
 
   SaveScoreboard (&mgr);
 
