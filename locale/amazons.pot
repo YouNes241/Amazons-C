@@ -61,6 +61,8 @@ msgid ""
 "\n"
 "=== COMMAND LIST ===\n"
 msgstr ""
+"\n"
+"=== Liste de commandes ===\n"
 
 #: src/controller/cli_commands.c:183
 #, c-format
@@ -108,6 +110,8 @@ msgid ""
 "\n"
 "--- Network (Server) ---\n"
 msgstr ""
+"\n"
+"--- Réseaux (serveur) ---\n"
 
 #: src/controller/cli_commands.c:193
 #, c-format
@@ -135,6 +139,8 @@ msgid ""
 "\n"
 "--- Network (Client & Lobby) ---\n"
 msgstr ""
+"\n"
+"--- Réseaux (Client & SALON) ---\n"
 
 #: src/controller/cli_commands.c:201
 #, c-format
@@ -145,7 +151,8 @@ msgstr "  join [IP:Port] [name]: Connecte au serveur choisit\n"
 #, c-format
 msgid ""
 "  players [ID]         : List all players in the LOBBY (or detail an ID)\n"
-msgstr "  players [ID]         : Liste tous les joueurs dans le SALON (ou détailler un ID)\n"
+msgstr ""
+"  players [ID]         : Liste tous les joueurs dans le SALON (ou détailler un ID)\n"
 
 #: src/controller/cli_commands.c:204
 #, c-format
@@ -193,6 +200,8 @@ msgid ""
 "\n"
 "--- Playing a Move ---\n"
 msgstr ""
+"\n"
+"--- Joue un coup ---\n"
 
 #: src/controller/cli_commands.c:217
 #, c-format
@@ -205,6 +214,8 @@ msgid ""
 "====================\n"
 "\n"
 msgstr ""
+"====================\n"
+"\n"
 
 Spacycat — 21:50
 #: src/controller/cli_commands.c:241
@@ -223,6 +234,8 @@ msgid ""
 "\n"
 "=== Local Amazons Servers ===\n"
 msgstr ""
+"\n"
+"=== Serveurs Amazons Locaux ===\n"
 
 #: src/controller/cli_commands.c:266
 #, c-format
@@ -235,6 +248,8 @@ msgid ""
 "\n"
 "[ERROR] Connection failed. Is the server running at %s:%d?\n"
 msgstr ""
+"\n"
+"[ERREUR] Connection échouée. Le serveur est-il en cours d'exécution sur %s:%d?\n"
 
 #: src/controller/cli_commands.c:336
 #, c-format
@@ -244,6 +259,10 @@ msgid ""
 "%s\n"
 "====================\n"
 msgstr ""
+"\n"
+"=== SALON DU SERVEUR ===\n"
+"%s\n"
+"====================\n"
 
 #: src/controller/cli_commands.c:342 src/controller/cli_commands.c:487
 #, c-format
@@ -271,6 +290,8 @@ msgid ""
 "\n"
 "[NETWORK] Disconnected. Returned to local menu.\n"
 msgstr ""
+"\n"
+"[RESEAUX] Déconnecté. Retour au menu local.\n"
 
 #: src/controller/cli_commands.c:401
 #, c-format
@@ -278,11 +299,13 @@ msgid ""
 "\n"
 "[SERVER] Server successfully stopped. Returned to menu.\n"
 msgstr ""
+"\n"
+"[SERVEUR] Serveur arrêté avec succès. Retour au menu.\n"
 
 #: src/controller/cli_commands.c:405
 #, c-format
 msgid "Error: No server is running.\n"
-msgstr "[ERROR] Aucun serveur en cours d'exécution.\n"
+msgstr "[ERREUR] Aucun serveur en cours d'exécution.\n"
 
 #: src/controller/cli_commands.c:418
 #, c-format
@@ -290,6 +313,8 @@ msgid ""
 "\n"
 "=== SERVER STATUS ===\n"
 msgstr ""
+"\n"
+"=== STATUS DU SERVEUR ===\n"
 
 #: src/controller/cli_commands.c:419
 #, c-format
@@ -432,6 +457,8 @@ msgid ""
 "\n"
 "[LOBBY] Match ended. Returning to Lobby.\n"
 msgstr ""
+"\n"
+"[SALON] Match terminé. Retour au SALON.\n"
 
 #: src/controller/cli_commands.c:705
 #, c-format
@@ -454,6 +481,8 @@ msgid ""
 "\n"
 "Server: PONG TIME=%lldms\n"
 msgstr ""
+"\n"
+"Serveur: PONG TEMPS=%lldms\n"
 
 #: src/network/network_handler_client.c:106
 #, c-format
@@ -461,6 +490,8 @@ msgid ""
 "\n"
 "[CLIENT] Server Error: %s\n"
 msgstr ""
+"\n"
+"[CLIENT] Erreur du serveur: %s\n"
 
 #: src/network/network_handler_client.c:134
 #, c-format
@@ -510,6 +541,8 @@ msgid ""
 "\n"
 "[SERVER ANTI-CHEAT] Client %d tried an illegal move: %s\n"
 msgstr ""
+"\n"
+"[SERVEUR ANTI-TRICHE] Client %d a essayé un coup illégal: %s\n"
 
 #: src/network/network_handler_server.c:198
 msgid "Illegal move detected! You have been desynced."
@@ -525,6 +558,8 @@ msgid ""
 "\n"
 "[SERVER] Player '%s' successfully joined Slot %d!\n"
 msgstr ""
+"\n"
+"[SERVEUR] Joueur '%s' a rejoint avec succès le Slot %d!\n
 
 #: src/network/network_handler_server.c:289
 msgid "Welcome to the Lobby!"
@@ -582,6 +617,8 @@ msgid ""
 "\n"
 "[SERVER] Player %d cancelled their invitation.\n"
 msgstr ""
+"\n"
+"[SERVEUR] Joueur %d a annulé son invitation.\n"
 
 #: src/network/network_handler_server.c:635
 msgid "Name | Wins | Losses | Played"
@@ -652,12 +689,16 @@ msgid ""
 "\n"
 "[NETWORK] Server down.\n"
 msgstr ""
+"\n"
+"[RESEAUX] Serveur arrêté.\n"
 
 #: src/network/network_manager.c:302
 msgid ""
 "\n"
 "[NETWORK] Disconnected from the server.\n"
 msgstr ""
+"\n"
+"[RESEAUX] Déconnecté du serveur.\n"
 
 #: src/network/network_manager.c:474
 #, c-format
@@ -670,12 +711,16 @@ msgid ""
 "\n"
 "[SERVER] TCP Connection established (Slot %d) - Waiting for JOIN packet...\n"
 msgstr ""
+"\n"
+"[SERVEUR] Connexion TCP établie (Slot %d) - En attente du paquet JOIN...\n"
 
 #: src/network/network_manager.c:584
 msgid ""
 "\n"
 "[SERVER] Full! Connection refused.\n"
 msgstr ""
+"\n"
+"[SERVEUR] Complet! Connexion refusée.\n"
 
 #: src/network/network_manager.c:612
 #, c-format
@@ -683,6 +728,8 @@ msgid ""
 "\n"
 "[SERVER] Error: Buffer full for client %d.\n"
 msgstr ""
+"\n"
+"[SERVEUR] Erreur: Buffer plein pour le client %d.\n"
 
 #: src/network/network_manager.c:656
 #, c-format
@@ -690,6 +737,8 @@ msgid ""
 "\n"
 "[SERVER] Client %d timed out (no activity for %d sec).\n"
 msgstr ""
+"\n"
+"[SERVEUR] Client %d a expiré (pas d'activité pendant %d sec).\n"
 
 #: src/network/network_manager.c:662
 #, c-format
@@ -709,12 +758,16 @@ msgid ""
 "\n"
 "[CLIENT] The server has cut the connection.\n"
 msgstr ""
+"\n"
+"[CLIENT] Le serveur a coupé la connexion.\n"
 
 #: src/network/network_manager.c:769
 msgid ""
 "\n"
 "[CLIENT] Error: Buffer full.\n"
 msgstr ""
+"\n"
+"[CLIENT] Erreur: Buffer plein.\n"
 
 #: src/network/network_manager.c:798
 msgid "Server is shutting down."
@@ -735,6 +788,7 @@ msgstr "Joueur %d non trouvé ou non connecté.\n"
 msgid ""
 "Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost (%d played)"
 msgstr ""
+"Détails -> ID: %d | Nom: %s | Statut: %s | Score: %dVictoires %dDéfaites (%d joués)"
 
 #: src/network/network_queries.c:230
 #, c-format
