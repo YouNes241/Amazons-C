@@ -11,6 +11,7 @@
  * the poll() system call for efficient multiplexing of multiple connections.
  */
 
+#include "game_engine.h"
 #include "network_includes/network_handlers.h"
 #include "network_protocol.h"
 #include <arpa/inet.h>
@@ -284,6 +285,10 @@ NetworkManager_Cleanup (NetworkManager *manager)
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
+      for (int g = 0; g < (MAX_CLIENTS / 2); g++)
+        {
+          game_cleanup (&manager->server_ctx->active_games[g]);
+        }
       for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
         {
           if (manager->server_ctx->fds[i].fd != INVALID_SOCKET)
@@ -308,8 +313,17 @@ NetworkManager_Cleanup (NetworkManager *manager)
       printf ("%s", _ ("\n[NETWORK] Disconnected from the server.\n"));
     }
 
-  // Address book cleanup must always be performed since it was allocated in
-  // NetworkManager_Init, regardless of the mode
+  if (manager->discovery_ctx != NULL)
+    {
+
+      if (manager->discovery_ctx->udp_listen_socket >= 0)
+        {
+          close (manager->discovery_ctx->udp_listen_socket);
+        }
+
+      free (manager->discovery_ctx);
+      manager->discovery_ctx = NULL;
+    }
 
   manager->current_mode = NET_MODE_NONE;
 }

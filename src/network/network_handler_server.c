@@ -52,9 +52,11 @@ disconnect_server_client (NetworkManager *manager, ServerContext *ctx,
 
               Packet pkt;
               pkt.type = S2C_OPPONENT_LEFT;
-              strncpy (pkt.payload,
-                       _ ("Opponent disconnected. You win by forfeit!"),
-                       MAX_PAYLOAD_SIZE - 1);
+              // CORRECTION: Utilisation de snprintf pour éviter l'erreur de
+              // troncature
+              snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%s",
+                        _ ("Opponent disconnected. You win by forfeit!"));
+
               char out_buf[MAX_FORMATTED_PKT_SIZE];
               if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
                 {
@@ -114,10 +116,18 @@ process_buffer_packets (NetworkManager *manager, tcp_buffer_t *buffer,
         {
           handle_server_packet (manager, manager->server_ctx, client_index,
                                 &pkt);
+          if (manager->server_ctx->fds[client_index].fd == INVALID_SOCKET)
+            {
+              break;
+            }
         }
       else
         {
           handle_client_packet (manager, &pkt);
+          if (manager->current_mode == NET_MODE_NONE)
+            {
+              break;
+            }
         }
     }
 }
@@ -172,8 +182,8 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
       // Prepare a clean packet for the opponent
       Packet relay_pkt;
       relay_pkt.type = S2C_MOVE;
-      strncpy (relay_pkt.payload, payload, MAX_PAYLOAD_SIZE - 1);
-      relay_pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+      // CORRECTION: Utilisation de snprintf
+      snprintf (relay_pkt.payload, MAX_PAYLOAD_SIZE, "%s", payload);
 
       char out_buffer[MAX_FORMATTED_PKT_SIZE];
 
@@ -194,9 +204,9 @@ process_move_packet (NetworkManager *manager, ServerContext *ctx,
 
       Packet err_pkt;
       err_pkt.type = S2C_ERROR;
-      strncpy (err_pkt.payload,
-               _ ("Illegal move detected! You have been desynced."),
-               MAX_PAYLOAD_SIZE - 1);
+      // CORRECTION: Utilisation de snprintf
+      snprintf (err_pkt.payload, MAX_PAYLOAD_SIZE, "%s",
+                _ ("Illegal move detected! You have been desynced."));
 
       char out_buf[MAX_FORMATTED_PKT_SIZE];
       SerializePacket (&err_pkt, out_buf, sizeof (out_buf));
@@ -219,8 +229,8 @@ send_server_message (NetworkManager *manager, int target_index,
 {
   Packet pkt;
   pkt.type = type;
-  strncpy (pkt.payload, msg, MAX_PAYLOAD_SIZE - 1);
-  pkt.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+  // CORRECTION: Utilisation de snprintf
+  snprintf (pkt.payload, MAX_PAYLOAD_SIZE, "%s", msg);
 
   char out_buffer[MAX_FORMATTED_PKT_SIZE];
   if (SerializePacket (&pkt, out_buffer, sizeof (out_buffer)) >= 0)
@@ -262,8 +272,9 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
   if (name_taken)
     {
       resp.type = S2C_REJECT;
-      strncpy (resp.payload, _ ("Username already taken"),
-               MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
+      // CORRECTION: Utilisation de snprintf
+      snprintf (resp.payload, MAX_PAYLOAD_SIZE, "%s",
+                _ ("Username already taken"));
       SerializePacket (&resp, out_buffer, sizeof (out_buffer));
       NetworkManager_Send (manager, client_index, out_buffer);
 
@@ -286,8 +297,8 @@ process_join_packet (NetworkManager *manager, ServerContext *ctx,
 
   // packets sent to client (JUST THE WELCOME PACKET)
   resp.type = S2C_WELCOME;
-  strncpy (resp.payload, _ ("Welcome to the Lobby!"),
-           MAX_PAYLOAD_SIZE - NULL_TERMINATOR_OFFSET);
+  // CORRECTION: Utilisation de snprintf
+  snprintf (resp.payload, MAX_PAYLOAD_SIZE, "%s", _ ("Welcome to the Lobby!"));
   SerializePacket (&resp, out_buffer, sizeof (out_buffer));
   NetworkManager_Send (manager, client_index, out_buffer);
 
@@ -538,8 +549,8 @@ process_list_packet (NetworkManager *manager, ServerContext *ctx,
 
   Packet resp;
   resp.type = S2C_LIST;
-  strncpy (resp.payload, list_buffer, MAX_PAYLOAD_SIZE - 1);
-  resp.payload[MAX_PAYLOAD_SIZE - 1] = '\0';
+  // CORRECTION: Utilisation de snprintf
+  snprintf (resp.payload, MAX_PAYLOAD_SIZE, "%s", list_buffer);
 
   char out_buffer[MAX_FORMATTED_PKT_SIZE];
   SerializePacket (&resp, out_buffer, sizeof (out_buffer));

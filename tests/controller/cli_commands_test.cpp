@@ -12,11 +12,6 @@ extern "C"
   int check_blitz_timeout (void);
 }
 
-/* ==========================================================================
- * 1. TESTS DE L'AUTO-COMPLÉTION (Readline)
- * ==========================================================================
- */
-
 /**
  * @brief Tests the autocomplete function for Readline integration.
  * @details Verifies that amazons_completion returns matches when invoked
@@ -25,7 +20,7 @@ extern "C"
  */
 TEST_F (ControllerTestFixture, AutocompletionLogic)
 {
-  /* Cas 1 : On tape le début d'un mot (start == 0) */
+
   char **matches = amazons_completion ("s", 0, 1);
   EXPECT_NE (matches, nullptr);
   if (matches)
@@ -35,15 +30,9 @@ TEST_F (ControllerTestFixture, AutocompletionLogic)
       free (matches);
     }
 
-  /* Cas 2 : On tape au milieu d'une phrase (start != 0) → NULL */
   char **no_matches = amazons_completion ("help", 5, 9);
   EXPECT_EQ (no_matches, nullptr);
 }
-
-/* ==========================================================================
- * 2. TESTS DU PROMPT (Affichage du curseur)
- * ==========================================================================
- */
 
 /**
  * @brief Tests prompt string construction for every possible UI state.
@@ -53,45 +42,34 @@ TEST_F (ControllerTestFixture, AutocompletionLogic)
  */
 TEST_F (ControllerTestFixture, PromptUpdates)
 {
-  /* Cas 1 : Menu principal */
+
   ctx.in_main_menu = true;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Cas 2 : Réseau en LOBBY */
   ctx.in_main_menu = false;
   net_mgr.current_mode = NET_MODE_CLIENT;
   ctx.in_network_match = false;
   ctx.is_away = false;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Cas 3 : Réseau en mode AWAY */
   ctx.is_away = true;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Cas 4 : Réseau EN JEU (In Match) - rôle Blanc */
   ctx.in_network_match = true;
   ctx.is_away = false;
   ctx.my_role = PLAYER_WHITE;
   ctx.current_game->current_player = PLAYER_WHITE;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Cas 5 : Réseau EN JEU - rôle Noir */
   ctx.my_role = PLAYER_BLACK;
   ctx.current_game->current_player = PLAYER_BLACK;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Cas 6 : Mode Local */
   net_mgr.current_mode = NET_MODE_NONE;
   EXPECT_NO_THROW (update_prompt_string (&ctx));
 
-  /* Couverture de refresh_prompt */
   EXPECT_NO_THROW (refresh_prompt (&ctx));
 }
-
-/* ==========================================================================
- * 3. TESTS DES COMMANDES BASIQUES ET D'AFFICHAGE
- * ==========================================================================
- */
 
 /**
  * @brief Tests basic informational commands and their output paths.
@@ -115,24 +93,17 @@ TEST_F (ControllerTestFixture, BasicInfoCommands)
   strcpy (cmd, "pause");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Quit en mode local */
   strcpy (cmd, "quit");
   ctx.net_manager->current_mode = NET_MODE_NONE;
   handle_command (cmd, &ctx);
   EXPECT_FALSE (ctx.game_running);
 
-  /* Quit en mode réseau → retour au menu */
   ctx.game_running = true;
   ctx.net_manager->current_mode = NET_MODE_CLIENT;
   strcpy (cmd, "quit");
   handle_command (cmd, &ctx);
   EXPECT_TRUE (ctx.in_main_menu);
 }
-
-/* ==========================================================================
- * 4. TESTS DES COMMANDES RÉSEAU (Serveur)
- * ==========================================================================
- */
 
 /**
  * @brief Tests server lifecycle commands: start, status, player list, stop.
@@ -157,11 +128,6 @@ TEST_F (ControllerTestFixture, ServerCommands)
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
 
-/* ==========================================================================
- * 5. TESTS DES COMMANDES RÉSEAU (Client & Lobby)
- * ==========================================================================
- */
-
 /**
  * @brief Tests client and lobby commands when connected to a server.
  * @details Covers server-list discovery, join parsing, players list, away,
@@ -176,11 +142,9 @@ TEST_F (ControllerTestFixture, ClientLobbyCommands)
   strcpy (cmd, "server list");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Join parsing (server unreachable, but tests argument parsing) */
   strcpy (cmd, "join 127.0.0.1:9405 Alice");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Simule l'état connecté */
   net_mgr.current_mode = NET_MODE_CLIENT;
 
   strcpy (cmd, "players 2");
@@ -210,11 +174,6 @@ TEST_F (ControllerTestFixture, ClientLobbyCommands)
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
 
-/* ==========================================================================
- * 6. TESTS DE GESTION DE PARTIE (New, Undo, Save, Load)
- * ==========================================================================
- */
-
 /**
  * @brief Tests game management commands: new, undo, redo, save, and load.
  * @details Verifies that a new local game is properly initialized, that undo
@@ -224,25 +183,21 @@ TEST_F (ControllerTestFixture, ClientLobbyCommands)
 TEST_F (ControllerTestFixture, GameManagementCommands)
 {
   char cmd[128];
-
-  /* "new" en local */
+  game_cleanup (ctx.current_game);
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "new");
   handle_command (cmd, &ctx);
   EXPECT_FALSE (ctx.in_main_menu);
 
-  /* "new 2" (inviter quelqu'un en réseau) */
   net_mgr.current_mode = NET_MODE_CLIENT;
   strcpy (cmd, "new 2");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Undo / Redo en réseau (doit être refusé) */
   strcpy (cmd, "undo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
   strcpy (cmd, "redo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Save et Load */
   strcpy (cmd, "save test_save_file.amz");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
@@ -251,11 +206,6 @@ TEST_F (ControllerTestFixture, GameManagementCommands)
 
   remove ("test_save_file.amz");
 }
-
-/* ==========================================================================
- * 7. TESTS DE L'IA (Hint)
- * ==========================================================================
- */
 
 /**
  * @brief Tests the hint command under various AI initialization states.
@@ -267,24 +217,23 @@ TEST_F (ControllerTestFixture, AIHintCommand)
 {
   char cmd[128];
 
-  /* Cas 1 : Pas de partie en cours */
   ctx.current_game = nullptr;
   strcpy (cmd, "hint");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Cas 2 : Partie en cours, IA non initialisée → initialisation à la volée */
   ctx.current_game = &game;
+  game_cleanup (ctx.current_game);
   game_init (ctx.current_game);
   ctx.ai_initialized = false;
 
   strcpy (cmd, "hint");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
+  if (ctx.ai_initialized && ctx.ai.vtable->clean)
+    {
+      ctx.ai.vtable->clean (&ctx.ai);
+    }
+  game_cleanup (ctx.current_game);
 }
-
-/* ==========================================================================
- * 8. TESTS DES MOUVEMENTS ET ANTI-TRICHE
- * ==========================================================================
- */
 
 /**
  * @brief Tests move command parsing and turn-locking logic.
@@ -297,16 +246,13 @@ TEST_F (ControllerTestFixture, MoveCommandsParsing)
 {
   char cmd[128];
 
-  /* 1. Format totalement invalide */
   strcpy (cmd, "NIMPORTE_QUOI");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* 2. Format valide mais dans le MENU */
   ctx.in_main_menu = true;
   strcpy (cmd, "d10-d9(d8)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* 3. Format valide, réseau, pas notre tour */
   ctx.in_main_menu = false;
   net_mgr.current_mode = NET_MODE_CLIENT;
   ctx.in_network_match = true;
@@ -315,23 +261,17 @@ TEST_F (ControllerTestFixture, MoveCommandsParsing)
   strcpy (cmd, "d10-d9(d8)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* 4. Format valide, mode LOCAL, coup illégal (case vide) */
   net_mgr.current_mode = NET_MODE_NONE;
   ctx.current_game->current_player = PLAYER_WHITE;
   strcpy (cmd, "a1-a2(a3)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
-
-  /* 5. Tentative de coup légal depuis une reine blanche standard */
+  game_cleanup (ctx.current_game);
   game_init (ctx.current_game);
   ctx.current_game->current_player = PLAYER_WHITE;
   strcpy (cmd, "d1-d2(d3)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
+  game_cleanup (ctx.current_game);
 }
-
-/* ==========================================================================
- * 9. TESTS DE LA COMMANDE 'set' (update_config)
- * ==========================================================================
- */
 
 /**
  * @brief Tests the 'set' command with every supported configuration key.
@@ -364,16 +304,13 @@ TEST_F (ControllerTestFixture, SetCommandAllParameters)
   strcpy (cmd, "set ai_black=true");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Taille valide */
   strcpy (cmd, "set board_size=8");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
   EXPECT_EQ (config.board_size, 8);
 
-  /* Taille trop petite (< 4) */
   strcpy (cmd, "set board_size=3");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Taille trop grande (> 11) */
   strcpy (cmd, "set board_size=15");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
@@ -389,19 +326,12 @@ TEST_F (ControllerTestFixture, SetCommandAllParameters)
   strcpy (cmd, "set language=en");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Clé inconnue → message d'erreur */
   strcpy (cmd, "set unknown_parameter=value");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Format malformé sans '=' */
   strcpy (cmd, "set noequals");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 10. TESTS DES SOUS-COMMANDES 'show'
- * ==========================================================================
- */
 
 /**
  * @brief Tests every 'show' subcommand dispatched by handle_command.
@@ -414,9 +344,7 @@ TEST_F (ControllerTestFixture, ShowSubcommandsCoverage)
   char cmd[128];
 
   ctx.in_main_menu = false;
-  game_init (ctx.current_game);
 
-  /* show history — undo_stack vide (boucle ne s'exécute pas) */
   strcpy (cmd, "show history");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
@@ -429,9 +357,9 @@ TEST_F (ControllerTestFixture, ShowSubcommandsCoverage)
   strcpy (cmd, "show board");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Sous-commande inconnue → pas de crash */
   strcpy (cmd, "show unknown_sub");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
+  game_cleanup (ctx.current_game);
 }
 
 /**
@@ -445,10 +373,9 @@ TEST_F (ControllerTestFixture, ShowHistoryWithMoves)
 
   ctx.in_main_menu = false;
   net_mgr.current_mode = NET_MODE_NONE;
-  game_init (ctx.current_game);
+
   ctx.current_game->current_player = PLAYER_WHITE;
 
-  /* Joue un coup légal pour peupler l'undo_stack */
   strcpy (cmd, "d1-d2(d3)");
   handle_command (cmd, &ctx);
 
@@ -457,6 +384,7 @@ TEST_F (ControllerTestFixture, ShowHistoryWithMoves)
       strcpy (cmd, "show history");
       EXPECT_NO_THROW (handle_command (cmd, &ctx));
     }
+  game_cleanup (ctx.current_game);
 }
 
 /* ==========================================================================
@@ -481,7 +409,6 @@ TEST_F (ControllerTestFixture, BlitzModeTimeoutInHandleCommand)
   strcpy (cmd, "help");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Le garde blitz doit avoir remis in_main_menu à true */
   EXPECT_TRUE (ctx.in_main_menu);
 }
 
@@ -493,29 +420,23 @@ TEST_F (ControllerTestFixture, BlitzModeTimeoutInHandleCommand)
  */
 TEST_F (ControllerTestFixture, CheckBlitzTimeoutCallback)
 {
-  /* Sans contexte actif → retourne 0 sans crash */
+
   EXPECT_EQ (check_blitz_timeout (), 0);
 
-  /* Active un jeu local pour peupler g_ctx_ref */
   char cmd[128];
   net_mgr.current_mode = NET_MODE_NONE;
+  game_cleanup (ctx.current_game);
   strcpy (cmd, "new");
   handle_command (cmd, &ctx);
 
-  /* Jeu en cours → pas de déclenchement */
   game.blitz_mode = true;
   game.status = GAME_IN_PROGRESS;
   EXPECT_EQ (check_blitz_timeout (), 0);
 
-  /* Jeu terminé → déclenche rl_done = 1 */
   game.status = GAME_OVER_BLACK_WINS;
   EXPECT_EQ (check_blitz_timeout (), 0);
+  game_cleanup (ctx.current_game);
 }
-
-/* ==========================================================================
- * 12. TESTS DES BRANCHES RÉSEAU MANQUANTES
- * ==========================================================================
- */
 
 /**
  * @brief Tests the fallback/else branches for network commands in wrong mode.
@@ -528,58 +449,44 @@ TEST_F (ControllerTestFixture, NetworkCommandFallbackBranches)
 {
   char cmd[128];
 
-  /* ping hors connexion */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "ping");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* cancel hors connexion (else → "Only connected clients...") */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "cancel");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* server stop quand pas serveur */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "server stop");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* server status en mode client ("else if NET_MODE_CLIENT") */
   net_mgr.current_mode = NET_MODE_CLIENT;
   strcpy (cmd, "server status");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* server status sans connexion (else final) */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "server status");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* scoreboard côté serveur (cat scoreboard.txt) */
   net_mgr.current_mode = NET_MODE_SERVER;
   strcpy (cmd, "scoreboard");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* players avec ID cible en mode serveur */
   net_mgr.current_mode = NET_MODE_SERVER;
   strcpy (cmd, "players 1");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* players sans réseau (else final) */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "players 1");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* away / back hors connexion (condition non remplie → silencieux) */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "away");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
   strcpy (cmd, "back");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 13. TESTS DE SAVE/LOAD (BRANCHES ÉCHEC)
- * ==========================================================================
- */
 
 /**
  * @brief Tests save and load commands including failure paths.
@@ -591,29 +498,20 @@ TEST_F (ControllerTestFixture, SaveLoadEdgeCases)
 {
   char cmd[128];
 
-  /* Save réussi */
   strcpy (cmd, "save /tmp/test_cli_coverage.amz");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Load réussi depuis le fichier précédent */
   strcpy (cmd, "load /tmp/test_cli_coverage.amz");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Load fichier inexistant → branche d'échec */
   strcpy (cmd, "load /nonexistent/absolutely/nope.amz");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Save vers chemin non accessible → branche d'échec */
   strcpy (cmd, "save /proc/sys/kernel/unwritable_place");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
   remove ("/tmp/test_cli_coverage.amz");
 }
-
-/* ==========================================================================
- * 14. TESTS DES VARIANTES DE 'join'
- * ==========================================================================
- */
 
 /**
  * @brief Tests argument parsing for the 'join' command.
@@ -625,19 +523,12 @@ TEST_F (ControllerTestFixture, JoinCommandVariants)
 {
   char cmd[128];
 
-  /* IP sans deux-points → branche else (pas de port parsé) */
   strcpy (cmd, "join 127.0.0.1");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Aucun argument → valeurs par défaut */
   strcpy (cmd, "join");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 15. TESTS DU CANCEL AVEC INVITATION EN ATTENTE
- * ==========================================================================
- */
 
 /**
  * @brief Tests the 'cancel' command when a pending invitation exists.
@@ -651,22 +542,15 @@ TEST_F (ControllerTestFixture, CancelWithPendingInvite)
 
   net_mgr.current_mode = NET_MODE_CLIENT;
 
-  /* Invitation en attente → NetworkManager_SendCancel + reset */
   ctx.last_invited_id = 5;
   strcpy (cmd, "cancel");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
   EXPECT_EQ (ctx.last_invited_id, -1);
 
-  /* Pas d'invitation → message informatif */
   ctx.last_invited_id = -1;
   strcpy (cmd, "cancel");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 16. TESTS DU CHEMIN 'new <ID>' (INVITATIONS)
- * ==========================================================================
- */
 
 /**
  * @brief Tests the invite-sending path of the 'new <ID>' command.
@@ -678,22 +562,15 @@ TEST_F (ControllerTestFixture, NewWithInvitePaths)
 {
   char cmd[128];
 
-  /* Pas connecté → "You must join a server first" */
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "new 3");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Connecté (client_ctx NULL → SendInvite échoue gracieusement) */
   net_mgr.current_mode = NET_MODE_CLIENT;
   ctx.last_invited_id = -1;
   strcpy (cmd, "new 3");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 17. TESTS DE REJET EN LOBBY RÉSEAU
- * ==========================================================================
- */
 
 /**
  * @brief Tests that a move attempt from the lobby is correctly rejected.
@@ -711,14 +588,9 @@ TEST_F (ControllerTestFixture, MoveInLobbyRejected)
 
   strcpy (cmd, "d10-d9(d8)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
-  /* Le tour ne doit pas avoir changé */
+
   EXPECT_EQ (ctx.current_game->current_player, PLAYER_WHITE);
 }
-
-/* ==========================================================================
- * 18. TESTS DU UNDO/REDO EN MODE IA LOCAL
- * ==========================================================================
- */
 
 /**
  * @brief Tests undo and redo commands when playing against the AI in local
@@ -733,24 +605,20 @@ TEST_F (ControllerTestFixture, UndoRedoVsAILocal)
 
   config.ai_white = true;
   net_mgr.current_mode = NET_MODE_NONE;
-  game_init (ctx.current_game);
-  ctx.current_game->current_player = PLAYER_BLACK; /* IA joue les blancs */
+  ctx.current_game->current_player = PLAYER_BLACK;
 
-  /* Undo sur pile vide → "Impossible to undo" */
   strcpy (cmd, "undo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Redo sur pile vide → "Impossible to redo" */
   strcpy (cmd, "redo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* Applique un coup légal, puis undo */
   config.ai_white = false;
   config.ai_black = false;
   ctx.current_game->current_player = PLAYER_WHITE;
   ctx.in_main_menu = false;
   strcpy (cmd, "d1-d2(d3)");
-  handle_command (cmd, &ctx); /* peut être légal ou non */
+  handle_command (cmd, &ctx);
 
   config.ai_white = true;
   net_mgr.current_mode = NET_MODE_NONE;
@@ -760,11 +628,6 @@ TEST_F (ControllerTestFixture, UndoRedoVsAILocal)
   strcpy (cmd, "redo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 19. TESTS DU GAME OVER APRÈS UN MOUVEMENT
- * ==========================================================================
- */
 
 /**
  * @brief Tests game-over detection triggered immediately after apply_move.
@@ -779,20 +642,11 @@ TEST_F (ControllerTestFixture, GameOverAfterMove)
   net_mgr.current_mode = NET_MODE_NONE;
   ctx.in_main_menu = false;
   ctx.game_running = true;
-  game_init (ctx.current_game);
   ctx.current_game->current_player = PLAYER_WHITE;
 
-  /* Joue le premier coup légal ; sur un plateau standard, le jeu ne se
-   * termine pas ici, mais on vérifie que la branche is_game_over est
-   * évaluée sans crash. */
   strcpy (cmd, "d1-d2(d3)");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }
-
-/* ==========================================================================
- * 20. TESTS DES PLAYERS EN MODE CLIENT (branche TRUE)
- * ==========================================================================
- */
 
 /**
  * @brief Tests the 'players' command when the client mode is active.
@@ -807,11 +661,9 @@ TEST_F (ControllerTestFixture, PlayersCommandClientMode)
 
   net_mgr.current_mode = NET_MODE_CLIENT;
 
-  /* "players" sans ID (SendListRequest avec -1) */
   strcpy (cmd, "players");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  /* "players 2" avec ID explicite */
   strcpy (cmd, "players 2");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 }

@@ -143,6 +143,7 @@ TEST_F (NetworkManagerTest, RobustnessCapacityLimits)
 
 TEST_F (NetworkManagerTest, RobustnessInternalConsistency)
 {
+  NetworkManager_Cleanup (&server_mgr);
   // Missing Callbacks
   NetworkEvents empty_ev = {};
   NetworkManager_Init (&server_mgr, empty_ev);
@@ -164,6 +165,8 @@ TEST_F (NetworkManagerTest, RobustnessInternalConsistency)
   server_mgr.server_ctx = nullptr;
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   server_mgr.server_ctx = temp_ctx;
+  NetworkManager_Cleanup (&server_mgr);
+  NetworkManager_Cleanup (&client_mgr);
 }
 
 /* ==========================================================================
@@ -192,6 +195,7 @@ TEST_F (NetworkManagerTest, ShutdownServerRobustness)
   EXPECT_NO_THROW (NetworkManager_ShutdownServer (&server_mgr));
   EXPECT_EQ (server_mgr.current_mode, NET_MODE_NONE);
   EXPECT_EQ (server_mgr.server_ctx, nullptr);
+  NetworkManager_Cleanup (&none_mgr);
 }
 
 /* ==========================================================================
@@ -244,7 +248,7 @@ TEST_F (NetworkManagerTest, ClientDetectsServerCrash)
 TEST_F (NetworkManagerTest, UDPDiscoveryParsingRobustness)
 {
   // Le client initialise son écoute UDP
-  NetworkManager_Init (&client_mgr, test_callbacks);
+
   int udp_sock = socket (AF_INET, SOCK_DGRAM, 0);
 
   struct sockaddr_in dest;

@@ -46,6 +46,7 @@ protected:
   TearDown () override
   {
     create_cli_network_events (nullptr);
+    game_cleanup (&game);
   }
 };
 

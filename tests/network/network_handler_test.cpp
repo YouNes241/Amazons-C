@@ -304,7 +304,7 @@ TEST_F (NetworkManagerTest, LobbyFullLifecycle_InviteAndAccept)
   EXPECT_EQ (server_mgr.server_ctx->clients[2].status, CLIENT_STATUS_INGAME);
   EXPECT_EQ (server_mgr.server_ctx->clients[1].game_id, 1);
   EXPECT_EQ (server_mgr.server_ctx->clients[2].game_id, 1);
-
+  NetworkManager_Cleanup (&server_mgr);
   NetworkManager_Cleanup (&alice);
   NetworkManager_Cleanup (&bob);
 }
@@ -1042,7 +1042,7 @@ TEST_F (NetworkManagerTest, ProcessMoveLegalAndIllegalPaths)
   send (alice.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   EXPECT_NO_THROW (NetworkManager_Tick (&bob));
-
+  game_cleanup (board);
   /* Ré-initialise pour le prochain test */
   game_init (board);
   board->current_player = PLAYER_WHITE;
@@ -1052,7 +1052,7 @@ TEST_F (NetworkManagerTest, ProcessMoveLegalAndIllegalPaths)
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
-
+  game_cleanup (board);
   /* Coup illégal bien formatté (case vide b5) */
   game_init (board);
   board->current_player = PLAYER_WHITE;
@@ -1060,7 +1060,7 @@ TEST_F (NetworkManagerTest, ProcessMoveLegalAndIllegalPaths)
   SerializePacket (&pkt, buf, sizeof (buf));
   send (alice.client_ctx->server_socket, buf, strlen (buf), 0);
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
-
+  NetworkManager_Cleanup (&server_mgr);
   NetworkManager_Cleanup (&alice);
   NetworkManager_Cleanup (&bob);
 }

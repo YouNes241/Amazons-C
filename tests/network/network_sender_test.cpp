@@ -49,6 +49,7 @@ TEST_F (NetworkManagerTest, APIHelperFunctionsCoverage2)
   EXPECT_EQ (NetworkManager_SendTimeout (&none_mgr), NET_ERROR);
   EXPECT_EQ (NetworkManager_SendTimeout (&client_mgr), NET_SUCCESS);
   EXPECT_EQ (NetworkManager_SendTimeout (&server_mgr), NET_SUCCESS);
+  NetworkManager_Cleanup (&none_mgr);
 }
 
 /* ==========================================================================

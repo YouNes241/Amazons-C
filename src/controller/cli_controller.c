@@ -184,6 +184,7 @@ run_interactive_mode (game_config_t *config)
               bool i_won = (winner == ctx->my_role);
               NetworkManager_SendGameOver (ctx->net_manager, i_won);
               ctx->in_network_match = false;
+              game_cleanup (ctx->current_game);
               game_init (ctx->current_game);
               printf (_ ("\n[LOBBY] Match ended. Returning to Lobby.\n"));
               refresh_prompt (ctx);
@@ -289,6 +290,7 @@ run_interactive_mode (game_config_t *config)
       ctx->ai.vtable->clean (&ctx->ai);
     }
   NetworkManager_Cleanup (ctx->net_manager);
+  game_cleanup (ctx->current_game);
   free (ctx);
   g_cli_ctx = NULL;
 }

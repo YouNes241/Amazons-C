@@ -110,8 +110,7 @@ TEST_F (NetworkManagerTest, GetServerList_Success)
   char buffer[512];
 
   // we simulate a discovered server in the client's discovery context
-  client_mgr.discovery_ctx = (struct ClientDiscoveryContext *)calloc (
-      1, sizeof (struct ClientDiscoveryContext));
+
   client_mgr.discovery_ctx->server_count = 1;
   client_mgr.discovery_ctx->servers[0].port = 1234;
   client_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
@@ -159,7 +158,7 @@ TEST_F (NetworkManagerTest, GetServerStatus_Robustness)
   EXPECT_EQ (
       NetworkManager_GetServerStatus (&none_mgr, &clients, &games, &port),
       NET_ERROR);
-
+  NetworkManager_Cleanup (&none_mgr);
   // 4. Passing NULL pointers as output should not cause a crash.
   EXPECT_EQ (
       NetworkManager_GetServerStatus (&server_mgr, nullptr, nullptr, nullptr),
@@ -229,21 +228,29 @@ TEST_F (NetworkManagerTest, GetServerList_Robustness)
   NetworkManager_Init (&no_discovery_mgr, test_callbacks);
   free (no_discovery_mgr.discovery_ctx);
   no_discovery_mgr.discovery_ctx = nullptr;
+
   EXPECT_EQ (NetworkManager_GetServerList (&no_discovery_mgr, buffer,
                                            sizeof (buffer)),
              -1);
 
+  // CORRECTION : On nettoie le BON manager
+  NetworkManager_Cleanup (&no_discovery_mgr);
+
   // 3. Buffer Overflow protection with very long server names
-  client_mgr.discovery_ctx = (struct ClientDiscoveryContext *)calloc (
-      1, sizeof (struct ClientDiscoveryContext));
-  client_mgr.discovery_ctx->server_count = 1;
-  client_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
+  NetworkManager overflow_mgr;
+  NetworkManager_Init (&overflow_mgr, test_callbacks);
+
+  overflow_mgr.discovery_ctx->server_count = 1;
+  overflow_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
+
   // An abusive name that exceeds the buffer size when formatted
-  memset (client_mgr.discovery_ctx->servers[0].name, 'A',
+  memset (overflow_mgr.discovery_ctx->servers[0].name, 'A',
           MAX_SERVER_NAME_LEN - 1);
-  client_mgr.discovery_ctx->servers[0].name[MAX_SERVER_NAME_LEN - 1] = '\0';
+  overflow_mgr.discovery_ctx->servers[0].name[MAX_SERVER_NAME_LEN - 1] = '\0';
 
   char tiny_buffer[20];
-  EXPECT_NO_THROW (NetworkManager_GetServerList (&client_mgr, tiny_buffer,
+  EXPECT_NO_THROW (NetworkManager_GetServerList (&overflow_mgr, tiny_buffer,
                                                  sizeof (tiny_buffer)));
+
+  NetworkManager_Cleanup (&overflow_mgr);
 }

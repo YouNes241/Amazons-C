@@ -28,6 +28,7 @@ TEST_F (ControllerTestFixture, NullContextRobustness)
  */
 TEST_F (ControllerTestFixture, GameStartedLogic)
 {
+  game_cleanup (ctx.current_game);
   // Test Démarrage en tant que Blanc
   events.OnGameStarted (PLAYER_WHITE, 10);
   EXPECT_EQ (ctx.my_role, PLAYER_WHITE);
@@ -35,6 +36,7 @@ TEST_F (ControllerTestFixture, GameStartedLogic)
   EXPECT_EQ (ctx.current_game->size, 10);
   EXPECT_GT (ctx.turn_start_time, 0); // Timer activé
 
+  game_cleanup (ctx.current_game);
   // Test Démarrage en tant que Noir
   events.OnGameStarted (PLAYER_BLACK, 8);
   EXPECT_EQ (ctx.my_role, PLAYER_BLACK);
@@ -64,7 +66,7 @@ TEST_F (ControllerTestFixture, TimeoutReceivedLogic)
  */
 TEST_F (ControllerTestFixture, MoveReceivedLogic)
 {
-  game_init (ctx.current_game);
+
   ctx.current_game->current_player = PLAYER_WHITE;
 
   // A. Un coup complètement illégal (ne doit pas changer le tour)
