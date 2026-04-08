@@ -11,17 +11,18 @@
 void
 navigationClick (GtkButton *button, gpointer user_data)
 {
+  assert (button != NULL);
+
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
+  assert (ctx->mainStack != NULL);
 
   const char *targetPage
       = (const char *)g_object_get_data (G_OBJECT (button), "target_page");
+  assert (targetPage != NULL);
 
-  if (targetPage != NULL)
-    {
-      gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
-    }
+  gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
 }
 
 void
@@ -47,8 +48,11 @@ infoPopupButtonClick (GtkButton *button, gpointer user_data)
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/info_popup.ui");
+  assert (builder != NULL);
+
   GtkWindow *infoWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "info_window"));
+  assert (infoWindow != NULL);
 
   gtk_window_set_transient_for (infoWindow, GTK_WINDOW (ctx->mainWindow));
   gtk_window_present (infoWindow);
@@ -64,90 +68,111 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
+  assert (ctx->gameConfig != NULL);
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/popups/config_popup.ui");
+  assert (builder != NULL);
+
   GtkWindow *configWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "config_window"));
+  assert (configWindow != NULL);
 
   gtk_window_set_transient_for (configWindow, GTK_WINDOW (ctx->mainWindow));
 
   GtkWidget *verboseSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
+  assert (verboseSwitch != NULL);
+
   GtkWidget *blitzSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "blitz_switch"));
+  assert (blitzSwitch != NULL);
+
   GtkWidget *timeoutField
       = GTK_WIDGET (gtk_builder_get_object (builder, "timeout_field"));
+  assert (timeoutField != NULL);
+
   GtkWidget *boardSizeField
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_field"));
+  assert (boardSizeField != NULL);
+
   GtkWidget *aiWhiteSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
+  assert (aiWhiteSwitch != NULL);
+
   GtkWidget *aiBlackSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
+  assert (aiBlackSwitch != NULL);
 
   GtkWidget *langDropdownContainer = GTK_WIDGET (
       gtk_builder_get_object (builder, "lang_dropdown_container"));
-  GtkWidget *langDropdown;
 
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
+  assert (bindNewGameBtn != NULL);
+
   GtkWidget *bindLoadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
+  assert (bindLoadBtn != NULL);
+
   GtkWidget *bindSaveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
+  assert (bindSaveBtn != NULL);
+
   GtkWidget *bindUndoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
+  assert (bindUndoBtn != NULL);
+
   GtkWidget *bindRedoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
+  assert (bindRedoBtn != NULL);
+
   GtkWidget *bindPauseBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
+  assert (bindPauseBtn != NULL);
+
   GtkWidget *bindHintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
+  assert (bindHintBtn != NULL);
+
   GtkWidget *bindConfigBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
+  assert (bindConfigBtn != NULL);
+
   GtkWidget *bindInfoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
+  assert (bindInfoBtn != NULL);
+
   GtkWidget *bindQuitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
+  assert (bindQuitBtn != NULL);
 
-  if (verboseSwitch)
-    gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
-                           ctx->gameConfig->verbose);
-  if (blitzSwitch)
-    gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
-                           ctx->gameConfig->blitz_mode);
-  if (timeoutField)
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
-                               ctx->gameConfig->time_per_player);
-  if (boardSizeField)
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
-                               ctx->gameConfig->board_size);
-  if (aiWhiteSwitch)
-    gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
-                           ctx->gameConfig->ai_white);
-  if (aiBlackSwitch)
-    gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
-                           ctx->gameConfig->ai_black);
+  gtk_switch_set_active (GTK_SWITCH (verboseSwitch), ctx->gameConfig->verbose);
+  gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
+                         ctx->gameConfig->blitz_mode);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
+                             ctx->gameConfig->time_per_player);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
+                             ctx->gameConfig->board_size);
+  gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
+                         ctx->gameConfig->ai_white);
+  gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
+                         ctx->gameConfig->ai_black);
 
-  if (verboseSwitch)
-    g_signal_connect (verboseSwitch, "notify::active",
-                      G_CALLBACK (updateConfigVerbose), ctx);
-  if (blitzSwitch)
-    g_signal_connect (blitzSwitch, "notify::active",
-                      G_CALLBACK (updateConfigBlitz), ctx);
-  if (timeoutField)
-    g_signal_connect (timeoutField, "value-changed",
-                      G_CALLBACK (updateConfigTimeout), ctx);
-  if (boardSizeField)
-    g_signal_connect (boardSizeField, "value-changed",
-                      G_CALLBACK (updateConfigBoardSize), ctx);
-  if (aiWhiteSwitch)
-    g_signal_connect (aiWhiteSwitch, "notify::active",
-                      G_CALLBACK (updateConfigAiWhite), ctx);
-  if (aiBlackSwitch)
-    g_signal_connect (aiBlackSwitch, "notify::active",
-                      G_CALLBACK (updateConfigAiBlack), ctx);
+  g_signal_connect (verboseSwitch, "notify::active",
+                    G_CALLBACK (updateConfigVerbose), ctx);
+  g_signal_connect (blitzSwitch, "notify::active",
+                    G_CALLBACK (updateConfigBlitz), ctx);
+  g_signal_connect (timeoutField, "value-changed",
+                    G_CALLBACK (updateConfigTimeout), ctx);
+  g_signal_connect (boardSizeField, "value-changed",
+                    G_CALLBACK (updateConfigBoardSize), ctx);
+  g_signal_connect (aiWhiteSwitch, "notify::active",
+                    G_CALLBACK (updateConfigAiWhite), ctx);
+  g_signal_connect (aiBlackSwitch, "notify::active",
+                    G_CALLBACK (updateConfigAiBlack), ctx);
 
+  GtkWidget *langDropdown;
 #if GTK_CHECK_VERSION(4, 10, 0)
   const char *langs[] = { "English", "Français", NULL };
   GtkStringList *stringList = gtk_string_list_new (langs);
@@ -271,8 +296,8 @@ void
 hintButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-  GuiContext *ctx = (GuiContext *)user_data;
 
+  GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
 
@@ -291,7 +316,6 @@ hintButtonClick (GtkButton *button, gpointer user_data)
 
   ConfigMap empty_params = { 0, NULL };
   AI_Interface hint_ai = create_ai ("minimax", empty_params);
-
   assert (hint_ai.vtable != NULL);
 
   g_print ("[AI] Initializing advice engine...\n");
@@ -313,6 +337,7 @@ quitGameButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   if (ctx->isNetworkMatch)
     {
@@ -330,15 +355,22 @@ quitGameButtonClick (GtkButton *button, gpointer user_data)
 void
 joinServerButtonClick (GtkButton *button, gpointer user_data)
 {
+  assert (button != NULL);
+
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
 
   const char *ip_str
       = (const char *)g_object_get_data (G_OBJECT (button), "server_ip");
+  assert (ip_str != NULL);
+
   int port
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (button), "server_port"));
+
   GtkEditable *username_entry
       = GTK_EDITABLE (g_object_get_data (G_OBJECT (button), "username_entry"));
+  assert (username_entry != NULL);
 
   const char *username_str = gtk_editable_get_text (username_entry);
 
@@ -355,19 +387,17 @@ joinServerButtonClick (GtkButton *button, gpointer user_data)
     {
       NetworkManager_SendJoin (ctx->networkManager, username_str);
 
-      if (ctx->mainStack != NULL)
-        {
-          GtkWidget *titleLabel = GTK_WIDGET (g_object_get_data (
-              G_OBJECT (ctx->mainStack), "lobby_title_label"));
-          if (titleLabel)
-            {
-              char *titleText = g_strdup_printf ("%s", username_str);
-              gtk_label_set_text (GTK_LABEL (titleLabel), titleText);
-              g_free (titleText);
-            }
-          gtk_stack_set_visible_child_name (ctx->mainStack,
-                                            "client_panel_page");
-        }
+      assert (ctx->mainStack != NULL);
+
+      GtkWidget *titleLabel = GTK_WIDGET (
+          g_object_get_data (G_OBJECT (ctx->mainStack), "lobby_title_label"));
+      assert (titleLabel != NULL);
+
+      char *titleText = g_strdup_printf ("%s", username_str);
+      gtk_label_set_text (GTK_LABEL (titleLabel), titleText);
+      g_free (titleText);
+
+      gtk_stack_set_visible_child_name (ctx->mainStack, "client_panel_page");
     }
   else
     {
@@ -378,16 +408,19 @@ joinServerButtonClick (GtkButton *button, gpointer user_data)
 void
 refreshServerListButtonClick (GtkButton *button, gpointer user_data)
 {
+  assert (button != NULL);
+
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
 
   GtkListBox *listbox
       = GTK_LIST_BOX (g_object_get_data (G_OBJECT (button), "server_listbox"));
+  assert (listbox != NULL);
+
   GtkWidget *username_entry
       = GTK_WIDGET (g_object_get_data (G_OBJECT (button), "username_entry"));
-
-  if (!ctx || !ctx->networkManager || !listbox)
-    return;
+  assert (username_entry != NULL);
 
   GtkWidget *child;
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (listbox))) != NULL)
@@ -421,7 +454,7 @@ refreshServerListButtonClick (GtkButton *button, gpointer user_data)
               gtk_widget_set_margin_top (row_box, 10);
               gtk_widget_set_margin_bottom (row_box, 10);
 
-              char display_text[128];
+              char display_text[256];
               snprintf (display_text, sizeof (display_text), "%s\t\t%s:%d",
                         name, ip, port);
 
@@ -466,13 +499,11 @@ disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   guiDisconnectAndRestartNetwork (ctx);
 
-  if (ctx->mainStack != NULL)
-    {
-      gtk_stack_set_visible_child_name (ctx->mainStack, "join_server_page");
-    }
+  gtk_stack_set_visible_child_name (ctx->mainStack, "join_server_page");
 }
 
 void
@@ -482,23 +513,34 @@ createGameButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/popups/create_game_popup.ui");
+  assert (builder != NULL);
+
   GtkWindow *createGameWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "create_game_window"));
+  assert (createGameWindow != NULL);
 
   gtk_window_set_transient_for (createGameWindow,
                                 GTK_WINDOW (ctx->mainWindow));
 
   GtkWidget *targetIdEntry
       = GTK_WIDGET (gtk_builder_get_object (builder, "target_id_entry"));
+  assert (targetIdEntry != NULL);
+
   GtkWidget *boardSizeSpin
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_spin"));
+  assert (boardSizeSpin != NULL);
+
   GtkWidget *cancelBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "cancel_btn"));
+  assert (cancelBtn != NULL);
+
   GtkWidget *inviteBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "invite_btn"));
+  assert (inviteBtn != NULL);
 
   g_object_set_data (G_OBJECT (inviteBtn), "target_id_entry", targetIdEntry);
   g_object_set_data (G_OBJECT (inviteBtn), "board_size_spin", boardSizeSpin);
@@ -516,15 +558,22 @@ createGameButtonClick (GtkButton *button, gpointer user_data)
 void
 sendInviteButtonClick (GtkButton *button, gpointer user_data)
 {
+  assert (button != NULL);
+
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
 
   GtkEditable *target_id_entry = GTK_EDITABLE (
       g_object_get_data (G_OBJECT (button), "target_id_entry"));
+  assert (target_id_entry != NULL);
+
   GtkSpinButton *board_size_spin = GTK_SPIN_BUTTON (
       g_object_get_data (G_OBJECT (button), "board_size_spin"));
+  assert (board_size_spin != NULL);
+
   GtkWindow *popup_window
       = GTK_WINDOW (g_object_get_data (G_OBJECT (button), "popup_window"));
+  assert (popup_window != NULL);
 
   const char *id_str = gtk_editable_get_text (target_id_entry);
   int target_id = atoi (id_str);
@@ -550,6 +599,7 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   if (ctx->isNetworkMatch)
     {
@@ -559,11 +609,9 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
 
   GtkWidget *boardGrid = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+  assert (boardGrid != NULL);
 
-  if (boardGrid)
-    {
-      setupBoard (ctx, boardGrid);
-    }
+  setupBoard (ctx, boardGrid);
 
   guiStartNewGame (ctx);
   gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
@@ -576,21 +624,30 @@ hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainWindow != NULL);
 
   GtkBuilder *builder = gtk_builder_new_from_resource (
       "/amazons/ui/popups/create_server_popup.ui");
+  assert (builder != NULL);
+
   GtkWindow *createServerWindow
       = GTK_WINDOW (gtk_builder_get_object (builder, "create_server_window"));
+  assert (createServerWindow != NULL);
 
   gtk_window_set_transient_for (createServerWindow,
                                 GTK_WINDOW (ctx->mainWindow));
 
   GtkWidget *portSpin
       = GTK_WIDGET (gtk_builder_get_object (builder, "port_spin"));
+  assert (portSpin != NULL);
+
   GtkWidget *cancelBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "cancel_btn"));
+  assert (cancelBtn != NULL);
+
   GtkWidget *startBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "start_btn"));
+  assert (startBtn != NULL);
 
   g_object_set_data (G_OBJECT (startBtn), "port_spin", portSpin);
   g_object_set_data (G_OBJECT (startBtn), "popup_window", createServerWindow);
@@ -609,27 +666,31 @@ hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
 void
 startServerButtonClick (GtkButton *button, gpointer user_data)
 {
+  assert (button != NULL);
+
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
 
   GtkSpinButton *port_spin
       = GTK_SPIN_BUTTON (g_object_get_data (G_OBJECT (button), "port_spin"));
+  assert (port_spin != NULL);
+
   GtkWindow *popup_window
       = GTK_WINDOW (g_object_get_data (G_OBJECT (button), "popup_window"));
+  assert (popup_window != NULL);
 
   int port = gtk_spin_button_get_value_as_int (port_spin);
 
   if (NetworkManager_ServerStart (ctx->networkManager, port) == 0)
     {
-      if (ctx->mainStack != NULL)
-        {
-          gtk_stack_set_visible_child_name (ctx->mainStack, "host_panel_page");
 
-          gui_log_to_server_console (ctx, "[*] Server initialized on port %d",
-                                     port);
-          gui_log_to_server_console (ctx,
-                                     "[*] Waiting for players to connect...");
-        }
+      assert (ctx->mainStack != NULL);
+
+      gtk_stack_set_visible_child_name (ctx->mainStack, "host_panel_page");
+
+      gui_log_to_server_console (ctx, "[*] Server initialized on port %d",
+                                 port);
+      gui_log_to_server_console (ctx, "[*] Waiting for players to connect...");
     }
   else
     {
@@ -647,15 +708,13 @@ stopServerButtonClick (GtkButton *button, gpointer user_data)
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   g_print ("[SERVER] Shutting down server...\n");
 
   NetworkManager_ShutdownServer (ctx->networkManager);
 
-  if (ctx->mainStack != NULL)
-    {
-      gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
-    }
+  gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
 }
 
 GdkContentProvider *
@@ -667,6 +726,7 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
@@ -777,6 +837,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
       return FALSE;
     }
 
+  assert (value != NULL);
   const char *srcString = g_value_get_string (value);
   int srcIndex = atoi (srcString);
 
@@ -832,6 +893,7 @@ fireArrow (GtkWidget *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (button != NULL);
 
   if (ctx->currentPhase != PHASE_SHOOT_ARROW
       || (ctx->isNetworkMatch
@@ -849,7 +911,6 @@ fireArrow (GtkWidget *button, gpointer user_data)
 
   int isLegal = GPOINTER_TO_INT (
       g_object_get_data (G_OBJECT (button), "is_legal_move"));
-
   if (!isLegal)
     return;
 
@@ -883,6 +944,7 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
 
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -916,6 +978,7 @@ onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
 
   GtkWidget *cellBox
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (gesture));
+  assert (cellBox != NULL);
 
   fireArrow (cellBox, user_data);
 }
@@ -925,8 +988,13 @@ updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
 
-  ((GuiContext *)user_data)->gameConfig->verbose
-      = gtk_switch_get_active (widget);
+  assert (widget != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->verbose = gtk_switch_get_active (widget);
 }
 
 void
@@ -934,22 +1002,38 @@ updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
 
-  ((GuiContext *)user_data)->gameConfig->blitz_mode
-      = gtk_switch_get_active (widget);
+  assert (widget != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->blitz_mode = gtk_switch_get_active (widget);
 }
 
 void
 updateConfigTimeout (GtkSpinButton *spin_button, gpointer user_data)
 {
-  ((GuiContext *)user_data)->gameConfig->time_per_player
+  assert (spin_button != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->time_per_player
       = gtk_spin_button_get_value_as_int (spin_button);
 }
 
 void
 updateConfigBoardSize (GtkSpinButton *spin_button, gpointer user_data)
 {
-  ((GuiContext *)user_data)->gameConfig->board_size
-      = gtk_spin_button_get_value_as_int (spin_button);
+  assert (spin_button != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->board_size = gtk_spin_button_get_value_as_int (spin_button);
 }
 
 void
@@ -957,8 +1041,13 @@ updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
 
-  ((GuiContext *)user_data)->gameConfig->ai_white
-      = gtk_switch_get_active (widget);
+  assert (widget != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->ai_white = gtk_switch_get_active (widget);
 }
 
 void
@@ -966,8 +1055,13 @@ updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
 
-  ((GuiContext *)user_data)->gameConfig->ai_black
-      = gtk_switch_get_active (widget);
+  assert (widget != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
+  ctx->gameConfig->ai_black = gtk_switch_get_active (widget);
 }
 
 #if GTK_CHECK_VERSION(4, 10, 0)
@@ -976,10 +1070,16 @@ updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
 
+  assert (object != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
   guint active = gtk_drop_down_get_selected (GTK_DROP_DOWN (object));
   if (active == 0 || active == 1)
     {
-      ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
+      ctx->gameConfig->language = (lang_t)active;
     }
 }
 
@@ -989,6 +1089,8 @@ on_save_file_selected (GObject *source_object, GAsyncResult *res,
 {
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->gameState != NULL);
 
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
@@ -1013,6 +1115,8 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
 {
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->mainStack != NULL);
 
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
@@ -1036,23 +1140,18 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
 
           GtkWidget *boardGrid = GTK_WIDGET (
               g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+          assert (boardGrid != NULL);
 
-          if (boardGrid)
-            {
-              setupBoard (ctx, boardGrid);
-              load_game (path, ctx->gameConfig, ctx->gameState);
-              guiStartNewGame (ctx);
-            }
+          setupBoard (ctx, boardGrid);
+          load_game (path, ctx->gameConfig, ctx->gameState);
+          guiStartNewGame (ctx);
 
           ctx->currentPhase = PHASE_MOVE_QUEEN;
           clearHighlights (ctx);
           drawBoard (ctx);
           updateTurnDisplay (ctx);
 
-          if (ctx->mainStack)
-            {
-              gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
-            }
+          gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
         }
       else
         {
@@ -1074,6 +1173,14 @@ saveButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
+  assert (ctx->gameState != NULL);
+
+  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
+    {
+      guiShowPopup (
+          ctx, "Please finish your move (shoot the arrow) before saving.");
+      return;
+    }
 
   GtkFileDialog *dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_title (dialog, "Save the current game");
@@ -1090,6 +1197,12 @@ loadButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
 
+  if (ctx->isNetworkMatch)
+    {
+      guiShowPopup (ctx, "Action disabled during a network match.");
+      return;
+    }
+
   GtkFileDialog *dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_title (dialog, "Load a game");
   gtk_file_dialog_open (dialog, ctx->mainWindow, NULL, on_load_file_selected,
@@ -1099,10 +1212,16 @@ loadButtonClick (GtkButton *button, gpointer user_data)
 void
 updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
 {
+  assert (combo_box != NULL);
+
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+
   int active = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
   if (active == 0 || active == 1)
     {
-      ((GuiContext *)user_data)->gameConfig->language = (lang_t)active;
+      ctx->gameConfig->language = (lang_t)active;
     }
 }
 
@@ -1113,6 +1232,8 @@ on_save_response (GtkNativeDialog *native, int response, gpointer user_data)
     {
       GuiContext *ctx = (GuiContext *)user_data;
       assert (ctx != NULL);
+      assert (ctx->gameConfig != NULL);
+      assert (ctx->gameState != NULL);
 
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
@@ -1138,6 +1259,8 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
     {
       GuiContext *ctx = (GuiContext *)user_data;
       assert (ctx != NULL);
+      assert (ctx->gameConfig != NULL);
+      assert (ctx->mainStack != NULL);
 
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
@@ -1159,24 +1282,18 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
 
               GtkWidget *boardGrid = GTK_WIDGET (
                   g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
+              assert (boardGrid != NULL);
 
-              if (boardGrid)
-                {
-                  setupBoard (ctx, boardGrid);
-                  load_game (path, ctx->gameConfig, ctx->gameState);
-                  guiStartNewGame (ctx);
-                }
+              setupBoard (ctx, boardGrid);
+              load_game (path, ctx->gameConfig, ctx->gameState);
+              guiStartNewGame (ctx);
 
               ctx->currentPhase = PHASE_MOVE_QUEEN;
               clearHighlights (ctx);
               drawBoard (ctx);
               updateTurnDisplay (ctx);
 
-              if (ctx->mainStack)
-                {
-                  gtk_stack_set_visible_child_name (ctx->mainStack,
-                                                    "game_page");
-                }
+              gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
             }
           else
             {
@@ -1200,6 +1317,7 @@ saveButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (ctx->mainWindow != NULL);
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -1223,6 +1341,7 @@ loadButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (ctx->mainWindow != NULL);
 
   if (ctx->isNetworkMatch)
     {
