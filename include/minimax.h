@@ -47,10 +47,6 @@ extern const EvaluatorType DEFAULT_EVALUATOR; // evaluator (me, qd&kd, rth)
  * fully explored depth within the time limit.
  * @var Minimax_Data::evaluate
  * Evaluation function used by Minimax
- * @var Minimax_Data::killer_moves
- * Killer moves for each depth, used for move ordering in alpha-beta pruning.
- * @var Minimax_Data::history_table
- * History table for moves, used for move ordering in alpha-beta pruning.
  */
 typedef struct
 {
@@ -59,10 +55,6 @@ typedef struct
   bool forward_pruning_enabled;
   bool iterative_deepening_enabled;
   Evaluator evaluate;
-
-  Move killer_moves[20][2];
-
-  uint32_t history_table[121][121];
 } Minimax_Data;
 
 extern const AI_VTable minimax_vtable;

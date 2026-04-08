@@ -109,8 +109,22 @@ void update_best_move (bool is_maximizing, float score, const Move candidate,
  * than or equal to beam_limit depending on the number of legal moves
  * available.
  */
-int get_top_moves (Minimax_Data *data, int depth, const BitboardState *state,
-                   int beam_limit, ScoredMove *top_moves);
+int get_top_moves (const BitboardState *state, int beam_limit,
+                   ScoredMove *top_moves);
+
+/**
+ * @brief Updates (inline) a given array of moves by moving the best move found
+ * to the front of the array, and shifting other moves accordingly.
+ * @note This is used to improve move ordering in iterative deepening, to have
+ * more chance of pruning.
+ *
+ * @param count The number of moves in the available_moves array.
+ * @param best_move_overall The best move found in the previous iteration.
+ * @param available_moves The array of available moves to reorder. Mind that it
+ * should be of size at least count.
+ */
+void sort_moves (int count, const Move best_move_overall,
+                 Move *available_moves);
 
 /**
  * @brief Searches for the best move from the root of the Minimax search
@@ -129,7 +143,7 @@ int get_top_moves (Minimax_Data *data, int depth, const BitboardState *state,
  * Minimax evaluation. If no moves are available, returns a default move with
  * all fields set to zero.
  */
-Move run_root_search (Minimax_Data *data, const BitboardState *state,
+Move run_root_search (const Minimax_Data *data, const BitboardState *state,
                       int depth, unsigned long start_time,
                       Move *available_moves, int count);
 
@@ -179,8 +193,7 @@ int get_arrow_moves (const Move *queen_moves, int queen_move_count,
  * on their scores.
  * @return The actual number of moves selected as the best moves.
  */
-int pick_top_moves (const Minimax_Data *data, int depth,
-                    const BitboardState *state, const Move *raw_moves,
+int pick_top_moves (const BitboardState *state, const Move *raw_moves,
                     int count, int limit, ScoredMove *best_moves);
 
 /**
@@ -200,7 +213,7 @@ int pick_top_moves (const Minimax_Data *data, int depth,
  * @return The best score for the current player at this level of the search
  * tree.
  */
-float alpha_beta_forward (Minimax_Data *data, const BitboardState *state,
+float alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
                           int depth, float alpha, float beta, bool maximizing,
                           unsigned long start_time);
 
