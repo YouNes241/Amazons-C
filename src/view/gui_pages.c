@@ -8,24 +8,33 @@ createMainMenuPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
 
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *singleplayerBtn;
-  GtkWidget *multiplayerBtn;
-  GtkWidget *configBtn;
-  GtkWidget *infoBtn;
-  GtkWidget *quitBtn;
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/main_menu.ui");
+  assert (builder != NULL);
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/main_menu.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "main_menu_box"));
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "main_menu_box"));
+  assert (box != NULL);
 
-  singleplayerBtn
+  GtkWidget *singleplayerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_btn"));
-  multiplayerBtn
+  assert (singleplayerBtn != NULL);
+
+  GtkWidget *multiplayerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_btn"));
-  configBtn = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
-  infoBtn = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
-  quitBtn = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  assert (multiplayerBtn != NULL);
+
+  GtkWidget *configBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
+  assert (configBtn != NULL);
+
+  GtkWidget *infoBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
+  assert (infoBtn != NULL);
+
+  GtkWidget *quitBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  assert (quitBtn != NULL);
 
   g_object_set_data (G_OBJECT (singleplayerBtn), "target_page",
                      "singleplayer_page");
@@ -53,18 +62,25 @@ createSingleplayerMenuPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
 
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *newGameBtn;
-  GtkWidget *loadGameBtn;
-  GtkWidget *returnBtn;
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/singleplayer.ui");
+  assert (builder != NULL);
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/singleplayer.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_box"));
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "singleplayer_box"));
+  assert (box != NULL);
 
-  newGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
-  loadGameBtn = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
-  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  GtkWidget *newGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  assert (newGameBtn != NULL);
+
+  GtkWidget *loadGameBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
+  assert (loadGameBtn != NULL);
+
+  GtkWidget *returnBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  assert (returnBtn != NULL);
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
 
@@ -84,38 +100,36 @@ createMultiplayerMenuPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
 
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *returnBtn;
-  GtkWidget *hostServerBtn;
-  GtkWidget *joinServerBtn;
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/multiplayer.ui");
+  assert (builder != NULL);
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/multiplayer.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
+  GtkWidget *box
+      = GTK_WIDGET (gtk_builder_get_object (builder, "multiplayer_box"));
+  assert (box != NULL);
 
-  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
-  hostServerBtn
+  GtkWidget *returnBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  assert (returnBtn != NULL);
+
+  GtkWidget *hostServerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "host_server_btn"));
-  joinServerBtn
+  assert (hostServerBtn != NULL);
+
+  GtkWidget *joinServerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_btn"));
+  assert (joinServerBtn != NULL);
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
-
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
 
-  if (hostServerBtn)
-    {
-      g_signal_connect (hostServerBtn, "clicked",
-                        G_CALLBACK (hostServerPopupButtonClick), ctx);
-    }
+  g_signal_connect (hostServerBtn, "clicked",
+                    G_CALLBACK (hostServerPopupButtonClick), ctx);
 
-  if (joinServerBtn)
-    {
-      g_object_set_data (G_OBJECT (joinServerBtn), "target_page",
-                         "join_server_page");
-      g_signal_connect (joinServerBtn, "clicked", G_CALLBACK (navigationClick),
-                        ctx);
-    }
+  g_object_set_data (G_OBJECT (joinServerBtn), "target_page",
+                     "join_server_page");
+  g_signal_connect (joinServerBtn, "clicked", G_CALLBACK (navigationClick),
+                    ctx);
 
   g_object_ref (box);
   g_object_unref (builder);
@@ -127,96 +141,113 @@ GtkWidget *
 createConfigPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
 
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *returnBtn;
-  GtkWidget *verboseSwitch;
-  GtkWidget *blitzSwitch;
-  GtkWidget *timeoutField;
-  GtkWidget *boardSizeField;
-  GtkWidget *aiWhiteSwitch;
-  GtkWidget *aiBlackSwitch;
-  GtkWidget *langDropdown;
+  GtkBuilder *builder
+      = gtk_builder_new_from_resource ("/amazons/ui/config.ui");
+  assert (builder != NULL);
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/config.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "config_box"));
-  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "config_box"));
+  assert (box != NULL);
 
-  verboseSwitch
+  GtkWidget *returnBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  assert (returnBtn != NULL);
+
+  GtkWidget *verboseSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
-  blitzSwitch = GTK_WIDGET (gtk_builder_get_object (builder, "blitz_switch"));
-  timeoutField
+  assert (verboseSwitch != NULL);
+
+  GtkWidget *blitzSwitch
+      = GTK_WIDGET (gtk_builder_get_object (builder, "blitz_switch"));
+  assert (blitzSwitch != NULL);
+
+  GtkWidget *timeoutField
       = GTK_WIDGET (gtk_builder_get_object (builder, "timeout_field"));
-  boardSizeField
+  assert (timeoutField != NULL);
+
+  GtkWidget *boardSizeField
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_size_field"));
-  aiWhiteSwitch
+  assert (boardSizeField != NULL);
+
+  GtkWidget *aiWhiteSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_white_switch"));
-  aiBlackSwitch
+  assert (aiWhiteSwitch != NULL);
+
+  GtkWidget *aiBlackSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "ai_black_switch"));
+  assert (aiBlackSwitch != NULL);
 
   GtkWidget *langDropdownContainer = GTK_WIDGET (
       gtk_builder_get_object (builder, "lang_dropdown_container"));
+  assert (langDropdownContainer != NULL);
 
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
+  assert (bindNewGameBtn != NULL);
+
   GtkWidget *bindLoadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
+  assert (bindLoadBtn != NULL);
+
   GtkWidget *bindSaveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
+  assert (bindSaveBtn != NULL);
+
   GtkWidget *bindUndoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
+  assert (bindUndoBtn != NULL);
+
   GtkWidget *bindRedoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
+  assert (bindRedoBtn != NULL);
+
   GtkWidget *bindPauseBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
+  assert (bindPauseBtn != NULL);
+
   GtkWidget *bindHintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
+  assert (bindHintBtn != NULL);
+
   GtkWidget *bindConfigBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
+  assert (bindConfigBtn != NULL);
+
   GtkWidget *bindInfoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
+  assert (bindInfoBtn != NULL);
+
   GtkWidget *bindQuitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
+  assert (bindQuitBtn != NULL);
 
-  if (verboseSwitch)
-    gtk_switch_set_active (GTK_SWITCH (verboseSwitch),
-                           ctx->gameConfig->verbose);
-  if (blitzSwitch)
-    gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
-                           ctx->gameConfig->blitz_mode);
-  if (timeoutField)
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
-                               ctx->gameConfig->time_per_player);
-  if (boardSizeField)
-    gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
-                               ctx->gameConfig->board_size);
-  if (aiWhiteSwitch)
-    gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
-                           ctx->gameConfig->ai_white_cfg.enabled);
-  if (aiBlackSwitch)
-    gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
-                           ctx->gameConfig->ai_black_cfg.enabled);
+  gtk_switch_set_active (GTK_SWITCH (verboseSwitch), ctx->gameConfig->verbose);
+  gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
+                         ctx->gameConfig->blitz_mode);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (timeoutField),
+                             ctx->gameConfig->time_per_player);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
+                             ctx->gameConfig->board_size);
+  gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
+                         ctx->gameConfig->ai_white_cfg.enabled);
+  gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
+                         ctx->gameConfig->ai_black_cfg.enabled);
 
-  if (verboseSwitch)
-    g_signal_connect (verboseSwitch, "notify::active",
-                      G_CALLBACK (updateConfigVerbose), ctx);
-  if (blitzSwitch)
-    g_signal_connect (blitzSwitch, "notify::active",
-                      G_CALLBACK (updateConfigBlitz), ctx);
-  if (timeoutField)
-    g_signal_connect (timeoutField, "value-changed",
-                      G_CALLBACK (updateConfigTimeout), ctx);
-  if (boardSizeField)
-    g_signal_connect (boardSizeField, "value-changed",
-                      G_CALLBACK (updateConfigBoardSize), ctx);
-  if (aiWhiteSwitch)
-    g_signal_connect (aiWhiteSwitch, "notify::active",
-                      G_CALLBACK (updateConfigAiWhite), ctx);
-  if (aiBlackSwitch)
-    g_signal_connect (aiBlackSwitch, "notify::active",
-                      G_CALLBACK (updateConfigAiBlack), ctx);
+  g_signal_connect (verboseSwitch, "notify::active",
+                    G_CALLBACK (updateConfigVerbose), ctx);
+  g_signal_connect (blitzSwitch, "notify::active",
+                    G_CALLBACK (updateConfigBlitz), ctx);
+  g_signal_connect (timeoutField, "value-changed",
+                    G_CALLBACK (updateConfigTimeout), ctx);
+  g_signal_connect (boardSizeField, "value-changed",
+                    G_CALLBACK (updateConfigBoardSize), ctx);
+  g_signal_connect (aiWhiteSwitch, "notify::active",
+                    G_CALLBACK (updateConfigAiWhite), ctx);
+  g_signal_connect (aiBlackSwitch, "notify::active",
+                    G_CALLBACK (updateConfigAiBlack), ctx);
 
+  GtkWidget *langDropdown;
 #if GTK_CHECK_VERSION(4, 10, 0)
   const char *langs[] = { "English", "French", NULL };
   GtkStringList *stringList = gtk_string_list_new (langs);
@@ -238,10 +269,7 @@ createConfigPage (GuiContext *ctx)
                     ctx);
 #endif
 
-  if (langDropdownContainer)
-    {
-      gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
-    }
+  gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
 
   setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
   setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
@@ -268,14 +296,15 @@ createInfoPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
 
-  GtkBuilder *builder;
-  GtkWidget *box;
-  GtkWidget *returnBtn;
+  GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/info.ui");
+  assert (builder != NULL);
 
-  builder = gtk_builder_new_from_resource ("/amazons/ui/info.ui");
-  box = GTK_WIDGET (gtk_builder_get_object (builder, "info_box"));
+  GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "info_box"));
+  assert (box != NULL);
 
-  returnBtn = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  GtkWidget *returnBtn
+      = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  assert (returnBtn != NULL);
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "main_menu_page");
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
@@ -293,32 +322,56 @@ createGamePage (GuiContext *ctx)
   assert (ctx->mainStack != NULL);
 
   GtkBuilder *builder = gtk_builder_new_from_resource ("/amazons/ui/game.ui");
+  assert (builder != NULL);
+
   GtkWidget *box = GTK_WIDGET (gtk_builder_get_object (builder, "game_box"));
+  assert (box != NULL);
 
   g_object_set_data (G_OBJECT (ctx->mainStack), "game_box", box);
 
   GtkWidget *newGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
+  assert (newGameBtn != NULL);
+
   GtkWidget *loadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
+  assert (loadBtn != NULL);
+
   GtkWidget *saveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "save_game_btn"));
+  assert (saveBtn != NULL);
+
   GtkWidget *infoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
+  assert (infoBtn != NULL);
+
   GtkWidget *configBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
+  assert (configBtn != NULL);
+
   GtkWidget *quitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
+  assert (quitBtn != NULL);
+
   GtkWidget *undoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "undo_btn"));
+  assert (undoBtn != NULL);
+
   GtkWidget *redoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "redo_btn"));
+  assert (redoBtn != NULL);
+
   GtkWidget *hintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "hint_btn"));
+  assert (hintBtn != NULL);
+
   GtkWidget *turnLabel
       = GTK_WIDGET (gtk_builder_get_object (builder, "turn_label"));
+  assert (turnLabel != NULL);
+
   GtkWidget *boardGrid
       = GTK_WIDGET (gtk_builder_get_object (builder, "board_grid"));
+  assert (boardGrid != NULL);
 
   g_object_set_data (G_OBJECT (ctx->mainStack), "turn_label", turnLabel);
   g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
@@ -329,6 +382,8 @@ createGamePage (GuiContext *ctx)
   setupBoard (ctx, boardGrid);
 
   GtkGesture *rightClick = gtk_gesture_click_new ();
+  assert (rightClick != NULL);
+
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (rightClick),
                                  GDK_BUTTON_SECONDARY);
   g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
@@ -362,17 +417,27 @@ createJoinServerPage (GuiContext *ctx)
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/join_server.ui");
+  assert (builder != NULL);
+
   GtkWidget *box
       = GTK_WIDGET (gtk_builder_get_object (builder, "join_server_box"));
+  assert (box != NULL);
 
   GtkWidget *returnBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
+  assert (returnBtn != NULL);
+
   GtkWidget *refreshBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "refresh_btn"));
+  assert (refreshBtn != NULL);
+
   GtkWidget *usernameEntry
       = GTK_WIDGET (gtk_builder_get_object (builder, "username_entry"));
+  assert (usernameEntry != NULL);
+
   GtkWidget *serverListbox
       = GTK_WIDGET (gtk_builder_get_object (builder, "server_listbox"));
+  assert (serverListbox != NULL);
 
   g_object_set_data (G_OBJECT (returnBtn), "target_page", "multiplayer_page");
   g_signal_connect (returnBtn, "clicked", G_CALLBACK (navigationClick), ctx);
@@ -393,22 +458,26 @@ GtkWidget *
 createHostPanelPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/host_panel.ui");
+  assert (builder != NULL);
+
   GtkWidget *box
       = GTK_WIDGET (gtk_builder_get_object (builder, "server_panel_box"));
+  assert (box != NULL);
 
   GtkWidget *stopServerBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "stop_server_btn"));
+  assert (stopServerBtn != NULL);
 
   GtkWidget *consoleView
       = GTK_WIDGET (gtk_builder_get_object (builder, "server_console_view"));
-  if (ctx->mainStack)
-    {
-      g_object_set_data (G_OBJECT (ctx->mainStack), "server_console_view",
-                         consoleView);
-    }
+  assert (consoleView != NULL);
+
+  g_object_set_data (G_OBJECT (ctx->mainStack), "server_console_view",
+                     consoleView);
 
   g_signal_connect (stopServerBtn, "clicked",
                     G_CALLBACK (stopServerButtonClick), ctx);
@@ -423,23 +492,30 @@ GtkWidget *
 createClientPanelPage (GuiContext *ctx)
 {
   assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   GtkBuilder *builder
       = gtk_builder_new_from_resource ("/amazons/ui/client_panel.ui");
+  assert (builder != NULL);
+
   GtkWidget *box
       = GTK_WIDGET (gtk_builder_get_object (builder, "client_panel_box"));
+  assert (box != NULL);
+
   GtkWidget *titleLabel
       = GTK_WIDGET (gtk_builder_get_object (builder, "lobby_title_label"));
-  if (titleLabel && ctx->mainStack)
-    {
-      g_object_set_data (G_OBJECT (ctx->mainStack), "lobby_title_label",
-                         titleLabel);
-    }
+  assert (titleLabel != NULL);
+
+  g_object_set_data (G_OBJECT (ctx->mainStack), "lobby_title_label",
+                     titleLabel);
 
   GtkWidget *disconnectBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "disconnect_btn"));
+  assert (disconnectBtn != NULL);
+
   GtkWidget *createGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "create_game_btn"));
+  assert (createGameBtn != NULL);
 
   g_signal_connect (disconnectBtn, "clicked",
                     G_CALLBACK (disconnectFromServerButtonClick), ctx);
