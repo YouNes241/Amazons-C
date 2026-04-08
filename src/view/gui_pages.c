@@ -264,8 +264,7 @@ createConfigPage (AppContext *ctx)
   langDropdown = gtk_combo_box_text_new ();
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
                                   "English");
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
-                                  "French");
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown), "French");
   gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
                             ctx->gameConfig->language);
 
@@ -520,8 +519,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   langDropdown = gtk_combo_box_text_new ();
   gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
                                   "English");
-  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown),
-                                  "French");
+  gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (langDropdown), "French");
   gtk_combo_box_set_active (GTK_COMBO_BOX (langDropdown),
                             ctx->gameConfig->language);
 
