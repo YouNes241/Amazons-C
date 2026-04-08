@@ -224,14 +224,9 @@ TEST_F (ControllerTestFixture, AIHintCommand)
   ctx.current_game = &game;
   game_cleanup (ctx.current_game);
   game_init (ctx.current_game);
-  ctx.ai_initialized = false;
 
   strcpy (cmd, "hint");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
-  if (ctx.ai_initialized && ctx.ai.vtable->clean)
-    {
-      ctx.ai.vtable->clean (&ctx.ai);
-    }
   game_cleanup (ctx.current_game);
 }
 
@@ -603,7 +598,7 @@ TEST_F (ControllerTestFixture, UndoRedoVsAILocal)
 {
   char cmd[128];
 
-  config.ai_white = true;
+  config.ai_white_cfg.enabled = true;
   net_mgr.current_mode = NET_MODE_NONE;
   ctx.current_game->current_player = PLAYER_BLACK;
 
@@ -613,14 +608,14 @@ TEST_F (ControllerTestFixture, UndoRedoVsAILocal)
   strcpy (cmd, "redo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));
 
-  config.ai_white = false;
-  config.ai_black = false;
+  config.ai_white_cfg.enabled = false;
+  config.ai_black_cfg.enabled = false;
   ctx.current_game->current_player = PLAYER_WHITE;
   ctx.in_main_menu = false;
   strcpy (cmd, "d1-d2(d3)");
   handle_command (cmd, &ctx);
 
-  config.ai_white = true;
+  config.ai_white_cfg.enabled = true;
   net_mgr.current_mode = NET_MODE_NONE;
   strcpy (cmd, "undo");
   EXPECT_NO_THROW (handle_command (cmd, &ctx));

@@ -5,6 +5,7 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void navigationClick (GtkButton *button, gpointer user_data);
 static void quitButtonClick (GtkButton *button, gpointer user_data);
@@ -226,10 +227,10 @@ createConfigPage (AppContext *ctx)
                                ctx->gameConfig->board_size);
   if (aiWhiteSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
-                           ctx->gameConfig->ai_white);
+                           ctx->gameConfig->ai_white_cfg.enabled);
   if (aiBlackSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
-                           ctx->gameConfig->ai_black);
+                           ctx->gameConfig->ai_black_cfg.enabled);
 
   if (verboseSwitch)
     g_signal_connect (verboseSwitch, "notify::active",
@@ -482,10 +483,10 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
                                ctx->gameConfig->board_size);
   if (aiWhiteSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
-                           ctx->gameConfig->ai_white);
+                           ctx->gameConfig->ai_white_cfg.enabled);
   if (aiBlackSwitch)
     gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
-                           ctx->gameConfig->ai_black);
+                           ctx->gameConfig->ai_black_cfg.enabled);
 
   if (verboseSwitch)
     g_signal_connect (verboseSwitch, "notify::active",
@@ -558,7 +559,8 @@ undoButtonClick (GtkButton *button, gpointer user_data)
   if (!ctx || !ctx->gameState)
     return;
 
-  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+  bool has_ai = ctx->gameConfig->ai_white_cfg.enabled
+                || ctx->gameConfig->ai_black_cfg.enabled;
   if (!has_ai)
     return;
 
@@ -581,7 +583,8 @@ redoButtonClick (GtkButton *button, gpointer user_data)
   if (!ctx || !ctx->gameState)
     return;
 
-  bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+  bool has_ai = ctx->gameConfig->ai_white_cfg.enabled
+                || ctx->gameConfig->ai_black_cfg.enabled;
   if (!has_ai)
     return;
 
@@ -951,7 +954,7 @@ static void
 updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->ai_white
+  ((AppContext *)user_data)->gameConfig->ai_white_cfg.enabled
       = gtk_switch_get_active (widget);
 }
 
@@ -959,7 +962,7 @@ static void
 updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-  ((AppContext *)user_data)->gameConfig->ai_black
+  ((AppContext *)user_data)->gameConfig->ai_black_cfg.enabled
       = gtk_switch_get_active (widget);
 }
 

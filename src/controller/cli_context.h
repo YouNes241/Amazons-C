@@ -44,14 +44,19 @@ typedef struct
   PlayerColor
       my_role; // Black or White in a network game, ignored in local mode
 
-  // IA
-  AI_Interface ai;
-  bool ai_initialized;
+  // AI
+  AI_Interface ai_white;
+  bool ai_white_initialized;
+
+  AI_Interface ai_black;
+  bool ai_black_initialized;
+  // Network
   int last_invited_id; // To keep track of the last invited player in the lobby
   // Timer
   time_t turn_start_time;
   int timeout_limit;
   bool timeout_sent;
+
 } CliContext;
 
 #endif // CLI_CONTEXT_H

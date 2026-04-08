@@ -23,7 +23,7 @@ protected:
     state.arrows = { 0, 0 };
     state.size = 10;
     state.white_to_move = true;
-    eval_rth = get_evaluator_by_name ("rth");
+    eval_rth = get_evaluator (EVAL_RTH);
   }
 };
 

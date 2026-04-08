@@ -1,12 +1,6 @@
 /**
  * @file cli_commands.c
  * @brief Implementation of CLI command handling for the Amazons game.
- *
- * This file contains the implementation of the main command handler function
- * for processing user input in the command-line interface (CLI) of the
- * Amazons game. It includes logic for handling various commands related to
- * game management, network interactions, and gameplay actions, as well as
- * utilities for managing the CLI prompt and command completion.
  */
 
 #include "cli_commands.h"
@@ -85,13 +79,10 @@ amazons_completion (const char *text, int start, int end)
  */
 ///@{
 
-/**
- * @brief Constructs the prompt string and applies it to Readline.
- */
 void
 update_prompt_string (CliContext *ctx)
 {
-  static char prompt_str[PROMPT_MAX_LEN]; // PROMPT_MAX_LEN
+  static char prompt_str[PROMPT_MAX_LEN];
   const char *turn_str = (ctx->current_game->current_player == PLAYER_WHITE)
                              ? _ ("White")
                              : _ ("Black");
@@ -102,13 +93,11 @@ update_prompt_string (CliContext *ctx)
       rl_set_prompt (prompt_str);
       return;
     }
-  // If we are on a network
   else if (ctx->net_manager != NULL
            && ctx->net_manager->current_mode != NET_MODE_NONE)
     {
       if (ctx->in_network_match)
         {
-          // In a game: Show Role and Turn
           const char *my_color_str
               = (ctx->my_role == PLAYER_WHITE) ? _ ("W") : _ ("B");
           snprintf (prompt_str, sizeof (prompt_str), _ ("[%s] Turn: %s >> "),
@@ -130,29 +119,20 @@ update_prompt_string (CliContext *ctx)
     }
   else
     {
-      // In local mode, we just display whose turn it is.
       snprintf (prompt_str, sizeof (prompt_str), _ ("[%s] >> "), turn_str);
     }
   rl_set_prompt (prompt_str);
 }
 
-/**
- * @brief Forces immediate prompt refresh and display update (used for network
- * events)
- */
 void
 refresh_prompt (CliContext *ctx)
 {
   update_prompt_string (ctx);
-  rl_replace_line ("",
-                   READLINE_NO_CLEAR); ///< Clears the current line's buffer
-  rl_on_new_line ();                   ///< Prepares ReadLine for a new line
-  rl_redisplay ();                     ///< Forces the display refresh
+  rl_replace_line ("", READLINE_NO_CLEAR);
+  rl_on_new_line ();
+  rl_redisplay ();
 }
 
-/**
- * @brief Executes a hint command using AI to suggest the best move
- */
 void
 execute_hint (CliContext *ctx)
 {
@@ -162,23 +142,20 @@ execute_hint (CliContext *ctx)
       return;
     }
 
-  if (!ctx->ai_initialized)
-    {
-      printf ("%s", "[AI] Initializing advice engine...\n");
-      ConfigMap empty_params = { 0, NULL };
-      ctx->ai = create_ai ("minimax", empty_params);
+  printf ("%s", "[AI] Initializing advice engine...\n");
+  ConfigMap empty_params = { 0, NULL };
 
-      if (ctx->ai.vtable == NULL)
-        {
-          printf ("[ERROR] %s\n", "Failed to load the advice engine.");
-          return;
-        }
-      ctx->ai_initialized = true;
+  AI_Interface hint_ai = create_ai ("minimax", empty_params);
+
+  if (hint_ai.vtable == NULL)
+    {
+      printf ("[ERROR] %s\n", "Failed to load the advice engine.");
+      return;
     }
 
   printf ("%s", "[AI] Analyzing the situation...\n");
 
-  Move sug = ctx->ai.vtable->get_best_move (&ctx->ai, *(ctx->current_game));
+  Move sug = hint_ai.vtable->get_best_move (&hint_ai, *(ctx->current_game));
 
   char src[POS_STRING_MAX_LEN], dst[POS_STRING_MAX_LEN],
       arr[POS_STRING_MAX_LEN];
@@ -189,13 +166,15 @@ execute_hint (CliContext *ctx)
   printf ("\n[ADVICE] Based on the current state:\n");
   printf (" - Move the queen from %s to %s\n", src, dst);
   printf (" - Shoot the arrow at %s\n", arr);
+
+  if (hint_ai.vtable->clean)
+    {
+      hint_ai.vtable->clean (&hint_ai);
+    }
 }
 
 ///@}
 
-/**
- * @brief Updates a configuration parameter based on a key and value.
- */
 static void
 update_config (game_config_t *config, const char *key, const char *val)
 {
@@ -209,11 +188,33 @@ update_config (game_config_t *config, const char *key, const char *val)
     }
   else if (strcmp (key, "ai_white") == 0)
     {
-      config->ai_white = (strcmp (val, "true") == 0);
+      if (strcmp (val, "false") == 0)
+        {
+          config->ai_white_cfg.enabled = false;
+        }
+      else
+        {
+          config->ai_white_cfg.enabled = true;
+          if (strcmp (val, "true") != 0)
+            {
+              strncpy (config->ai_white_cfg.name, val, MAX_AI_STR_LEN - 1);
+            }
+        }
     }
   else if (strcmp (key, "ai_black") == 0)
     {
-      config->ai_black = (strcmp (val, "true") == 0);
+      if (strcmp (val, "false") == 0)
+        {
+          config->ai_black_cfg.enabled = false;
+        }
+      else
+        {
+          config->ai_black_cfg.enabled = true;
+          if (strcmp (val, "true") != 0)
+            {
+              strncpy (config->ai_black_cfg.name, val, MAX_AI_STR_LEN - 1);
+            }
+        }
     }
   else if (strcmp (key, "board_size") == 0)
     {
@@ -261,11 +262,6 @@ check_blitz_timeout (void)
   return 0;
 }
 
-/**
- * @brief Manages the "quit" command, ensuring proper cleanup and offering to
- * save the game
- * @param ctx CLI context.
- */
 static void
 execute_quit (CliContext *ctx)
 {
@@ -454,16 +450,13 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendListRequest (
-              ctx->net_manager,
-              -1); // -1 signifie "aucun ID fourni, on veut tout le monde"
+          NetworkManager_SendListRequest (ctx->net_manager, -1);
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
           char list_buffer[LOBBY_LIST_BUFFER_SIZE];
-          NetworkManager_GetServerPlayerList (
-              ctx->net_manager, list_buffer, sizeof (list_buffer),
-              -1); // -1 signifie "aucun ID fourni, on veut tout le monde"
+          NetworkManager_GetServerPlayerList (ctx->net_manager, list_buffer,
+                                              sizeof (list_buffer), -1);
           printf (_ ("\n=== SERVER LOBBY ===\n%s\n====================\n"),
                   list_buffer);
         }
@@ -559,11 +552,6 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          // Client must make a network request to the server
-          /// @todo Create NetworkManager_SendStatusRequest function following
-          /// the same pattern as SendScoreboardRequest
-          // NetworkManager_SendStatusRequest(ctx->net_manager);
-
           printf (_ ("\n[NETWORK] Requesting server status...\n"));
         }
       else
@@ -576,12 +564,10 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          // Request scoreboard from server
           NetworkManager_SendScoreboardRequest (ctx->net_manager);
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
-          // Server displays the scoreboard directly from file
           if (system ("cat scoreboard.txt") != 0)
             {
               printf (_ ("[ERROR] Failed to read scoreboard.txt\n"));
@@ -605,22 +591,19 @@ handle_command (char *input_buffer, CliContext *ctx)
 
   else if (strncmp (input_buffer, "players", 7) == 0)
     {
-      int target_id = -1; ///< -1 means no specific ID provided, list all
+      int target_id = -1;
 
-      // Look for a number after "players"
       sscanf (input_buffer + 7, "%d", &target_id);
 
       if (ctx->net_manager->current_mode == NET_MODE_CLIENT)
         {
-          NetworkManager_SendListRequest (ctx->net_manager,
-                                          target_id); ///< Pass the ID to query
+          NetworkManager_SendListRequest (ctx->net_manager, target_id);
         }
       else if (ctx->net_manager->current_mode == NET_MODE_SERVER)
         {
           char list_buffer[LOBBY_LIST_BUFFER_SIZE];
           NetworkManager_GetServerPlayerList (ctx->net_manager, list_buffer,
-                                              sizeof (list_buffer),
-                                              target_id); // On passe l'ID
+                                              sizeof (list_buffer), target_id);
           printf ("\n=== SERVER LOBBY ===\n%s\n====================\n",
                   list_buffer);
         }
@@ -656,7 +639,6 @@ handle_command (char *input_buffer, CliContext *ctx)
   else if (strncmp (input_buffer, "new", CMD_LEN_NEW) == 0)
     {
       int target_id;
-      // Check if there's an ID after "new" (e.g., "new 2")
       if (sscanf (input_buffer + CMD_LEN_NEW, "%d", &target_id) == 1)
         {
           if (ctx->net_manager->current_mode != NET_MODE_CLIENT)
@@ -674,7 +656,6 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          // No ID provided, so this is a local game
           printf (_ ("New local game.\n"));
           game_init (ctx->current_game);
           ctx->current_game->blitz_mode = ctx->config->blitz_mode;
@@ -687,14 +668,15 @@ handle_command (char *input_buffer, CliContext *ctx)
           ctx->in_main_menu = false;
           g_ctx_ref = ctx;
           rl_event_hook = check_blitz_timeout;
-          rl_set_keyboard_input_timeout (100000); // 100ms
+          rl_set_keyboard_input_timeout (100000);
           cli_clear_screen ();
         }
       return;
     }
   else if (strncmp (input_buffer, "undo", CMD_LEN_UNDO) == 0)
     {
-      bool vs_ai = (ctx->config->ai_white || ctx->config->ai_black);
+      bool vs_ai = (ctx->config->ai_white_cfg.enabled
+                    || ctx->config->ai_black_cfg.enabled);
       bool is_local = (ctx->net_manager->current_mode == NET_MODE_NONE);
 
       if (vs_ai && is_local)
@@ -720,7 +702,8 @@ handle_command (char *input_buffer, CliContext *ctx)
     }
   else if (strncmp (input_buffer, "redo", CMD_LEN_REDO) == 0)
     {
-      bool vs_ai = (ctx->config->ai_white || ctx->config->ai_black);
+      bool vs_ai = (ctx->config->ai_white_cfg.enabled
+                    || ctx->config->ai_black_cfg.enabled);
       bool is_local = (ctx->net_manager->current_mode == NET_MODE_NONE);
 
       if (vs_ai && is_local)

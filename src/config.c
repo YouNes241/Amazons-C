@@ -15,10 +15,16 @@ init_default_config (game_config_t *config)
   config->mode = MODE_INTERACTIVE;
   config->blitz_mode = false;
   config->time_per_player = DEFAULT_TIME_BLITZ;
-  config->ai_black = false;
-  config->ai_white = false;
   config->verbose = false;
   config->language = LANG_FR;
+
+  config->ai_white_cfg.enabled = false;
+  config->ai_white_cfg.param_count = 0;
+  strncpy (config->ai_white_cfg.name, "minimax", MAX_AI_STR_LEN - 1);
+
+  config->ai_black_cfg.enabled = false;
+  config->ai_black_cfg.param_count = 0;
+  strncpy (config->ai_black_cfg.name, "minimax", MAX_AI_STR_LEN - 1);
 }
 
 void
@@ -47,8 +53,19 @@ display_config (game_config_t *config)
   printf ("Mode Blitz        : %s\n",
           config->blitz_mode ? "Activé" : "Désactivé");
   printf ("Temps par joueur  : %d s\n", config->time_per_player);
-  printf ("IA joueur Blanc        : %s\n", config->ai_white ? "Oui" : "Non");
-  printf ("IA joueur Noir        : %s\n", config->ai_black ? "Oui" : "Non");
+
+  if (config->ai_white_cfg.enabled)
+    printf ("IA joueur Blanc   : Oui (%s, %d paramètre(s))\n",
+            config->ai_white_cfg.name, config->ai_white_cfg.param_count);
+  else
+    printf ("IA joueur Blanc   : Non\n");
+
+  if (config->ai_black_cfg.enabled)
+    printf ("IA joueur Noir    : Oui (%s, %d paramètre(s))\n",
+            config->ai_black_cfg.name, config->ai_black_cfg.param_count);
+  else
+    printf ("IA joueur Noir    : Non\n");
+
   printf ("Mode Verbose      : %s\n",
           config->verbose ? "Activé" : "Désactivé");
   printf ("Langue : %s\n",
@@ -98,10 +115,15 @@ load_config_file (game_config_t *config)
           fprintf (file, "blitz = %s\n",
                    config->blitz_mode ? "true" : "false");
           fprintf (file, "timeout = %d\n", config->time_per_player);
+
+          // Save AI name, else false
           fprintf (file, "ai_white = %s\n",
-                   config->ai_white ? "true" : "false");
+                   config->ai_white_cfg.enabled ? config->ai_white_cfg.name
+                                                : "false");
           fprintf (file, "ai_black = %s\n",
-                   config->ai_black ? "true" : "false");
+                   config->ai_black_cfg.enabled ? config->ai_black_cfg.name
+                                                : "false");
+
           fprintf (file, "verbose = %s\n", config->verbose ? "true" : "false");
 
           fprintf (file, "language = %s\n",
@@ -150,11 +172,46 @@ load_config_file (game_config_t *config)
             }
           else if (strcmp (key, "ai_white") == 0)
             {
-              config->ai_white = (strcmp (value, "true") == 0);
+              if (strcmp (value, "false") == 0)
+                {
+                  config->ai_white_cfg.enabled = false;
+                }
+              else
+                {
+                  config->ai_white_cfg.enabled = true;
+
+                  if (strcmp (value, "true") == 0)
+                    {
+                      strncpy (config->ai_white_cfg.name, "minimax",
+                               MAX_AI_STR_LEN - 1);
+                    }
+                  else
+                    {
+                      strncpy (config->ai_white_cfg.name, value,
+                               MAX_AI_STR_LEN - 1);
+                    }
+                }
             }
           else if (strcmp (key, "ai_black") == 0)
             {
-              config->ai_black = (strcmp (value, "true") == 0);
+              if (strcmp (value, "false") == 0)
+                {
+                  config->ai_black_cfg.enabled = false;
+                }
+              else
+                {
+                  config->ai_black_cfg.enabled = true;
+                  if (strcmp (value, "true") == 0)
+                    {
+                      strncpy (config->ai_black_cfg.name, "minimax",
+                               MAX_AI_STR_LEN - 1);
+                    }
+                  else
+                    {
+                      strncpy (config->ai_black_cfg.name, value,
+                               MAX_AI_STR_LEN - 1);
+                    }
+                }
             }
           else if (strcmp (key, "verbose") == 0)
             {

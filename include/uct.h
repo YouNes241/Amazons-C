@@ -1,3 +1,9 @@
+/**
+ * @file uct.h
+ * @author tdecabrat
+ * @brief This file defines the interface for the UCT (Upper Confidence Bound
+ * for Trees) selection strategy used in the MCTS AI.
+ */
 #ifndef UCT_H
 #define UCT_H
 

@@ -10,6 +10,8 @@
 #define DEFAULT_TIME_BLITZ 1800 // 30 minutes par défaut
 #define DEFAULT_AI_COLOR 1      // L'IA joue en noir par défaut
 #define VERSION "0.1.0"
+#define MAX_AI_PARAMS 10
+#define MAX_AI_STR_LEN 32
 
 /*
  * Le jeu ne peut être que dans
@@ -30,17 +32,26 @@ typedef enum
 
 typedef struct
 {
-  bool blitz_mode; // Vrai si le mode blitz est activé
-  bool ai_white;
-  bool ai_black;
-  bool verbose; // Pour le debug
+  bool enabled;
+  char name[MAX_AI_STR_LEN]; // ex: "minimax", "mcts"
+  char param_keys[MAX_AI_PARAMS][MAX_AI_STR_LEN];
+  char param_vals[MAX_AI_PARAMS][MAX_AI_STR_LEN];
+  int param_count;
+} ai_config_t;
+typedef struct
+{
+  bool blitz_mode;
+  bool verbose;
   bool start_server;
   bool daemon_mode;
-  int board_size; // Taille du plateau
+  int board_size;
   int time_per_player;
   int server_port;
-  game_mode_t mode; // Le mode de jeu actuel choisi
+  game_mode_t mode;
   lang_t language;
+
+  ai_config_t ai_white_cfg;
+  ai_config_t ai_black_cfg;
 } game_config_t;
 
 void init_default_config (game_config_t *config);
