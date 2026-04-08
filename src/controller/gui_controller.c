@@ -9,6 +9,7 @@
 #include "gui_application.h"
 #include "gui_network_events.h"
 #include "gui_utils.h"
+#include <assert.h>
 #include <gtk/gtk.h>
 
 /** @name Forward Declarations
@@ -35,6 +36,9 @@ static bool g_gui_ai_black_initialized = false;
 void
 guiHandlePlayerMove (GuiContext *ctx, Move move)
 {
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+
   if (is_move_legal (ctx->gameState, move))
     {
       apply_move (ctx->gameState, move);

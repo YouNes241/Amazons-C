@@ -58,10 +58,18 @@ freeGuiContext (GuiContext *ctx)
 void
 drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 {
+  assert (ctx != NULL && ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
+
   int size = ctx->gameState->size;
+  assert (x >= 0 && x < size);
+  assert (y >= 0 && y < size);
+
   int index = y * size + x;
 
   GtkWidget *cellBox = ctx->gameBoard[index];
+  assert (cellBox != NULL);
+
   GtkWidget *label
       = GTK_WIDGET (g_object_get_data (G_OBJECT (cellBox), "cell_label"));
 
@@ -138,9 +146,14 @@ clearHintHighlights (GuiContext *ctx)
 void
 highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 {
-  clearHighlights (ctx);
+  assert (ctx != NULL && ctx->gameState != NULL);
 
   int size = ctx->gameState->size;
+  assert (srcX >= 0 && srcX < size);
+  assert (srcY >= 0 && srcY < size);
+
+  clearHighlights (ctx);
+
   uint8_t start_index = coords_to_index (srcX, srcY, size);
 
   BitboardState bb = sync_from_logic (ctx->gameState);

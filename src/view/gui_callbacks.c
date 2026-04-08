@@ -3,6 +3,7 @@
 #include "game_engine.h"
 #include "gui_controller.h"
 #include "network_common.h"
+#include <assert.h>
 #include <save.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -636,12 +637,19 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   (void)y;
 
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL && ctx->gameState != NULL);
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
+  assert (btn != NULL);
 
   int srcX = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_x"));
   int srcY = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_y"));
+
+  int size = ctx->gameState->size;
+  assert (srcX >= 0 && srcX < size);
+  assert (srcY >= 0 && srcY < size);
+
   int srcIndex
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_index"));
 
@@ -715,6 +723,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   (void)y;
 
   GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL && ctx->gameState != NULL);
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
     {
@@ -723,9 +732,14 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (target));
+  assert (btn != NULL);
 
   int destX = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_x"));
   int destY = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "cell_y"));
+
+  int size = ctx->gameState->size;
+  assert (destX >= 0 && destX < size);
+  assert (destY >= 0 && destY < size);
 
   int isLegal
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "is_legal_move"));
@@ -736,7 +750,6 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
 
   const char *srcString = g_value_get_string (value);
   int srcIndex = atoi (srcString);
-  int size = ctx->gameState->size;
 
   int srcX = srcIndex % size;
   int srcY = srcIndex / size;
