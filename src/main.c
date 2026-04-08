@@ -262,7 +262,7 @@ main (int argc, char *argv[])
     {
       printf ("\n[DAEMON] Démarrage du serveur en mode Headless...\n");
       printf ("[DAEMON] Le terminal va vous rendre la main. Tapez 'pkill "
-              "amazons-c' plus tard pour l'arrêter.\n");
+              "amazons' plus tard pour l'arrêter.\n");
 
       if (daemon (1, 0) == -1)
         {

@@ -34,7 +34,6 @@ typedef enum
 } NetworkMode;
 
 /** @brief Forward declaration of the NetworkManager structure. */
-// TODO ?typedef struct NetworkManager NetworkManager; j'en ai besoin ?
 typedef struct ServerContext ServerContext;
 typedef struct ClientContext ClientContext;
 typedef struct ClientDiscoveryContext ClientDiscoveryContext;

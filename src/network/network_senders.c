@@ -79,10 +79,8 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;
 
-  int target
-      = (manager->current_mode == NET_MODE_CLIENT)
-            ? TARGET_SERVER
-            : TARGET_CLIENT_1; ///< @todo Improve target client selection logic
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? TARGET_SERVER
+                                                          : TARGET_CLIENT_1;
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
@@ -112,10 +110,8 @@ NetworkManager_SendTimeout (NetworkManager *manager)
       return NET_ERROR;
     }
 
-  int target
-      = (manager->current_mode == NET_MODE_CLIENT)
-            ? TARGET_SERVER
-            : TARGET_CLIENT_1; ///< @todo Improve target client selection logic
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? TARGET_SERVER
+                                                          : TARGET_CLIENT_1;
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 

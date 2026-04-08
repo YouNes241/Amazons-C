@@ -1,4 +1,5 @@
 build/*
+build-afl/*
 libs/*
 coverage/*
 docs/*

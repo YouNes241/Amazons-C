@@ -180,10 +180,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
           break;
         }
 
-      // Detailed format for a specific player as requested in F40. Note: we
-      // don't have real score data, so we use placeholders for
-      // wins/losses/matches
-      /// @todo Replace placeholders with actual score data when available
+      // Detailed format for a specific player
       snprintf (
           buffer, max_len,
           _ ("Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost "

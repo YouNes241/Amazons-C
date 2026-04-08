@@ -40,6 +40,7 @@ on_game_started (PlayerColor color, int board_size)
 
   printf (_ ("\n[GAME] The game begins! You play the %s.\n"),
           (color == PLAYER_WHITE) ? _ ("White") : _ ("Black"));
+  cli_display_board (g_net_ctx->current_game);
   refresh_prompt (g_net_ctx);
 }
 
