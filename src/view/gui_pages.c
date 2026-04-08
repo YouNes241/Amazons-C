@@ -628,7 +628,7 @@ setupBoard (AppContext *ctx, GtkWidget *boardGrid)
   ctx->gameBoard = malloc (size * size * sizeof (GtkWidget *));
   ctx->currentPhase = PHASE_MOVE_QUEEN;
 
-  for (unsigned int i = 0; i < size * size; i++)
+  for (unsigned int i = 0; i < (unsigned int)(size * size); i++)
     {
       unsigned int x = i % size;
       unsigned int y = i / size;

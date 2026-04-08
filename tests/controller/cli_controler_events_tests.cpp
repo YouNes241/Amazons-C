@@ -10,7 +10,7 @@ TEST_F (ControllerTestFixture, NullContextRobustness)
   // we create a set of events with a NULL context to ensure that all callbacks
   // can handle it without crashing
   NetworkEvents null_events = create_cli_network_events (nullptr);
-  Move dummy_move = { 0, 0, 1, 1, 2, 2 };
+  Move dummy_move = { { 0, 0 }, { 1, 1 }, { 2, 2 } };
 
   // We call each event with typical parameters, but since the context is NULL,
   // we are mainly checking that no segmentation faults or exceptions occur.
@@ -74,16 +74,16 @@ TEST_F (ControllerTestFixture, MoveReceivedLogic)
 
   ctx.current_game->current_player = PLAYER_WHITE;
 
-  // A. A completely illegal move (should not change the turn)
-  Move illegal_move = { 0, 0, 0, 0, 0, 0 };
+  // A. Un coup complètement illégal (ne doit pas changer le tour)
+  Move illegal_move = { { 0, 0 }, { 0, 0 }, { 0, 0 } };
   events.OnMoveReceived (illegal_move);
   EXPECT_EQ (ctx.current_game->current_player, PLAYER_WHITE);
 
-  // B. A theoretically legal move for white (D10 to D9, arrow D8)
-  // NOTE: Adjust the coordinates (queen_src_x, etc.) according to the actual
-  // starting board. The important part is to hit the "if
-  // (is_move_legal)" branch
-  Move legal_move = { 3, 9, 3, 8, 3, 7 };
+  // B. Un coup théoriquement légal pour les blancs (D10 vers D9, flèche D8)
+  // NOTE: Ajuste les coordonnées (queen_src_x, etc.) selon l'état initial réel
+  // de ton plateau. L'important c'est de passer dans la branche "if
+  // (is_move_legal)"
+  Move legal_move = { { 3, 9 }, { 3, 8 }, { 3, 7 } };
 
   // If is_move_legal accepts it, the timer should reset
   ctx.timeout_sent = true;

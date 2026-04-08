@@ -65,4 +65,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # --- DISCOVER TESTS ---
-gtest_discover_tests(unit_tests)
+gtest_discover_tests(unit_tests
+    DISCOVERY_MODE PRE_TEST
+)

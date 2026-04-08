@@ -261,7 +261,12 @@ expand (MCTS_Node *parent)
   // Cache moves into the parent
   if (parent->untried_moves == NULL)
     {
-      Move temp_moves[get_move_limit (&parent->state)];
+      int limit = get_move_limit (&parent->state);
+      Move *temp_moves = malloc (limit * sizeof (Move));
+      if (!temp_moves)
+        {
+          return parent;
+        }
       int total = get_legal_moves (&parent->state, temp_moves);
 
       if (total == 0)
@@ -274,6 +279,7 @@ expand (MCTS_Node *parent)
       parent->untried_moves = (Move *)malloc (total * sizeof (Move));
       memcpy (parent->untried_moves, temp_moves, total * sizeof (Move));
       parent->num_untried = total;
+      free (temp_moves);
     }
 
   // Take the next untried move.
@@ -356,9 +362,16 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
   // Allocate roots and data for each thread
   data->roots = calloc (num_threads, sizeof (MCTS_Node *));
 
-  int thread_iterations[num_threads];
+  int *thread_iterations = malloc (num_threads * sizeof (int));
+  if (!thread_iterations)
+    {
+      fprintf (stderr, "Error while allocating threads.\n");
+      return (Move){ 0 };
+    }
   for (int i = 0; i < num_threads; i++)
     thread_iterations[i] = 0;
+
+  int allocation_failed = 0;
 
 #pragma omp parallel num_threads(num_threads)
   {
@@ -366,25 +379,36 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
 
     // Each thread creates its own independent root
     data->roots[tid] = alloc_mcts_node (NULL, &root_state, NULL);
+    if (!data->roots[tid])
+      {
+#pragma omp atomic write
+        allocation_failed = 1;
+      }
     data->roots[tid]->visit_count = 1;
     // Local iteration counter
     uint32_t local_iterations = 0;
 
+    int local_fail;
+#pragma omp atomic read
+    local_fail = allocation_failed;
     // Main MCTS Loop
-    while (((get_time_ms () - start_time) < data->time_constraint)
-           && (local_iterations < (data->max_iterations / num_threads)))
+    if (!local_fail)
       {
-        MCTS_Node *picked
-            = select_node (data->strategy_select, data->roots[tid]);
-        MCTS_Node *expanded_child = expand (picked);
+        while (((get_time_ms () - start_time) < data->time_constraint)
+               && (local_iterations < (data->max_iterations / num_threads)))
+          {
+            MCTS_Node *picked
+                = select_node (data->strategy_select, data->roots[tid]);
+            MCTS_Node *expanded_child = expand (picked);
 
-        if (!expanded_child)
-          break;
+            if (!expanded_child)
+              break;
 
-        float result = rollout (expanded_child->state);
-        backpropagate (expanded_child, 1.0f - result);
+            float result = rollout (expanded_child->state);
+            backpropagate (expanded_child, 1.0f - result);
 
-        local_iterations++;
+            local_iterations++;
+          }
       }
     thread_iterations[tid] = local_iterations;
   }
@@ -393,6 +417,23 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
   for (int i = 0; i < num_threads; i++)
     {
       total_iterations += thread_iterations[i];
+    }
+
+  if (allocation_failed)
+    {
+      for (int i = 0; i < num_threads; i++)
+        {
+          if (data->roots[i])
+            {
+              // Remplacez par le nom de votre fonction qui libère un nœud MCTS
+              free_mcts_tree (data->roots[i]);
+              data->roots[i] = NULL;
+            }
+        }
+
+      printf ("[MCTS] Allocation error during parallel setup. Fallback to "
+              "random.\n");
+      return get_direct_random_move (&root_state);
     }
 
   // Merge threads results
@@ -418,6 +459,7 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
       free_mcts_tree (data->roots[i]);
     }
   free (data->roots);
+  free (thread_iterations);
 
   return best_move;
 }

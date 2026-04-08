@@ -182,13 +182,13 @@ load_config_file (game_config_t *config)
 
                   if (strcmp (value, "true") == 0)
                     {
-                      strncpy (config->ai_white_cfg.name, "minimax",
-                               MAX_AI_STR_LEN - 1);
+                      snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN,
+                                "minimax");
                     }
                   else
                     {
-                      strncpy (config->ai_white_cfg.name, value,
-                               MAX_AI_STR_LEN - 1);
+                      snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN,
+                                "%.31s", value);
                     }
                 }
             }
@@ -203,13 +203,13 @@ load_config_file (game_config_t *config)
                   config->ai_black_cfg.enabled = true;
                   if (strcmp (value, "true") == 0)
                     {
-                      strncpy (config->ai_black_cfg.name, "minimax",
-                               MAX_AI_STR_LEN - 1);
+                      snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN,
+                                "minimax");
                     }
                   else
                     {
-                      strncpy (config->ai_black_cfg.name, value,
-                               MAX_AI_STR_LEN - 1);
+                      snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN,
+                                "%.31s", value);
                     }
                 }
             }

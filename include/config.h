@@ -6,6 +6,7 @@
 
 #define MIN_BOARD_SIZE 4
 #define MAX_BOARD_SIZE 11
+#define MAX_BOARD_SQUARES (MAX_BOARD_SIZE * MAX_BOARD_SIZE)
 #define DEFAULT_BOARD_SIZE 10
 #define DEFAULT_TIME_BLITZ 1800 // 30 minutes default
 #define DEFAULT_AI_COLOR 1      // AI plays black by default

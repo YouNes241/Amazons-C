@@ -363,7 +363,7 @@ get_top_moves (const BitboardState *state, int beam_limit,
 {
   assert (state != NULL && top_moves != NULL && beam_limit > 0);
 
-  Move queen_moves[get_move_limit (state)];
+  Move queen_moves[MAX_POSSIBLE_MOVES];
 
   Bitboard player_queens
       = state->white_to_move ? state->white_queens : state->black_queens;
@@ -376,11 +376,11 @@ get_top_moves (const BitboardState *state, int beam_limit,
   if (queen_count == 0)
     return 0;
 
-  ScoredMove filtered_queens[beam_limit];
+  ScoredMove filtered_queens[MAX_BEAM_LIMIT];
   int actual_q_count = pick_top_moves (state, queen_moves, queen_count,
                                        beam_limit, filtered_queens);
 
-  Move filtered_full_moves[get_move_limit (state)];
+  Move filtered_full_moves[MAX_POSSIBLE_MOVES];
   int total_full_moves = 0;
 
   for (int i = 0; i < actual_q_count; i++)
@@ -426,7 +426,7 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
   if (beam_limit <= 0)
     return data->evaluate (state);
 
-  ScoredMove top_moves[beam_limit];
+  ScoredMove top_moves[MAX_BEAM_LIMIT];
 
   int actual_count = get_top_moves (state, beam_limit, top_moves);
 
@@ -549,7 +549,7 @@ minimax_get_best_move (const AI_Interface *self, GameState state)
 
   // Generate all legal moves at the root level to avoid redundant generation
   // in the search
-  Move available_moves[get_move_limit (&root_state)];
+  Move available_moves[MAX_POSSIBLE_MOVES];
   int count = get_legal_moves (&root_state, available_moves);
 
   if (count == 0)
