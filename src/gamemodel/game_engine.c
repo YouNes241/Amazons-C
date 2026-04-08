@@ -11,7 +11,7 @@ get_time_now (void)
 void
 update_blitz_timer (GameState *state)
 {
-  if (!state->blitz_mode)
+  if (state == NULL || !state->blitz_mode)
     return;
 
   double now = get_time_now ();
@@ -327,7 +327,7 @@ is_path_clear (Bitboard obstacles, Position src, Position dst,
 bool
 is_move_legal (const GameState *state, Move move)
 {
-  if (state == NULL)
+  if (state == NULL || state->board == NULL)
     return false;
   uint8_t size = state->size;
 
@@ -418,7 +418,7 @@ has_legal_move (Bitboard obstacles, uint8_t start_index, uint8_t board_size)
 bool
 is_game_over (const GameState *state, PlayerColor current_player)
 {
-  if (state == NULL)
+  if (state == NULL || state->board == NULL)
     return true;
 
   uint8_t size = state->size;
@@ -548,6 +548,9 @@ generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
 PlayerColor
 get_winner (const GameState *state)
 {
+  if (state == NULL)
+    return NO_PLAYER;
+
   if (!is_game_over (state, state->current_player))
     {
       return NO_PLAYER;
@@ -566,6 +569,9 @@ get_winner (const GameState *state)
 bool
 undo_move (GameState *state)
 {
+  if (state == NULL || state->board == NULL)
+    return false;
+
   bool success;
   Move last_move = pop_move (&state->undo_stack, &success);
 
@@ -613,6 +619,9 @@ apply_redo (GameState *state, Move move)
 bool
 redo_move (GameState *state)
 {
+  if (state == NULL || state->board == NULL)
+    return false;
+
   bool success;
   Move next_move = pop_move (&state->redo_stack, &success);
 
