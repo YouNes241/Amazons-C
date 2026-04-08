@@ -14,8 +14,10 @@ static gboolean bindingKeyPressed (GtkEventControllerKey *controller,
 GuiContext *
 initGuiContext (game_config_t *config)
 {
+  assert (config != NULL);
+
   GuiContext *ctx = malloc (sizeof (GuiContext));
-  assert (ctx);
+  assert (ctx != NULL);
 
   ctx->gameConfig = config;
   ctx->gameState = NULL;
@@ -46,7 +48,7 @@ initGuiContext (game_config_t *config)
 void
 freeGuiContext (GuiContext *ctx)
 {
-  assert (ctx);
+  assert (ctx != NULL);
 
   if (ctx->gameBoard)
     free (ctx->gameBoard);
@@ -73,6 +75,7 @@ drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 
   GtkWidget *label
       = GTK_WIDGET (g_object_get_data (G_OBJECT (cellBox), "cell_label"));
+  assert (label != NULL);
 
   gtk_widget_remove_css_class (cellBox, "piece-white");
   gtk_widget_remove_css_class (cellBox, "piece-black");
@@ -104,6 +107,10 @@ drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 void
 drawBoard (GuiContext *ctx)
 {
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
+
   int size = ctx->gameState->size;
 
   for (int y = 0; y < size; y++)
@@ -118,8 +125,9 @@ drawBoard (GuiContext *ctx)
 void
 clearHighlights (GuiContext *ctx)
 {
-  if (!ctx || !ctx->gameBoard || !ctx->gameState)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
 
   int size = ctx->gameState->size;
   for (int i = 0; i < size * size; i++)
@@ -133,8 +141,9 @@ clearHighlights (GuiContext *ctx)
 void
 clearHintHighlights (GuiContext *ctx)
 {
-  if (!ctx || !ctx->gameBoard || !ctx->gameState)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
 
   int size = ctx->gameState->size;
   for (int i = 0; i < size * size; i++)
@@ -149,6 +158,7 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 {
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
 
   int size = ctx->gameState->size;
   assert (srcX >= 0 && srcX < size);
@@ -182,7 +192,12 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 void
 setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 {
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (boardGrid != NULL);
+
   int size = ctx->gameConfig->board_size;
+  assert (size > 0);
 
   if (ctx->gameState)
     {
@@ -205,10 +220,12 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
     }
 
   ctx->gameState = malloc (sizeof (GameState));
+  assert (ctx->gameState != NULL);
   ctx->gameState->size = size;
   game_init (ctx->gameState);
 
   ctx->gameBoard = malloc (size * size * sizeof (GtkWidget *));
+  assert (ctx->gameBoard != NULL);
   ctx->currentPhase = PHASE_MOVE_QUEEN;
 
   bool flipBoard = false;
@@ -288,8 +305,9 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 void
 setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx)
 {
-  if (!btn)
-    return;
+  assert (btn != NULL);
+  assert (target_str != NULL);
+  assert (ctx != NULL);
 
   gtk_button_set_label (GTK_BUTTON (btn), target_str);
 
@@ -307,6 +325,9 @@ void
 bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
 {
   (void)user_data;
+
+  assert (button != NULL);
+
   if (gtk_toggle_button_get_active (button))
     {
       gtk_button_set_label (GTK_BUTTON (button), "Press...");
@@ -315,8 +336,9 @@ bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
     {
       char *target_str
           = (char *)g_object_get_data (G_OBJECT (button), "target_str");
-      if (target_str)
-        gtk_button_set_label (GTK_BUTTON (button), target_str);
+      assert (target_str != NULL);
+
+      gtk_button_set_label (GTK_BUTTON (button), target_str);
     }
 }
 
@@ -325,8 +347,12 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
                    guint keycode, GdkModifierType state, gpointer user_data)
 {
   (void)keycode;
+
+  assert (controller != NULL);
+
   GtkWidget *button
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (controller));
+  assert (button != NULL);
 
   if (!gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button)))
     return FALSE;
@@ -344,11 +370,10 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
     {
       char *target_str
           = (char *)g_object_get_data (G_OBJECT (button), "target_str");
-      if (target_str)
-        {
-          strncpy (target_str, accel_name, SHORTCUTS_SIZE - 1);
-          target_str[SHORTCUTS_SIZE - 1] = '\0';
-        }
+      assert (target_str != NULL);
+
+      strncpy (target_str, accel_name, SHORTCUTS_SIZE - 1);
+      target_str[SHORTCUTS_SIZE - 1] = '\0';
 
       gtk_button_set_label (GTK_BUTTON (button), accel_name);
       g_free (accel_name);
@@ -357,10 +382,9 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), FALSE);
 
   GuiContext *ctx = (GuiContext *)user_data;
-  if (ctx)
-    {
-      updateGameShortcuts (ctx);
-    }
+  assert (ctx != NULL);
+
+  updateGameShortcuts (ctx);
 
   return TRUE;
 }
@@ -368,8 +392,8 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
 void
 updateGameShortcuts (GuiContext *ctx)
 {
-  if (!ctx || !ctx->mainStack)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
 
   GtkWidget *game_box
       = GTK_WIDGET (g_object_get_data (G_OBJECT (ctx->mainStack), "game_box"));
@@ -429,13 +453,13 @@ updateGameShortcuts (GuiContext *ctx)
 void
 updateTurnDisplay (GuiContext *ctx)
 {
-  if (!ctx || !ctx->mainStack || !ctx->gameState)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->mainStack != NULL);
+  assert (ctx->gameState != NULL);
 
   GtkWidget *turnLabel = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "turn_label"));
-  if (!turnLabel)
-    return;
+  assert (turnLabel != NULL);
 
   PlayerColor current = ctx->gameState->current_player;
 
@@ -466,10 +490,18 @@ void
 showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
                  Position a_dst)
 {
-  if (!ctx || !ctx->gameBoard || !ctx->gameState)
-    return;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->gameBoard != NULL);
 
   int size = ctx->gameState->size;
+
+  assert (q_src.col >= 0 && q_src.col < size);
+  assert (q_src.row >= 0 && q_src.row < size);
+  assert (q_dst.col >= 0 && q_dst.col < size);
+  assert (q_dst.row >= 0 && q_dst.row < size);
+  assert (a_dst.col >= 0 && a_dst.col < size);
+  assert (a_dst.row >= 0 && a_dst.row < size);
 
   clearHighlights (ctx);
 
@@ -487,6 +519,7 @@ gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
 {
   assert (ctx != NULL);
   assert (ctx->mainStack != NULL);
+  assert (format != NULL);
 
   GtkWidget *consoleView = GTK_WIDGET (
       g_object_get_data (G_OBJECT (ctx->mainStack), "server_console_view"));
@@ -496,8 +529,13 @@ gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
   char buffer[1024];
   va_list args;
   va_start (args, format);
-  vsnprintf (buffer, sizeof (buffer), format, args);
+  int len = vsnprintf (buffer, sizeof (buffer), format, args);
   va_end (args);
+
+  if (len < 0 || len >= (int)sizeof (buffer))
+    {
+      buffer[sizeof (buffer) - 1] = '\0';
+    }
 
   GtkTextBuffer *text_buf
       = gtk_text_view_get_buffer (GTK_TEXT_VIEW (consoleView));
@@ -517,6 +555,7 @@ guiShowPopup (GuiContext *ctx, const char *message)
 {
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
+  assert (message != NULL);
 
 #if GTK_CHECK_VERSION(4, 10, 0)
   GtkAlertDialog *dialog = gtk_alert_dialog_new ("%s", message);
