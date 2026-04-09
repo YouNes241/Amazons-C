@@ -7,8 +7,13 @@
     <file>config.ui</file>
     <file>info.ui</file>
     <file>game.ui</file>
-    <file>game_pages/info_popup.ui</file>
-    <file>game_pages/config_popup.ui</file>
+    <file>join_server.ui</file>
+    <file>host_panel.ui</file>
+    <file>client_panel.ui</file>
+    <file>popups/info_popup.ui</file>
+    <file>popups/config_popup.ui</file>
+    <file>popups/create_game_popup.ui</file>
+    <file>popups/create_server_popup.ui</file>
     <file>style.css</file>
   </gresource>
 </gresources>

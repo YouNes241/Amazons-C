@@ -525,7 +525,7 @@
                     <child>
                       <object class="GtkListBoxRow">
                         <child>
-                          <object class="GtkBox">
+                          <object class="GtkBox" id="lang_dropdown_container">
                             <property name="orientation">horizontal</property>
                             <property name="margin-start">15</property>
                             <property name="margin-end">15</property>
@@ -538,16 +538,7 @@
                                 <property name="halign">start</property>
                               </object>
                             </child>
-                            <child>
-                              <object class="GtkComboBoxText" id="lang_dropdown">
-                                <property name="valign">center</property>
-                                <items>
-                                  <item id="0">Français</item>
-                                  <item id="1">English</item>
-                                </items>
-                              </object>
-                            </child>
-                          </object>
+                            </object>
                         </child>
                       </object>
                     </child>

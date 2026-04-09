@@ -7,63 +7,67 @@
 #include "controller.h"
 #include "game_engine.h"
 #include "gui_application.h"
+#include "gui_network_events.h"
 #include "gui_utils.h"
+#include <assert.h>
 #include <gtk/gtk.h>
+#include <stdlib.h>
 
 /** @name Forward Declarations
  */
 ///@{
-void guiHandlePlayerMove (AppContext *ctx, Move move);
+static gboolean guiAIPlayTurn (gpointer user_data);
+static gboolean gui_network_tick_loop (gpointer user_data);
+static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
+static gpointer guiAIWorkerThread (gpointer user_data);
 ///@}
 
-/** @name Global Variables
- * @brief GUI AI instances and state
- */
-///@{
-static AI_Interface g_gui_ai_white;
-static bool g_gui_ai_white_initialized = false;
-
-static AI_Interface g_gui_ai_black;
-static bool g_gui_ai_black_initialized = false;
-///@}
-
-static bool
-is_it_ai_turn (game_config_t *config, PlayerColor current_p)
+void
+guiCheckAndTriggerAI (GuiContext *ctx)
 {
-  if (current_p == PLAYER_WHITE)
-    return config->ai_white_cfg.enabled;
-  if (current_p == PLAYER_BLACK)
-    return config->ai_black_cfg.enabled;
-  return false;
-}
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->gameState != NULL);
 
-static gboolean
-guiAIPlayTurn (gpointer user_data)
-{
-  AppContext *ctx = (AppContext *)user_data;
-
-  g_print ("\n[AI] Thinking...\n");
+  if (ctx->isNetworkMatch)
+    return;
 
   bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-  AI_Interface *current_ai = is_white_turn ? &g_gui_ai_white : &g_gui_ai_black;
+  bool current_ai_init = is_white_turn ? ctx->is_ai_white_initialized
+                                       : ctx->is_ai_black_initialized;
 
-  Move ai_move
-      = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));
-
-  guiHandlePlayerMove (ctx, ai_move);
-
-  return G_SOURCE_REMOVE;
+  if (current_ai_init
+      && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
+    {
+      g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
+    }
 }
 
 void
-guiHandlePlayerMove (AppContext *ctx, Move move)
+guiHandlePlayerMove (GuiContext *ctx, Move move)
 {
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+  assert (ctx->gameConfig != NULL);
+
   if (is_move_legal (ctx->gameState, move))
     {
       apply_move (ctx->gameState, move);
 
+      clearHintHighlights (ctx);
+      ctx->isHintActive = false;
+
+      if (ctx->isNetworkMatch
+          && ctx->gameState->current_player != ctx->selfPlayerColor)
+        {
+          assert (ctx->networkManager != NULL);
+
+          NetworkManager_SendMove (ctx->networkManager, move);
+        }
+
       clearHighlights (ctx);
       drawBoard (ctx);
+      updateTurnDisplay (ctx);
       ctx->currentPhase = PHASE_MOVE_QUEEN;
 
       if (is_game_over (ctx->gameState, ctx->gameState->current_player))
@@ -71,37 +75,24 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
           PlayerColor winner = get_winner (ctx->gameState);
           const char *winnerStr = (winner == PLAYER_WHITE) ? "White" : "Black";
 
-          g_print ("\n GAME OVER ! \n%s won !\n", winnerStr);
+          char msg[128];
+          snprintf (msg, sizeof (msg), "GAME OVER ! \n%s won !", winnerStr);
+          g_print ("\n %s \n", msg);
 
-#if GTK_CHECK_VERSION(4, 10, 0)
-          GtkAlertDialog *dialog
-              = gtk_alert_dialog_new ("GAME OVER ! \n%s won !", winnerStr);
-          gtk_alert_dialog_show (dialog, GTK_WINDOW (ctx->mainWindow));
-          g_object_unref (dialog);
-#else
-          GtkWidget *dialog = gtk_message_dialog_new (
-              ctx->mainWindow,
-              GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-              GTK_MESSAGE_INFO, GTK_BUTTONS_OK, "GAME OVER ! \n%s won !",
-              winnerStr);
+          if (ctx->isNetworkMatch)
+            {
+              assert (ctx->networkManager != NULL);
 
-          g_signal_connect_swapped (dialog, "response",
-                                    G_CALLBACK (gtk_window_destroy), dialog);
-          gtk_window_present (GTK_WINDOW (dialog));
-#endif
+              bool i_won = (winner == ctx->selfPlayerColor);
+              NetworkManager_SendGameOver (ctx->networkManager, i_won);
+              ctx->isNetworkMatch = false;
+            }
 
+          guiShowPopup (ctx, msg);
           return;
         }
 
-      bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-      bool current_ai_init = is_white_turn ? g_gui_ai_white_initialized
-                                           : g_gui_ai_black_initialized;
-
-      if (current_ai_init
-          && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
-        {
-          g_timeout_add (50, guiAIPlayTurn, ctx);
-        }
+      guiCheckAndTriggerAI (ctx);
     }
   else
     {
@@ -113,21 +104,27 @@ guiHandlePlayerMove (AppContext *ctx, Move move)
 }
 
 void
-guiStartNewGame (AppContext *ctx)
+guiStartNewGame (GuiContext *ctx)
 {
-  if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
-      && g_gui_ai_white.vtable->clean)
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->gameState != NULL);
+
+  ctx->is_ai_thinking = false;
+
+  if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
+      && ctx->ai_white.vtable->clean)
     {
-      g_gui_ai_white.vtable->clean (&g_gui_ai_white);
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
     }
-  if (g_gui_ai_black_initialized && g_gui_ai_black.vtable
-      && g_gui_ai_black.vtable->clean)
+  if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
+      && ctx->ai_black.vtable->clean)
     {
-      g_gui_ai_black.vtable->clean (&g_gui_ai_black);
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
     }
 
-  g_gui_ai_white_initialized = false;
-  g_gui_ai_black_initialized = false;
+  ctx->is_ai_white_initialized = false;
+  ctx->is_ai_black_initialized = false;
 
   if (ctx->gameConfig->ai_white_cfg.enabled)
     {
@@ -139,8 +136,8 @@ guiStartNewGame (AppContext *ctx)
         }
       ConfigMap cm = { .count = ctx->gameConfig->ai_white_cfg.param_count,
                        .list = params };
-      g_gui_ai_white = create_ai (ctx->gameConfig->ai_white_cfg.name, cm);
-      g_gui_ai_white_initialized = (g_gui_ai_white.vtable != NULL);
+      ctx->ai_white = create_ai (ctx->gameConfig->ai_white_cfg.name, cm);
+      ctx->is_ai_white_initialized = (ctx->ai_white.vtable != NULL);
     }
 
   if (ctx->gameConfig->ai_black_cfg.enabled)
@@ -153,35 +150,155 @@ guiStartNewGame (AppContext *ctx)
         }
       ConfigMap cm = { .count = ctx->gameConfig->ai_black_cfg.param_count,
                        .list = params };
-      g_gui_ai_black = create_ai (ctx->gameConfig->ai_black_cfg.name, cm);
-      g_gui_ai_black_initialized = (g_gui_ai_black.vtable != NULL);
+      ctx->ai_black = create_ai (ctx->gameConfig->ai_black_cfg.name, cm);
+      ctx->is_ai_black_initialized = (ctx->ai_black.vtable != NULL);
     }
 
-  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-  bool current_ai_init = is_white_turn ? g_gui_ai_white_initialized
-                                       : g_gui_ai_black_initialized;
+  guiCheckAndTriggerAI (ctx);
+}
 
-  if (current_ai_init
-      && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
-    {
-      g_timeout_add (50, guiAIPlayTurn, ctx);
-    }
+void
+guiDisconnectAndRestartNetwork (GuiContext *ctx)
+{
+  assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
+
+  NetworkManager_Cleanup (ctx->networkManager);
+  NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
+
+  ctx->isNetworkMatch = false;
 }
 
 void
 run_gui_mode (game_config_t *config)
 {
+  assert (config != NULL);
+
   GtkApplication *app = createApplication (config);
+  assert (app != NULL);
+
+  GuiContext *ctx
+      = (GuiContext *)g_object_get_data (G_OBJECT (app), "GuiContext");
+  assert (ctx != NULL);
+
+  ctx->networkManager = malloc (sizeof (NetworkManager));
+  assert (ctx->networkManager != NULL);
+
+  ctx->isNetworkMatch = false;
+  ctx->is_ai_thinking = false;
+  ctx->selfPlayerColor = PLAYER_WHITE;
+
+  NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
+
+  g_timeout_add (GUI_NETWORK_DELAY, gui_network_tick_loop, ctx);
+
   runApplication (app, 0, NULL);
 
-  if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
-      && g_gui_ai_white.vtable->clean)
+  if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
+      && ctx->ai_white.vtable->clean)
     {
-      g_gui_ai_white.vtable->clean (&g_gui_ai_white);
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
     }
-  if (g_gui_ai_black_initialized && g_gui_ai_black.vtable
-      && g_gui_ai_black.vtable->clean)
+  if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
+      && ctx->ai_black.vtable->clean)
     {
-      g_gui_ai_black.vtable->clean (&g_gui_ai_black);
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
     }
+
+  NetworkManager_Cleanup (ctx->networkManager);
+  free (ctx->networkManager);
+}
+
+static gboolean
+guiAIApplyMove (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+  GuiContext *ctx = data->ctx;
+
+  ctx->is_ai_thinking = false;
+
+  if (!ctx->isNetworkMatch && ctx->gameState
+      && ctx->gameState->current_player == data->state_copy.current_player)
+    {
+      guiHandlePlayerMove (ctx, data->best_move);
+    }
+
+  free (data);
+  return G_SOURCE_REMOVE;
+}
+
+static bool
+is_it_ai_turn (game_config_t *config, PlayerColor current_p)
+{
+  assert (config != NULL);
+
+  if (current_p == PLAYER_WHITE)
+    return config->ai_white_cfg.enabled;
+  if (current_p == PLAYER_BLACK)
+    return config->ai_black_cfg.enabled;
+  return false;
+}
+
+static gboolean
+gui_network_tick_loop (gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->networkManager != NULL);
+
+  NetworkManager_Tick (ctx->networkManager);
+
+  return G_SOURCE_CONTINUE;
+}
+
+static gboolean
+guiAIPlayTurn (gpointer user_data)
+{
+  GuiContext *ctx = (GuiContext *)user_data;
+  assert (ctx != NULL);
+  assert (ctx->gameState != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      return G_SOURCE_REMOVE;
+    }
+
+  if (ctx->isNetworkMatch
+      || !is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
+    {
+      return G_SOURCE_REMOVE;
+    }
+
+  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
+  AI_Interface *current_ai = is_white_turn ? &ctx->ai_white : &ctx->ai_black;
+
+  if (current_ai == NULL || current_ai->vtable == NULL)
+    {
+      return G_SOURCE_REMOVE;
+    }
+
+  ctx->is_ai_thinking = true;
+
+  AIWorkerData *data = malloc (sizeof (AIWorkerData));
+  assert (data != NULL);
+  data->ctx = ctx;
+  data->state_copy = *(ctx->gameState);
+  data->ai = current_ai;
+
+  g_thread_new ("ai_thread", guiAIWorkerThread, data);
+
+  return G_SOURCE_REMOVE;
+}
+
+static gpointer
+guiAIWorkerThread (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+
+  data->best_move
+      = data->ai->vtable->get_best_move (data->ai, data->state_copy);
+
+  g_idle_add (guiAIApplyMove, data);
+
+  return NULL;
 }
