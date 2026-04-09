@@ -52,28 +52,29 @@ TEST_F (CliControllerTest, IsItAiTurnLogic)
 
 TEST_F (CliControllerTest, LineHandlerLogic)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
-          run_interactive_mode (&cfg);
-        });
 
-  while (!g_cli_ctx)
-    std::this_thread::sleep_for (std::chrono::milliseconds (5));
+  CliContext local_ctx;
+  memset (&local_ctx, 0, sizeof (CliContext));
 
-  EXPECT_NO_THROW (linehandler (nullptr));
+  GameState dummy_game;
+  game_init (&dummy_game);
+  local_ctx.current_game = &dummy_game;
+  local_ctx.game_running = true;
+
+  g_cli_ctx = &local_ctx;
 
   char *empty_line = strdup ("");
   EXPECT_NO_THROW (linehandler (empty_line));
+  EXPECT_TRUE (g_cli_ctx->game_running);
 
   char *valid_line = strdup ("help");
   EXPECT_NO_THROW (linehandler (valid_line));
+  EXPECT_TRUE (g_cli_ctx->game_running);
 
-  g_cli_ctx->game_running = false;
-  t.join ();
+  EXPECT_NO_THROW (linehandler (nullptr));
+  EXPECT_FALSE (g_cli_ctx->game_running);
+
+  g_cli_ctx = nullptr;
 }
 
 /* ==========================================================================
