@@ -205,7 +205,7 @@ get_legal_moves (const BitboardState *state, Move *moves_array)
   Bitboard occupied = bitboard_state_get_occupied_squares (state);
   Bitboard my_queens = bitboard_state_get_current_queens (state);
 
-  while (!bitboard_is_zero (my_queens) != 0)
+  while (!bitboard_is_zero (my_queens))
     {
       int q_from = pop_lsb (&my_queens);
 

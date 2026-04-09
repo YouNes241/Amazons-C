@@ -381,7 +381,7 @@ get_top_moves (const BitboardState *state, int beam_limit,
   if (queen_count == 0)
     return 0;
 
-  ScoredMove filtered_queens[MAX_BEAM_LIMIT];
+  ScoredMove filtered_queens[MAX_POSSIBLE_MOVES];
   int actual_q_count = pick_top_moves (state, queen_moves, queen_count,
                                        beam_limit, filtered_queens);
 
@@ -431,7 +431,7 @@ alpha_beta_forward (const Minimax_Data *data, const BitboardState *state,
   if (beam_limit <= 0)
     return data->evaluate (state);
 
-  ScoredMove top_moves[MAX_BEAM_LIMIT];
+  ScoredMove top_moves[MAX_POSSIBLE_MOVES];
 
   int actual_count = get_top_moves (state, beam_limit, top_moves);
 
@@ -482,7 +482,9 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
   float beta = TOP_SCORE;
   bool root_is_white = state->white_to_move;
 
-  Move best_move = { 0 }; // Default move in case no moves are available
+  Move best_moves_pool[MAX_POSSIBLE_MOVES];
+  int pool_size = 0;
+
   float best_score = root_is_white ? BOTTOM_SCORE : TOP_SCORE;
 
   for (int i = 0; i < count; i++)
@@ -496,14 +498,50 @@ run_root_search (const Minimax_Data *data, const BitboardState *state,
       float score = alpha_beta_forward (data, &next_state, depth - 1, alpha,
                                         beta, !root_is_white, start_time);
 
-      update_best_move (root_is_white, score, available_moves[i], &best_move,
-                        &best_score, &alpha, &beta);
+      if (root_is_white)
+        {
+          if (score > best_score)
+            {
+              // Found a strictly better move, reset the pool
+              best_score = score;
+              best_moves_pool[0] = available_moves[i];
+              pool_size = 1;
+            }
+          else if (score == best_score)
+            {
+              // Found an equally good move, add to the pool
+              best_moves_pool[pool_size++] = available_moves[i];
+            }
+          alpha = MAX (alpha, best_score);
+        }
+      else
+        {
+          if (score < best_score)
+            {
+              // Found a strictly better move, reset the pool
+              best_score = score;
+              best_moves_pool[0] = available_moves[i];
+              pool_size = 1;
+            }
+          else if (score == best_score)
+            {
+              // Found an equally good move, add to the pool
+              best_moves_pool[pool_size++] = available_moves[i];
+            }
+          beta = MIN (beta, best_score);
+        }
 
       if (beta <= alpha)
         break;
     }
 
-  return best_move;
+  if (pool_size > 0)
+    {
+      int random_index = (int)(next_xoshiro () % pool_size);
+      return best_moves_pool[random_index];
+    }
+
+  return (Move){ 0 }; // fallback
 }
 
 /**

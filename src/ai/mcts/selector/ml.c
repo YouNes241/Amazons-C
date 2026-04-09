@@ -55,7 +55,7 @@ static MCTS_Node *
 ml_select_child (const ISelector *self, const MCTS_Node *parent)
 {
   if (!self || !self->context || !parent)
-    return parent;
+    return (MCTS_Node *)parent;
   ML_Selector_Data *data = (ML_Selector_Data *)self->context;
   MCTS_Node *current = parent->first_child;
   MCTS_Node *best_child = NULL;

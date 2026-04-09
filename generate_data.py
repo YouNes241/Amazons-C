@@ -59,8 +59,8 @@ def generate_games(num_games, batch_size=500): # Prefer 500/1000 batch size to s
     
     # Bumped to 10ms to reduce 0 moves chances
     print("Initializing AIs (10ms, 8 threads)...")
-    ai_white = lib.api_create_mcts(10, 8) 
-    ai_black = lib.api_create_mcts(10, 8) 
+    ai_white = lib.api_create_mcts(5000, 8) 
+    ai_black = lib.api_create_mcts(5000, 8) 
     
     try:
         while games_completed < num_games:

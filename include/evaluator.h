@@ -27,7 +27,7 @@ typedef struct
 } EvaluatorMap;
 
 static const EvaluatorMap EVALUATOR_DICT[]
-    = { { EVAL_ME, "me" }, { EVAL_RTH, "rth" }, { EVAL_QD_KD, "qd&kd" } };
+    = { { EVAL_ME, "me" }, { EVAL_RTH, "rth" }, { EVAL_QD_KD, "qdkd" } };
 
 /**
  * @brief Checks if the given evaluator name exists.

@@ -2,9 +2,11 @@
 #include "ai_interface.h"
 #include "bitboard_state.h"
 #include "game_engine.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 /**
  * @brief Puts all occupied squares (queens and arrows) into a single bitboard.
  * @param state A game state with pos of queens and arrows.
@@ -103,14 +105,28 @@ api_create_mcts (int time_limit, int max_workers)
 }
 
 AI_Interface *
-api_create_minimax (int depth)
+api_create_minimax (int depth, const char *evaluator, int forward_pruning,
+                    int iterative_deepening)
 {
   AI_Interface *ai = (AI_Interface *)malloc (sizeof (AI_Interface));
-  char depth_str[20];
+
+  // Buffers to hold the string representations of the integers
+  char depth_str[50];
+  char fp_str[50];
+  char id_str[50];
+
   sprintf (depth_str, "%d", depth);
-  Param p[] = { { "depth", depth_str }, { "evaluator", "qd&kd" } };
-  ConfigMap cm = { 2, p };
+  sprintf (fp_str, "%d", forward_pruning);
+  sprintf (id_str, "%d", iterative_deepening);
+
+  Param p[] = { { "depth", depth_str },
+                { "evaluator", evaluator },
+                { "forward_pruning", fp_str },
+                { "iterative_deepening", id_str } };
+
+  ConfigMap cm = { 4, p };
   *ai = create_ai ("minimax", cm);
+
   return ai;
 }
 
@@ -120,6 +136,7 @@ api_init_game (int size)
 {
   GameState *gs = (GameState *)malloc (sizeof (GameState));
   *gs = setup_standard_start (size);
+  seed_xoshiro (time (NULL));
   return gs;
 }
 
