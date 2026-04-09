@@ -40,7 +40,7 @@ msgstr "[%s] Tour: %s >> "
 
 #: src/controller/cli_commands.c:101
 msgid "[AWAY] >> "
-msgstr "[ABSCENT] >> "
+msgstr "[ABSENT] >> "
 
 #: src/controller/cli_commands.c:106 src/network/network_handler_client.c:70
 #: src/network/network_handler_client.c:93
@@ -111,12 +111,12 @@ msgid ""
 "--- Network (Server) ---\n"
 msgstr ""
 "\n"
-"--- Réseaux (serveur) ---\n"
+"--- réseau (serveur) ---\n"
 
 #: src/controller/cli_commands.c:193
 #, c-format
 msgid "  server start [port]  : Host a new server\n"
-msgstr "  server start [port]  : Héberger un nouveau serveur sur le port choisit\n"
+msgstr "  server start [port]  : Héberger un nouveau serveur sur le port choisi\n"
 
 #: src/controller/cli_commands.c:194
 #, c-format
@@ -131,7 +131,7 @@ msgstr "  server status        : Affiche le nombre de clients connectés et des 
 #: src/controller/cli_commands.c:198
 #, c-format
 msgid "  server list          : Discover local servers on the network\n"
-msgstr "  server list          : Montre les serveurs disponibles sur le réseaux\n"
+msgstr "  server list          : Montre les serveurs disponibles sur le réseau\n"
 
 #: src/controller/cli_commands.c:200
 #, c-format
@@ -140,12 +140,12 @@ msgid ""
 "--- Network (Client & Lobby) ---\n"
 msgstr ""
 "\n"
-"--- Réseaux (Client & SALON) ---\n"
+"--- réseau (Client & SALON) ---\n"
 
 #: src/controller/cli_commands.c:201
 #, c-format
 msgid "  join [IP:Port] [name]: Connect to a server\n"
-msgstr "  join [IP:Port] [name]: Connecte au serveur choisit\n"
+msgstr "  join [IP:Port] [name]: Connecte au serveur choisi\n"
 
 #: src/controller/cli_commands.c:202
 #, c-format
@@ -167,7 +167,7 @@ msgstr "  ping                 : Teste et affiche votre latence avec le serveur\
 #: src/controller/cli_commands.c:208
 #, c-format
 msgid "  new <ID>             : Invite a player to a game\n"
-msgstr "  new <ID>             : Invite le joueur choisit dans la partie\n"
+msgstr "  new <ID>             : Invite le joueur choisi dans la partie\n"
 
 #: src/controller/cli_commands.c:209
 #, c-format
@@ -187,12 +187,12 @@ msgstr "  cancel <ID>          : Annule l'invitation envoyée\n"
 #: src/controller/cli_commands.c:212
 #, c-format
 msgid "  away                 : Mark yourself as AWAY\n"
-msgstr "  away                 : Vous signale ABSCENT\n"
+msgstr "  away                 : Vous signale ABSENT\n"
 
 #: src/controller/cli_commands.c:213
 #, c-format
 msgid "  back                 : Mark yourself as BACK/IDLE\n"
-msgstr "  back                 : Vous enlève du statut ABSCENT\n"
+msgstr "  back                 : Vous enlève du statut ABSENT\n"
 
 #: src/controller/cli_commands.c:215
 #, c-format
@@ -217,7 +217,6 @@ msgstr ""
 "====================\n"
 "\n"
 
-Spacycat — 21:50
 #: src/controller/cli_commands.c:241
 #, c-format
 msgid "[INFO] Server started successfully on port %d.\n"
@@ -226,7 +225,7 @@ msgstr "[INFO] Succès du démarrage du serveur sur le port %d.\n"
 #: src/controller/cli_commands.c:247
 #, c-format
 msgid "[ERROR] Failed to start server. Port %d might be in use.\n"
-msgstr "[ERROR] Démarrage de serveur non réussi. Le Port %d pourrais déja être utilisé.\n"
+msgstr "[ERREUR] Démarrage de serveur non réussi. Le Port %d pourrais déjà être utilisé.\n"
 
 #: src/controller/cli_commands.c:258
 #, c-format
@@ -240,7 +239,7 @@ msgstr ""
 #: src/controller/cli_commands.c:266
 #, c-format
 msgid "You are already connected to a network.\n"
-msgstr "Vous êtes déjà connectés à un réseaux\n"
+msgstr "Vous êtes déjà connectés à un réseau\n"
 
 #: src/controller/cli_commands.c:316
 #, c-format
@@ -267,12 +266,12 @@ msgstr ""
 #: src/controller/cli_commands.c:342 src/controller/cli_commands.c:487
 #, c-format
 msgid "You must start or join a server first to see players.\n"
-msgstr "Vous devez d'abort rejoindre un serveur pour voir ses joueurs\n"
+msgstr "Vous devez d'abord rejoindre un serveur pour voir ses joueurs\n"
 
 #: src/controller/cli_commands.c:352
 #, c-format
 msgid "You are now marked as AWAY.\n"
-msgstr "Vous êtes maintenant ABSCENT.\n"
+msgstr "Vous êtes maintenant ABSENT.\n"
 
 #: src/controller/cli_commands.c:362
 #, c-format
@@ -354,7 +353,7 @@ msgstr "Échec de lecture du scoreboard\n"
 #: src/controller/cli_commands.c:457
 #, c-format
 msgid "You must join a server first to ping it.\n"
-msgstr "Vous devez d'abort rejoindre un serveur pour le ping.\n"
+msgstr "Vous devez d'abord rejoindre un serveur pour le ping.\n"
 
 #: src/controller/cli_commands.c:497
 #, c-format
@@ -369,7 +368,7 @@ msgstr "Invitation refusée\n"
 #: src/controller/cli_commands.c:521
 #, c-format
 msgid "You must join a server first to invite someone.\n"
-msgstr "Vous devez d'abort rejoindre un serveur pour inviter quelqu'un.\n"
+msgstr "Vous devez d'abord rejoindre un serveur pour inviter quelqu'un.\n"
 
 #: src/controller/cli_commands.c:529
 #, c-format
@@ -559,7 +558,7 @@ msgid ""
 "[SERVER] Player '%s' successfully joined Slot %d!\n"
 msgstr ""
 "\n"
-"[SERVEUR] Joueur '%s' a rejoint avec succès le Slot %d!\n
+"[SERVEUR] Joueur '%s' a rejoint avec succès le Slot %d!\n"
 
 #: src/network/network_handler_server.c:289
 msgid "Welcome to the Lobby!"
@@ -574,7 +573,7 @@ msgid "Error: Player not found."
 msgstr "Erreur: Joueur non trouvé."
 #: src/network/network_handler_server.c:383
 msgid "Error: Player is AWAY."
-msgstr "Erreur: Joueur ABSCENT."
+msgstr "Erreur: Joueur ABSENT."
 
 #: src/network/network_handler_server.c:389
 msgid "Error: Player is not available."
