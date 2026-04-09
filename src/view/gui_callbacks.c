@@ -363,6 +363,12 @@ quitGameButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->mainStack != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
+
   if (ctx->isNetworkMatch)
     {
       NetworkManager_SendGameOver (ctx->networkManager, false);
@@ -625,6 +631,12 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->mainStack != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
+
   if (ctx->isNetworkMatch)
     {
       guiShowPopup (ctx, "Action disabled during a network match.");
@@ -751,6 +763,11 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
   assert (ctx->gameBoard != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      return NULL;
+    }
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
@@ -920,6 +937,11 @@ fireArrow (GtkWidget *button, gpointer user_data)
   assert (ctx->gameState != NULL);
   assert (button != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      return;
+    }
+
   if (ctx->currentPhase != PHASE_SHOOT_ARROW
       || (ctx->isNetworkMatch
           && ctx->gameState->current_player != ctx->selfPlayerColor))
@@ -970,6 +992,11 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      return;
+    }
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -1223,6 +1250,12 @@ saveButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx->mainWindow != NULL);
   assert (ctx->gameState != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
+
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
       guiShowPopup (
@@ -1244,6 +1277,12 @@ loadButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->mainWindow != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
 
   if (ctx->isNetworkMatch)
     {
@@ -1393,6 +1432,12 @@ saveButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx->gameState != NULL);
   assert (ctx->mainWindow != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
+
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
       guiShowPopup (
@@ -1416,6 +1461,12 @@ loadButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
   assert (ctx->mainWindow != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
 
   if (ctx->isNetworkMatch)
     {

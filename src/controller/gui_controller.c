@@ -39,7 +39,11 @@ guiCheckAndTriggerAI (GuiContext *ctx)
   if (current_ai_init
       && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
     {
-      g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
+      if (!ctx->is_ai_thinking)
+        {
+          ctx->is_ai_thinking = true;
+          g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
+        }
     }
 }
 
@@ -258,14 +262,11 @@ guiAIPlayTurn (gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
 
-  if (ctx->is_ai_thinking)
-    {
-      return G_SOURCE_REMOVE;
-    }
-
   if (ctx->isNetworkMatch
       || !is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
     {
+      ctx->is_ai_thinking = false;
+
       return G_SOURCE_REMOVE;
     }
 
@@ -274,6 +275,7 @@ guiAIPlayTurn (gpointer user_data)
 
   if (current_ai == NULL || current_ai->vtable == NULL)
     {
+      ctx->is_ai_thinking = false;
       return G_SOURCE_REMOVE;
     }
 
