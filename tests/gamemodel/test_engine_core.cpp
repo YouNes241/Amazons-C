@@ -218,3 +218,21 @@ TEST (EngineCore, GameCleanupRobustness)
 
   SUCCEED ();
 }
+
+TEST (GameEngineTest, NullGuards)
+{
+  Move dummy_move = { { 0, 0 }, { 0, 1 }, { 0, 2 } };
+
+  apply_move (NULL, dummy_move);
+  EXPECT_FALSE (is_move_legal (NULL, dummy_move));
+  EXPECT_TRUE (is_game_over (NULL, PLAYER_WHITE));
+  EXPECT_EQ (get_winner (NULL), NO_PLAYER);
+  update_blitz_timer (NULL);
+
+  GameState uninit_state = {}; // board = NULL
+  apply_move (&uninit_state, dummy_move);
+  EXPECT_FALSE (is_move_legal (&uninit_state, dummy_move));
+  EXPECT_TRUE (is_game_over (&uninit_state, PLAYER_WHITE));
+
+  SUCCEED ();
+}

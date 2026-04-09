@@ -345,3 +345,187 @@ TEST (GameEngineTest, UndoAtStartReturnsFalse)
   EXPECT_FALSE (undo_move (&state));
   game_cleanup (&state);
 }
+
+TEST (GameEngineTest, RedoAtStartReturnsFalse)
+{
+  GameState state = {};
+  game_init (&state);
+
+  EXPECT_FALSE (redo_move (&state));
+
+  Move move;
+  move.queen_src = { 0, 3 };
+  move.queen_dst = { 1, 3 };
+  move.arrow_dst = { 2, 3 };
+  apply_move (&state, move);
+  EXPECT_FALSE (redo_move (&state));
+
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, ApplyMoveClearsRedoStack)
+{
+  GameState state = {};
+  game_init (&state);
+
+  Move moveA;
+  moveA.queen_src = { 0, 3 };
+  moveA.queen_dst = { 1, 3 };
+  moveA.arrow_dst = { 2, 3 };
+  apply_move (&state, moveA);
+  undo_move (&state);
+  Move moveB;
+  moveB.queen_src = { 0, 3 };
+  moveB.queen_dst = { 0, 4 };
+  moveB.arrow_dst = { 0, 5 };
+  apply_move (&state, moveB);
+  EXPECT_FALSE (redo_move (&state));
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, MultipleUndoRedoCascade)
+{
+  GameState state = {};
+  game_init (&state);
+
+  Move m1 = { { 0, 3 }, { 1, 3 }, { 2, 3 } };
+  Move m2 = { { 9, 6 }, { 8, 6 }, { 7, 6 } };
+
+  apply_move (&state, m1);
+  apply_move (&state, m2);
+  EXPECT_EQ (state.turn_count, 2);
+
+  EXPECT_TRUE (undo_move (&state));
+  EXPECT_TRUE (undo_move (&state));
+  EXPECT_FALSE (undo_move (&state));
+  EXPECT_EQ (state.turn_count, 0);
+  EXPECT_EQ (state.current_player, PLAYER_WHITE);
+
+  EXPECT_TRUE (redo_move (&state));
+  EXPECT_TRUE (redo_move (&state));
+  EXPECT_FALSE (redo_move (&state));
+  EXPECT_EQ (state.turn_count, 2);
+  EXPECT_EQ (state.current_player, PLAYER_WHITE);
+
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, SafeUndoRedoWithNullState)
+{
+  EXPECT_FALSE (undo_move (NULL));
+  EXPECT_FALSE (redo_move (NULL));
+  GameState uninitialized_state = {};
+  uninitialized_state.board = NULL;
+  EXPECT_FALSE (undo_move (&uninitialized_state));
+  EXPECT_FALSE (redo_move (&uninitialized_state));
+}
+
+TEST (GameEngineTest, UndoStackRespectsMaximumCapacity)
+{
+  GameState state = {};
+  game_init (&state);
+
+  Move dummy_move = { { 0, 0 }, { 0, 1 }, { 0, 2 } };
+
+  // try to apply 125 moves (more than the maximum capacity of 121)
+  for (int i = 0; i < 125; i++)
+    {
+      apply_move (&state, dummy_move);
+    }
+
+  EXPECT_LE (state.undo_stack.top, 120);
+  SUCCEED ();
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, BlitzTimerTriggersGameOverForWhite)
+{
+  GameState state = {};
+  game_init (&state);
+
+  state.blitz_mode = true;
+  state.current_player = PLAYER_WHITE;
+
+  state.white_time_left = 5.0;
+  state.black_time_left = 60.0;
+
+  state.blitz_turn_start = 0.0;
+
+  update_blitz_timer (&state);
+
+  EXPECT_LT (state.white_time_left, 0.0);
+  EXPECT_EQ (state.status, GAME_OVER_BLACK_WINS);
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, BlitzTimerIgnoredWhenOff)
+{
+  GameState state = {};
+  game_init (&state);
+  state.blitz_mode = false;
+  state.white_time_left = 60.0;
+
+  update_blitz_timer (&state);
+  EXPECT_DOUBLE_EQ (state.white_time_left, 60.0);
+
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, IsPathClearFailsWhenJumpingOverObstacle)
+{
+  GameState state = {};
+  state.size = 5;
+  game_init (&state);
+  for (int y = 0; y < 5; y++)
+    for (int x = 0; x < 5; x++)
+      state.board[y][x] = CONTENT_EMPTY;
+
+  // On place notre reine en (0, 0)
+  state.board[0][0] = CONTENT_WHITE_QUEEN;
+  state.current_player = PLAYER_WHITE;
+  state.board[2][2] = CONTENT_ARROW;
+
+  Move jump_move;
+  jump_move.queen_src = { 0, 0 };
+  jump_move.queen_dst = { 4, 4 };
+  jump_move.arrow_dst = { 3, 4 };
+  EXPECT_FALSE (is_move_legal (&state, jump_move));
+  game_cleanup (&state);
+}
+
+TEST (GameEngineTest, GenerateAllMovesExactCombinatorialCount)
+{
+  uint8_t size = 4;
+
+  Bitboard bb_white = bitboard_create_empty ();
+  Bitboard bb_black = bitboard_create_empty ();
+  Bitboard bb_arrows = bitboard_create_empty ();
+
+  /* Board 4x4 :
+     (0,0) W   (1,0) .   (2,0) X   (3,0) X
+     (0,1) X   (1,1) X   (2,1) X   (3,1) X
+     (0,2) X   (1,2) X   (2,2) X   (3,2) X
+     (0,3) X   (1,3) X   (2,3) X   (3,3) X
+  */
+
+  bitboard_set_bit (&bb_white, 0);
+  // Fill all obstacles except (1,0) -> index 1
+  for (uint8_t i = 2; i < 16; i++)
+    {
+      bitboard_set_bit (&bb_arrows, i);
+    }
+
+  Move generated_moves[10];
+
+  int count = generate_all_moves (bb_white, bb_black, bb_arrows, size,
+                                  PLAYER_WHITE, generated_moves);
+  ASSERT_EQ (count, 1) << "Found too mush or too few moves !";
+  Move unique_move = generated_moves[0];
+
+  EXPECT_EQ (unique_move.queen_src.col, 0);
+  EXPECT_EQ (unique_move.queen_src.row, 0);
+  EXPECT_EQ (unique_move.queen_dst.col, 1);
+  EXPECT_EQ (unique_move.queen_dst.row, 0);
+  EXPECT_EQ (unique_move.arrow_dst.col, 0);
+  EXPECT_EQ (unique_move.arrow_dst.row, 0);
+}
