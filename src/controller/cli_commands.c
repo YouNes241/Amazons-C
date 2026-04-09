@@ -203,7 +203,8 @@ update_config (game_config_t *config, const char *key, const char *val)
           config->ai_white_cfg.enabled = true;
           if (strcmp (val, "true") != 0)
             {
-              strncpy (config->ai_white_cfg.name, val, MAX_AI_STR_LEN - 1);
+              snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN, "%.*s",
+                        MAX_AI_STR_LEN - 1, val);
             }
         }
     }
@@ -218,7 +219,8 @@ update_config (game_config_t *config, const char *key, const char *val)
           config->ai_black_cfg.enabled = true;
           if (strcmp (val, "true") != 0)
             {
-              strncpy (config->ai_black_cfg.name, val, MAX_AI_STR_LEN - 1);
+              snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN, "%.*s",
+                        MAX_AI_STR_LEN - 1, val);
             }
         }
     }
