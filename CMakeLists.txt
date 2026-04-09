@@ -33,6 +33,48 @@ find_program(GLIB_COMPILE_RESOURCES NAMES glib-compile-resources REQUIRED)
 find_package(Intl)
 find_package(Doxygen)
 
+option(ENABLE_ML "Enable Machine Learning (TensorFlow)" OFF)
+
+if(ENABLE_ML)
+    FetchContent_Declare(
+            tensorflow_c
+            URL https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.15.0.tar.gz
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            DOWNLOAD_NO_PROGRESS FALSE
+    )
+    FetchContent_MakeAvailable(tensorflow_c)
+
+    set(TF_DIR "${tensorflow_c_SOURCE_DIR}")
+
+    # On garde l'inclusion globale pour la simplicité (Quick Win)
+    include_directories(${TF_DIR}/include)
+    link_directories(${TF_DIR}/lib)
+
+    include(CheckCSourceRuns)
+    set(CMAKE_REQUIRED_INCLUDES "${TF_DIR}/include")
+    set(CMAKE_REQUIRED_FLAGS "-L${TF_DIR}/lib")
+    set(CMAKE_REQUIRED_LIBRARIES "tensorflow")
+    set(CMAKE_REQUIRED_LINK_OPTIONS "-Wl,-rpath,${TF_DIR}/lib")
+
+    set(TF_TEST_CODE "
+    #include <stdio.h>
+    #include <tensorflow/c/c_api.h>
+    int main() {
+        printf(\"TF Version: %s\", TF_Version());
+        return 0;
+    }
+    ")
+
+    check_c_source_runs("${TF_TEST_CODE}" TF_IS_USABLE)
+
+    if(TF_IS_USABLE)
+        message(STATUS "SUCCESS: TensorFlow C API is fully usable. (please note tests will take longer to run)")
+        add_compile_definitions(TF_IS_USABLE)
+    endif()
+else()
+    message(STATUS "ML DISABLED: TensorFlow will not be downloaded or linked.")
+endif()
+
 # Force No Optimization for Coverage builds (BRANCHES)
 set(CMAKE_C_FLAGS_COVERAGE "-O0 -g --coverage")
 set(CMAKE_CXX_FLAGS_COVERAGE "-O0 -g --coverage")

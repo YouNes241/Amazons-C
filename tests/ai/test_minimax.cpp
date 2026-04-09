@@ -758,6 +758,14 @@ TEST_F (MinimaxAI, DoubleCleanDoesNotCrash)
   ai.vtable->clean (&ai);
   EXPECT_EQ (ai.context, nullptr);
 }
+// Null clean should not crash.
+TEST_F (MinimaxAI, NullCleanDoesNotCrash)
+{
+  ai.vtable->clean (nullptr);
+  EXPECT_NE (ai.context, nullptr);
+  ai.vtable->clean (&ai);
+  EXPECT_EQ (ai.context, nullptr);
+}
 
 // Default values must match the documented constants.
 TEST_F (MinimaxAI, DefaultParametersMatchConstants)
@@ -812,12 +820,12 @@ TEST_F (MinimaxAI, MallocFailureLeavesContextNull)
 {
   ai.vtable->clean (&ai);
 
-  {
-    MallocFailGuard guard;
-    ai.vtable->init (&ai, NULL);
-  }
-
-  EXPECT_EQ (ai.context, nullptr);
+  EXPECT_DEATH (
+      {
+        MallocFailGuard guard;
+        ai.vtable->init (&ai, NULL);
+      },
+      ".*");
 }
 
 // ============================================================

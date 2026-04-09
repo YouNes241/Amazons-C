@@ -26,7 +26,7 @@ if(OpenMP_C_FOUND)
 endif()
 
 # --- CREATE TEST EXECUTABLE ---
-add_executable(unit_tests ${TEST_SOURCES} $<TARGET_OBJECTS:minimax_test_lib> $<TARGET_OBJECTS:mcts_test_lib>)
+add_executable(unit_tests ${TEST_SOURCES} "${CMAKE_SOURCE_DIR}/src/python_api.c" $<TARGET_OBJECTS:minimax_test_lib> $<TARGET_OBJECTS:mcts_test_lib>)
 
 # --- INCLUDES ---
 target_include_directories(unit_tests PRIVATE 

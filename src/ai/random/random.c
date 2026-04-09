@@ -40,13 +40,14 @@ random_clean (AI_Interface *self)
 
 /**
  * @brief Gets a random move for the current state, without any evaluation.
+ * @note Expects a sound GameState; if not, you will run into a crash.
  *
  * @param self any
  * @param state Current game state.
  * @return Move
  */
 static Move
-random_get_best_move (const AI_Interface *self, GameState state)
+random_get_best_move (const AI_Interface *self, const GameState state)
 {
   (void)self;
   BitboardState bstate = sync_from_logic (&state);

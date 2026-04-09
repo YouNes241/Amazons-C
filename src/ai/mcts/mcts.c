@@ -21,22 +21,28 @@
 #include "mcts.h"
 #include "ai_interface.h"
 #include "bitboard.h"
+#include "config.h"
 #include "evaluator.h"
-#include "i_selector.h"
-#include "mcts_includes/mcts_internal.h"
+#include "selector.h"
 #include "uct.h"
 #include "utils.h"
+#include <assert.h>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#define SCORE_EVALUATOR get_evaluator (EVAL_QD_KD)
 const uint64_t DEFAULT_TIME_CONSTRAINT = 5000;
 const uint32_t DEFAULT_MAX_ITERATIONS = INT32_MAX;
+const float EXPLORATION_CONSTANT = 1.414f;
 const int DEFAULT_MAX_WORKERS = 1;
+const char *DEFAULT_SELECTOR = "uct";
+const float DEFAULT_UCT_COEF = 1.414f;
+const float DEFAULT_PUCT_COEF = 1.5f;
 
 /**
- * @brief Checks if a move is null (queen source and destination are the same).
- * Body defined in mcts.c under MCTS_STATIC.
+ * @brief Checks if a move is null (queen source and destination are the
+ * same). Body defined in mcts.c under MCTS_STATIC.
+ * @note Expects a sound move, otherwise crashing.
  *
  * @param m The move to check.
  * @return true if the move is null, false otherwise.
@@ -44,6 +50,7 @@ const int DEFAULT_MAX_WORKERS = 1;
 MCTS_STATIC bool
 is_move_null (const Move *m)
 {
+  assert (m != NULL);
   return m->queen_src.col == m->queen_dst.col
          && m->queen_src.row == m->queen_dst.row;
 }
@@ -51,6 +58,7 @@ is_move_null (const Move *m)
 /**
  * @brief Aggregates search results found using MCTS, by simply taking the move
  * that has been explored the most between multiple threads, if any.
+ * @note Expects sou
  *
  * @param data The MCTS config and memory
  * @param num_threads Number of threads used for the calculation
@@ -59,10 +67,8 @@ is_move_null (const Move *m)
 MCTS_STATIC Move
 merge_and_get_best (const MCTS_Data *data, int num_threads)
 {
-  // TODO : change to use all nodes instead (though, if a node has been
-  // explored a lot on one thread, it *should* most likely had been explored
-  // once by another thread), especially due to sorting thanks to UCT (and ML
-  // doesn't need it)
+  if (!data)
+    return (Move){ 0 };
 
   MCTS_Node *master_root = data->roots[0];
   MCTS_Node *best_child = NULL;
@@ -153,7 +159,7 @@ MCTS_STATIC float
 get_mcts_win_probability (const BitboardState *state,
                           bool starting_player_was_white)
 {
-  float raw_score = eval_me (state);
+  float raw_score = SCORE_EVALUATOR (state);
 
   if (!starting_player_was_white)
     {
@@ -175,6 +181,8 @@ get_mcts_win_probability (const BitboardState *state,
  * @brief Performs a random rollout (simulation) from the given state until the
  * game ends, and returns the result from the perspective of the player to move
  * at the start of the rollout.
+ * @note Expects a sound BitboardState, otherwise resulting in a crash. As this
+ * is internal, ensure it is correctly called upon.
  * @param state The initial BitboardState from which to start the rollout.
  * @return A float value representing the result of the rollout: 1.0 if the
  * starting player wins, 0.0 if the starting player loses.
@@ -219,6 +227,8 @@ rollout (BitboardState state)
  * @brief Allocates a node in MCTS. It is a bit costly (calloc) : avoid calling
  * it more than necessary.
  *
+ * @note Excepts either a correct parent/move pair, or a correct current_state.
+ *
  * @param move The move to be played. (Can be nulled out)
  * @param current_state The state of the board before the move was played.
  * @param parent The parent node.
@@ -228,6 +238,15 @@ MCTS_STATIC MCTS_Node *
 alloc_mcts_node (const Move *move, const BitboardState *current_state,
                  MCTS_Node *parent)
 {
+
+  bool can_derive_from_parent = (parent != NULL && move != NULL);
+  bool is_valid_root = (parent == NULL && current_state != NULL);
+
+  if (!can_derive_from_parent && !is_valid_root)
+    {
+      return NULL;
+    }
+
   MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
   if (!node)
     return NULL;
@@ -239,8 +258,13 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
   node->next_sibling = NULL;
   node->is_fully_expanded = false;
   node->move_from_parent = move ? *move : (Move){ 0 };
-  node->state
-      = parent ? apply_move_bitboard (&parent->state, *move) : *current_state;
+  node->ai_eval = -1.0f;
+
+  if (parent)
+    node->state = apply_move_bitboard (&parent->state, *move);
+  else
+    node->state = *current_state;
+
   return node;
 }
 
@@ -254,19 +278,15 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
 MCTS_STATIC MCTS_Node *
 expand (MCTS_Node *parent)
 {
-  if (parent->is_fully_expanded
+  if (!parent || parent->is_fully_expanded
       || bitboard_state_is_game_over (&parent->state))
     return parent;
 
   // Cache moves into the parent
   if (parent->untried_moves == NULL)
     {
-      int limit = get_move_limit (&parent->state);
-      Move *temp_moves = malloc (limit * sizeof (Move));
-      if (!temp_moves)
-        {
-          return parent;
-        }
+      Move temp_moves[MAX_POSSIBLE_MOVES];
+
       int total = get_legal_moves (&parent->state, temp_moves);
 
       if (total == 0)
@@ -275,11 +295,15 @@ expand (MCTS_Node *parent)
           return parent;
         }
 
-      // Allocate exactly what we need
       parent->untried_moves = (Move *)malloc (total * sizeof (Move));
+
+      if (!parent->untried_moves)
+        {
+          return parent;
+        }
+
       memcpy (parent->untried_moves, temp_moves, total * sizeof (Move));
       parent->num_untried = total;
-      free (temp_moves);
     }
 
   // Take the next untried move.
@@ -346,13 +370,14 @@ free_mcts_tree (MCTS_Node *node)
  * calculate a score
  * - Backpropagate : Update visits and scores of the nodes of the path you
  * explored
+ * @note Expects a sound GameState; if not, you will run into a crash.
  * @param self The AI_Interface instance containing the context for the MCTS
  * algorithm.
  * @param state The current GameState to evaluate and find the best move for.
  * @return The best Move for the current player based on the MCTS evaluation.
  */
 MCTS_STATIC Move
-mcts_get_best_move (const AI_Interface *self, GameState state)
+mcts_get_best_move (const AI_Interface *self, const GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);
@@ -361,11 +386,17 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
 
   // Allocate roots and data for each thread
   data->roots = calloc (num_threads, sizeof (MCTS_Node *));
+  if (!data->roots)
+    {
+      fprintf (stderr,
+               "[MCTS] Critical error : roots couldn't be allocated.\n");
+      return get_direct_random_move (&root_state);
+    }
 
   int *thread_iterations = malloc (num_threads * sizeof (int));
   if (!thread_iterations)
     {
-      fprintf (stderr, "Error while allocating threads.\n");
+      fprintf (stderr, "[MCTS] Error while allocating threads.\n");
       return (Move){ 0 };
     }
   for (int i = 0; i < num_threads; i++)
@@ -473,9 +504,9 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
 MCTS_STATIC void
 mcts_clean (AI_Interface *self)
 {
-  MCTS_Data *data = (MCTS_Data *)self->context;
-  if (!data)
+  if (!self || !self->context)
     return;
+  MCTS_Data *data = (MCTS_Data *)self->context;
 
   if (data->strategy_select)
     {
@@ -515,9 +546,20 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
   data->time_constraint = DEFAULT_TIME_CONSTRAINT;
   data->max_iterations = DEFAULT_MAX_ITERATIONS;
   data->max_workers = DEFAULT_MAX_WORKERS;
+  const char *selection = DEFAULT_SELECTOR;
+
+  double c_uct = DEFAULT_UCT_COEF;
+  double c_puct = DEFAULT_PUCT_COEF;
+  const char *model_path = "../amazons_model_v3_hidden";
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
-  create_select_uct (data->strategy_select, 1.414f);
+  if (data->strategy_select == NULL)
+    {
+      perror ("[MCTS] malloc strategy_select");
+      exit (EXIT_FAILURE);
+    }
+
+  create_select_uct (data->strategy_select, EXPLORATION_CONSTANT);
   // ^ (sqrt2) is a common default for the exploration constant
 
   if (params != NULL)
@@ -528,11 +570,24 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
           check_param (params->list[i], "max_iterations",
                        &data->max_iterations);
           check_param (params->list[i], "max_workers", &data->max_workers);
+          check_param (params->list[i], "selection", &selection);
         }
     }
 
+  data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
+  if (data->strategy_select == NULL)
+    {
+      perror ("[MCTS] malloc strategy_select");
+      free (data);
+      exit (EXIT_FAILURE);
+    }
+
+  SelectorID target_id = get_selector_id_from_name (selection);
+  *data->strategy_select = get_selector (target_id, c_uct, c_puct, model_path);
+
   self->context = data;
-  printf ("[MCTS] Init OK (Time: %ldms)\n", data->time_constraint);
+  printf ("[MCTS] Init OK (Selector: %s, ID: %d)\n",
+          get_selector_name_from_id (target_id), target_id);
 }
 
 const AI_VTable mcts_vtable = { .init = mcts_init,

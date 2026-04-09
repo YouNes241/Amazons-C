@@ -43,8 +43,6 @@ extern const float TOP_SCORE;
 #include "minimax.h"
 #include "utils.h"
 
-#define MAX_POSSIBLE_MOVES 4000
-#define MAX_BEAM_LIMIT 100
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 

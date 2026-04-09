@@ -44,6 +44,7 @@ typedef struct MCTS_Node
   int visit_count;
   float score;
   bool is_fully_expanded;
+  float ai_eval;
 } MCTS_Node;
 
 /**
