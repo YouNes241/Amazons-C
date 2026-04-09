@@ -53,15 +53,20 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 TEST_STATIC void
 linehandler (char *line)
 {
-  if (line == NULL || !g_cli_ctx)
+  // 1. Only guard against a missing context here
+  if (!g_cli_ctx)
     return;
 
   printf ("\n"); // Visually validate the entry
+
+  // 2. Handle EOF (Ctrl+D / Test termination) properly
   if (line == NULL)
     {
       g_cli_ctx->game_running = false;
       return;
     }
+
+  // 3. Handle normal input
   if (line[0] != '\0')
     {
       add_history (line);
@@ -72,17 +77,17 @@ linehandler (char *line)
     {
       rl_replace_line ("", READLINE_NO_CLEAR);
     }
+
   free (line);
 
+  // 4. Update UI if the game is still running
   if (g_cli_ctx->game_running)
     {
-      // 1. The plateau is displayed at the end of the processing.
       if (!g_cli_ctx->in_main_menu)
         {
           cli_display_board (g_cli_ctx->current_game);
         }
 
-      // 2. We are updating the text of the prompt
       update_prompt_string (g_cli_ctx);
       rl_on_new_line ();
     }
