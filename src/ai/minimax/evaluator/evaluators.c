@@ -37,6 +37,7 @@ typedef enum
 
 /**
  * @brief Puts all occupied squares (queens and arrows) into a single bitboard.
+ * @note Expects a correct state, otherwise crashing.
  * @param state A game state with pos of queens and arrows.
  * @return Bitboard with all occupied squares.
  */
@@ -54,7 +55,7 @@ get_obstacles (const BitboardState *state)
  * @param width The width of the board.
  * @param mode 0 for Queen Distance (RTH), 1 for King Distance (Chebyshev).
  * @param dist_map Output array, of size at least width*width. Unreachable
- * squares are set to INF_DIST (255).
+ * squares are set to INF_DIST (255). If not of size, will crash.
  * @return void
  */
 static void
@@ -177,6 +178,8 @@ eval_me (const BitboardState *state)
 static inline int
 check_init_win (const BitboardState *state)
 {
+  if (!state)
+    return 0;
   Bitboard obstacles = get_obstacles (state);
   Bitboard empty = bitboard_masked_not (obstacles, state->size);
 

@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Enum listing all available selectors to use.
+ *
+ */
 typedef enum
 {
   SELECTOR_UCT,
@@ -15,13 +19,22 @@ typedef enum
 #endif
 } SelectorID;
 
+/**
+ * @brief Maps ID to text
+ * @var SelectorMap::id
+ * The selector ID
+ * @var SelectorMap::name
+ * The selector's name
+ */
 typedef struct
 {
   SelectorID id;
   const char *name;
 } SelectorMap;
 
-// Le dictionnaire global
+/**
+ * @brief Selector dict : links ID to text
+ */
 static const SelectorMap SELECTOR_DICT[] = { { SELECTOR_UCT, "uct" },
 #ifdef TF_IS_USABLE
                                              { SELECTOR_ML, "ml" }

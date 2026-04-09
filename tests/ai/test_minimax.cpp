@@ -758,6 +758,14 @@ TEST_F (MinimaxAI, DoubleCleanDoesNotCrash)
   ai.vtable->clean (&ai);
   EXPECT_EQ (ai.context, nullptr);
 }
+// Null clean should not crash.
+TEST_F (MinimaxAI, NullCleanDoesNotCrash)
+{
+  ai.vtable->clean (nullptr);
+  EXPECT_NE (ai.context, nullptr);
+  ai.vtable->clean (&ai);
+  EXPECT_EQ (ai.context, nullptr);
+}
 
 // Default values must match the documented constants.
 TEST_F (MinimaxAI, DefaultParametersMatchConstants)

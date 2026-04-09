@@ -26,6 +26,7 @@
 #include "selector.h"
 #include "uct.h"
 #include "utils.h"
+#include <assert.h>
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,7 @@ const float DEFAULT_PUCT_COEF = 1.5f;
 /**
  * @brief Checks if a move is null (queen source and destination are the
  * same). Body defined in mcts.c under MCTS_STATIC.
+ * @note Expects a sound move, otherwise crashing.
  *
  * @param m The move to check.
  * @return true if the move is null, false otherwise.
@@ -48,6 +50,7 @@ const float DEFAULT_PUCT_COEF = 1.5f;
 MCTS_STATIC bool
 is_move_null (const Move *m)
 {
+  assert (m != NULL);
   return m->queen_src.col == m->queen_dst.col
          && m->queen_src.row == m->queen_dst.row;
 }
@@ -55,6 +58,7 @@ is_move_null (const Move *m)
 /**
  * @brief Aggregates search results found using MCTS, by simply taking the move
  * that has been explored the most between multiple threads, if any.
+ * @note Expects sou
  *
  * @param data The MCTS config and memory
  * @param num_threads Number of threads used for the calculation
@@ -63,10 +67,8 @@ is_move_null (const Move *m)
 MCTS_STATIC Move
 merge_and_get_best (const MCTS_Data *data, int num_threads)
 {
-  // TODO : change to use all nodes instead (though, if a node has been
-  // explored a lot on one thread, it *should* most likely had been explored
-  // once by another thread), especially due to sorting thanks to UCT (and ML
-  // doesn't need it)
+  if (!data)
+    return (Move){ 0 };
 
   MCTS_Node *master_root = data->roots[0];
   MCTS_Node *best_child = NULL;
@@ -179,6 +181,8 @@ get_mcts_win_probability (const BitboardState *state,
  * @brief Performs a random rollout (simulation) from the given state until the
  * game ends, and returns the result from the perspective of the player to move
  * at the start of the rollout.
+ * @note Expects a sound BitboardState, otherwise resulting in a crash. As this
+ * is internal, ensure it is correctly called upon.
  * @param state The initial BitboardState from which to start the rollout.
  * @return A float value representing the result of the rollout: 1.0 if the
  * starting player wins, 0.0 if the starting player loses.
@@ -223,6 +227,8 @@ rollout (BitboardState state)
  * @brief Allocates a node in MCTS. It is a bit costly (calloc) : avoid calling
  * it more than necessary.
  *
+ * @note Excepts either a correct parent/move pair, or a correct current_state.
+ *
  * @param move The move to be played. (Can be nulled out)
  * @param current_state The state of the board before the move was played.
  * @param parent The parent node.
@@ -232,6 +238,15 @@ MCTS_STATIC MCTS_Node *
 alloc_mcts_node (const Move *move, const BitboardState *current_state,
                  MCTS_Node *parent)
 {
+
+  bool can_derive_from_parent = (parent != NULL && move != NULL);
+  bool is_valid_root = (parent == NULL && current_state != NULL);
+
+  if (!can_derive_from_parent && !is_valid_root)
+    {
+      return NULL;
+    }
+
   MCTS_Node *node = (MCTS_Node *)calloc (1, sizeof (MCTS_Node));
   if (!node)
     return NULL;
@@ -243,9 +258,13 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
   node->next_sibling = NULL;
   node->is_fully_expanded = false;
   node->move_from_parent = move ? *move : (Move){ 0 };
-  node->state
-      = parent ? apply_move_bitboard (&parent->state, *move) : *current_state;
   node->ai_eval = -1.0f;
+
+  if (parent)
+    node->state = apply_move_bitboard (&parent->state, *move);
+  else
+    node->state = *current_state;
+
   return node;
 }
 
@@ -259,7 +278,7 @@ alloc_mcts_node (const Move *move, const BitboardState *current_state,
 MCTS_STATIC MCTS_Node *
 expand (MCTS_Node *parent)
 {
-  if (parent->is_fully_expanded
+  if (!parent || parent->is_fully_expanded
       || bitboard_state_is_game_over (&parent->state))
     return parent;
 
@@ -351,13 +370,14 @@ free_mcts_tree (MCTS_Node *node)
  * calculate a score
  * - Backpropagate : Update visits and scores of the nodes of the path you
  * explored
+ * @note Expects a sound GameState; if not, you will run into a crash.
  * @param self The AI_Interface instance containing the context for the MCTS
  * algorithm.
  * @param state The current GameState to evaluate and find the best move for.
  * @return The best Move for the current player based on the MCTS evaluation.
  */
 MCTS_STATIC Move
-mcts_get_best_move (const AI_Interface *self, GameState state)
+mcts_get_best_move (const AI_Interface *self, const GameState state)
 {
   MCTS_Data *data = (MCTS_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);
@@ -484,9 +504,9 @@ mcts_get_best_move (const AI_Interface *self, GameState state)
 MCTS_STATIC void
 mcts_clean (AI_Interface *self)
 {
-  MCTS_Data *data = (MCTS_Data *)self->context;
-  if (!data)
+  if (!self || !self->context)
     return;
+  MCTS_Data *data = (MCTS_Data *)self->context;
 
   if (data->strategy_select)
     {

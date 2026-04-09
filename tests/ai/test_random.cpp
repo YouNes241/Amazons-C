@@ -45,3 +45,13 @@ TEST (RandomIntegration, GetRandomMove)
   EXPECT_TRUE (move.arrow_dst.row >= 0 && move.arrow_dst.row < board_size);
   EXPECT_TRUE (move.arrow_dst.col >= 0 && move.arrow_dst.col < board_size);
 }
+
+// Null clean should not crash.
+TEST (RandomAI, NullCleanDoesNotCrash)
+{
+  AI_Interface ai = create_ai ("random", { 0, NULL });
+  ai.vtable->clean (nullptr);
+  EXPECT_EQ (ai.context, nullptr); // Random does not use any context.
+  ai.vtable->clean (&ai);
+  EXPECT_EQ (ai.context, nullptr);
+}

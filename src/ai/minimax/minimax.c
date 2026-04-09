@@ -259,7 +259,7 @@ minimax_init (AI_Interface *self, const ConfigMap *params)
 MINIMAX_STATIC void
 minimax_clean (AI_Interface *self)
 {
-  if (!self->context)
+  if (!self || !self->context)
     return;
   Minimax_Data *data = (Minimax_Data *)self->context;
 
@@ -537,6 +537,7 @@ sort_moves (int count, const Move best_move_overall, Move *available_moves)
 
 /**
  * @brief Gets the best move using Minimax and the given parameters.
+ * @note Expects a sound GameState; otherwise, you will run into a crash.
  *
  * @param self The AI_Interface instance containing the context for the
  * Minimax algorithm.
@@ -546,7 +547,7 @@ sort_moves (int count, const Move best_move_overall, Move *available_moves)
  * move.
  */
 static Move
-minimax_get_best_move (const AI_Interface *self, GameState state)
+minimax_get_best_move (const AI_Interface *self, const GameState state)
 {
   Minimax_Data *data = (Minimax_Data *)self->context;
   BitboardState root_state = sync_from_logic (&state);

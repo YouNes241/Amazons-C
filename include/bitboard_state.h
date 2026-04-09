@@ -6,6 +6,9 @@
  * algorithms. The BitboardState uses bitboards to represent the different
  * pieces of the game in order for fast cross computation between them and
  * masks.
+ * @note For efficiency sake, all methods here expects corrects
+ * states (non null and legal). Incorrect states will not be handled and may
+ * result in undefined behavior.
  */
 #ifndef BITBOARD_STATE_H
 #define BITBOARD_STATE_H

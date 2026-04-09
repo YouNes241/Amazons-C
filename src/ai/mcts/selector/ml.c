@@ -23,6 +23,8 @@ typedef struct
 static void
 bitboard_to_tensor (BitboardState *state, float *tensor)
 {
+  if (!state || !tensor)
+    return;
   // Initialize everything to 0
   memset (tensor, 0, 11 * 11 * 4 * sizeof (float));
 
@@ -52,6 +54,8 @@ bitboard_to_tensor (BitboardState *state, float *tensor)
 static MCTS_Node *
 ml_select_child (const ISelector *self, const MCTS_Node *parent)
 {
+  if (!self || !self->context || !parent)
+    return parent;
   ML_Selector_Data *data = (ML_Selector_Data *)self->context;
   MCTS_Node *current = parent->first_child;
   MCTS_Node *best_child = NULL;
@@ -74,13 +78,10 @@ ml_select_child (const ISelector *self, const MCTS_Node *parent)
           current->ai_eval = predict_board_value (data->tf_brain, tensor);
         }
 
-      // 2. PERSPECTIVE CORRECTION
-      // Assuming you use BCE (White = 1.0, Black = 0.0)
-      // Assuming parent->player_to_move is 1 for White, 2 for Black
       double q_nn = current->ai_eval;
       double q_rollout = (double)current->score / (double)current->visit_count;
 
-      bool is_black_turn = false; // Adapt to your struct!
+      bool is_black_turn = false;
 
       if (is_black_turn)
         {
@@ -90,12 +91,10 @@ ml_select_child (const ISelector *self, const MCTS_Node *parent)
           q_rollout = 1.0 - q_rollout;
         }
 
-      // 3. THE FIXED FORMULA (Value-Guided MCTS)
       // Exploitation: Average the Rollout Winrate and the Neural Net Value
-      // (You can weight these! e.g., 0.8 * q_nn + 0.2 * q_rollout)
       double exploitation = (q_rollout + q_nn) / 2.0;
 
-      // Exploration: Standard UCB1 since you lack a Policy (Probability) head
+      // Exploration: Standard UCB1
       double exploration
           = data->c_puct * (sqrt_parent_visits / (1.0 + current->visit_count));
 
@@ -117,7 +116,6 @@ static void
 ml_selector_clean (ISelector *self)
 {
   ML_Selector_Data *data = (ML_Selector_Data *)self->context;
-  // Make sure to free the TF session safely before freeing the context
   if (data->tf_brain)
     {
       free_amazons_ai (data->tf_brain);
@@ -128,6 +126,14 @@ ml_selector_clean (ISelector *self)
 const ISelector_VTable ml_vtable
     = { .select_child = ml_select_child, .clean = ml_selector_clean };
 
+/**
+ * @brief Create a ml selector
+ * @note Expects a selector interface ; otherwise, this will result in a crash.
+ *
+ * @param selector The selector (cf get_selector in selector)
+ * @param c The exploration constant (default : sqrt(2))
+ * @param model_path The model's path
+ */
 void
 create_select_ml (ISelector *selector, double c_puct, const char *model_path)
 {
