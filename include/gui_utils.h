@@ -50,7 +50,16 @@ typedef struct
   AI_Interface ai_black;
   bool is_ai_white_initialized;
   bool is_ai_black_initialized;
+  bool is_ai_thinking;
 } GuiContext;
+
+typedef struct
+{
+  GuiContext *ctx;
+  GameState state_copy;
+  AI_Interface *ai;
+  Move best_move;
+} AIWorkerData;
 
 GuiContext *initGuiContext (game_config_t *config);
 void freeGuiContext (GuiContext *ctx);

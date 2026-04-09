@@ -19,6 +19,7 @@
 static gboolean guiAIPlayTurn (gpointer user_data);
 static gboolean gui_network_tick_loop (gpointer user_data);
 static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
+static gpointer guiAIWorkerThread (gpointer user_data);
 ///@}
 
 void
@@ -109,6 +110,8 @@ guiStartNewGame (GuiContext *ctx)
   assert (ctx->gameConfig != NULL);
   assert (ctx->gameState != NULL);
 
+  ctx->is_ai_thinking = false;
+
   if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
       && ctx->ai_white.vtable->clean)
     {
@@ -182,6 +185,7 @@ run_gui_mode (game_config_t *config)
   assert (ctx->networkManager != NULL);
 
   ctx->isNetworkMatch = false;
+  ctx->is_ai_thinking = false;
   ctx->selfPlayerColor = PLAYER_WHITE;
 
   NetworkManager_Init (ctx->networkManager, create_gui_network_events (ctx));
@@ -203,6 +207,24 @@ run_gui_mode (game_config_t *config)
 
   NetworkManager_Cleanup (ctx->networkManager);
   free (ctx->networkManager);
+}
+
+static gboolean
+guiAIApplyMove (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+  GuiContext *ctx = data->ctx;
+
+  ctx->is_ai_thinking = false;
+
+  if (!ctx->isNetworkMatch && ctx->gameState
+      && ctx->gameState->current_player == data->state_copy.current_player)
+    {
+      guiHandlePlayerMove (ctx, data->best_move);
+    }
+
+  free (data);
+  return G_SOURCE_REMOVE;
 }
 
 static bool
@@ -236,6 +258,11 @@ guiAIPlayTurn (gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      return G_SOURCE_REMOVE;
+    }
+
   if (ctx->isNetworkMatch
       || !is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
     {
@@ -250,9 +277,28 @@ guiAIPlayTurn (gpointer user_data)
       return G_SOURCE_REMOVE;
     }
 
-  Move ai_move
-      = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));
+  ctx->is_ai_thinking = true;
 
-  guiHandlePlayerMove (ctx, ai_move);
+  AIWorkerData *data = malloc (sizeof (AIWorkerData));
+  assert (data != NULL);
+  data->ctx = ctx;
+  data->state_copy = *(ctx->gameState);
+  data->ai = current_ai;
+
+  g_thread_new ("ai_thread", guiAIWorkerThread, data);
+
   return G_SOURCE_REMOVE;
+}
+
+static gpointer
+guiAIWorkerThread (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+
+  data->best_move
+      = data->ai->vtable->get_best_move (data->ai, data->state_copy);
+
+  g_idle_add (guiAIApplyMove, data);
+
+  return NULL;
 }

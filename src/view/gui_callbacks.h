@@ -75,5 +75,7 @@ gboolean shortcutLoadGame (GtkWidget *widget, GVariant *args,
                            gpointer user_data);
 gboolean shortcutHint (GtkWidget *widget, GVariant *args, gpointer user_data);
 gboolean shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data);
+gboolean guiHintApplyMove (gpointer user_data);
+gpointer guiHintWorkerThread (gpointer user_data);
 
 #endif // GUI_CALLBACKS_H

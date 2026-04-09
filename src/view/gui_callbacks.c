@@ -225,6 +225,12 @@ undoButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
+
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
       onRightClick (NULL, 0, 0, 0, ctx);
@@ -264,6 +270,12 @@ redoButtonClick (GtkButton *button, gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
+
+  if (ctx->is_ai_thinking)
+    {
+      guiShowPopup (ctx, "Action disabled. AI is thinking...");
+      return;
+    }
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -305,6 +317,11 @@ hintButtonClick (GtkButton *button, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
 
+  if (ctx->is_ai_thinking)
+    {
+      return;
+    }
+
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
     {
       guiShowPopup (ctx, "Finish your current move first.");
@@ -318,20 +335,23 @@ hintButtonClick (GtkButton *button, gpointer user_data)
       return;
     }
 
+  ctx->is_ai_thinking = true;
+
   ConfigMap empty_params = { 0, NULL };
-  AI_Interface hint_ai = create_ai ("minimax", empty_params);
-  assert (hint_ai.vtable != NULL);
 
-  g_print ("[AI] Initializing advice engine...\n");
-  Move move = hint_ai.vtable->get_best_move (&hint_ai, *(ctx->gameState));
+  AIWorkerData *data = malloc (sizeof (AIWorkerData));
+  assert (data != NULL);
 
-  if (hint_ai.vtable->clean)
-    {
-      hint_ai.vtable->clean (&hint_ai);
-    }
+  data->ai = malloc (sizeof (AI_Interface));
+  assert (data->ai != NULL);
 
-  showHintOnBoard (ctx, move.queen_src, move.queen_dst, move.arrow_dst);
-  ctx->isHintActive = true;
+  data->ctx = ctx;
+  data->state_copy = *(ctx->gameState);
+
+  *(data->ai) = create_ai ("minimax", empty_params);
+  assert (data->ai->vtable != NULL);
+
+  g_thread_new ("hint_thread", guiHintWorkerThread, data);
 }
 
 void
@@ -1460,4 +1480,43 @@ shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
 
   g_print ("Not implemented.\n");
   return TRUE;
+}
+
+gboolean
+guiHintApplyMove (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+  GuiContext *ctx = data->ctx;
+
+  if (data->ai->vtable->clean)
+    {
+      data->ai->vtable->clean (data->ai);
+    }
+
+  if (ctx->gameState
+      && ctx->gameState->current_player == data->state_copy.current_player)
+    {
+      showHintOnBoard (ctx, data->best_move.queen_src,
+                       data->best_move.queen_dst, data->best_move.arrow_dst);
+      ctx->isHintActive = true;
+    }
+
+  ctx->is_ai_thinking = false;
+
+  free (data->ai);
+  free (data);
+  return G_SOURCE_REMOVE;
+}
+
+gpointer
+guiHintWorkerThread (gpointer user_data)
+{
+  AIWorkerData *data = (AIWorkerData *)user_data;
+
+  data->best_move
+      = data->ai->vtable->get_best_move (data->ai, data->state_copy);
+
+  g_idle_add (guiHintApplyMove, data);
+
+  return NULL;
 }

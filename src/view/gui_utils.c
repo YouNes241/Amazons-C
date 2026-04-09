@@ -30,6 +30,7 @@ initGuiContext (game_config_t *config)
   ctx->isHintActive = false;
   ctx->is_ai_white_initialized = false;
   ctx->is_ai_black_initialized = false;
+  ctx->is_ai_thinking = false;
 
   memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
   strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);
