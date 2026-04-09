@@ -23,7 +23,7 @@ update_blitz_timer (GameState *state)
     state->status = GAME_OVER_WHITE_WINS;
 }
 
-static void
+static bool
 push_move (MoveStack *stack, Move m)
 {
   if (stack == NULL || stack->data == NULL)
