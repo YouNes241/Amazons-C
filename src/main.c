@@ -212,7 +212,7 @@ parse_options (int argc, char *argv[], game_config_t *config)
             }
           break;
 
-        case 1000:
+        case OPT_DAEMON:
           config->daemon_mode = true;
           break;
 
