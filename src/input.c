@@ -22,7 +22,7 @@ parse_coordinates (const char *input, Move *move)
       return -1;
     }
 
-  /* Conversion des lettres en indices de colonnes */
+  /* Conversion of letters to column indices */
   int col_src = (c_src >= 'a' && c_src <= 'z')   ? c_src - 'a'
                 : (c_src >= 'A' && c_src <= 'Z') ? c_src - 'A'
                                                  : -1;
