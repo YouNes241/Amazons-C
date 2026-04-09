@@ -16,10 +16,13 @@ static void on_gui_player_joined (const char *player_name);
 NetworkEvents
 create_gui_network_events (GuiContext *ctx)
 {
-  assert (ctx != NULL);
-
   g_gui_net_ctx = ctx;
   NetworkEvents events = { 0 };
+
+  if (ctx == NULL)
+    {
+      return events;
+    }
 
   events.OnGameStarted = on_gui_game_started;
   events.OnMoveReceived = on_gui_move_received;
