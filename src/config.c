@@ -145,7 +145,7 @@ load_config_file (game_config_t *config)
       if (line[0] == '[' || line[0] == '\n' || line[0] == '#')
         continue;
 
-      if (sscanf (line, "%s = %s", key, value) == 2)
+      if (sscanf (line, "%63s = %63s", key, value) == 2)
         {
           if (strcmp (key, "board_size") == 0)
             {
