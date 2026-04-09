@@ -2,7 +2,6 @@
 #include <fstream>
 #include <gtest/gtest.h>
 
-// We include the C files in an extern "C" block
 extern "C"
 {
 #include "../include/config.h"
@@ -19,10 +18,8 @@ protected:
   void
   SetUp () override
   {
-    // Initialisation de la config
     config.board_size = 10;
 
-    // Initialisation du state
     state.size = 10;
     state.current_player = PLAYER_WHITE;
     state.turn_count = 0;
@@ -64,7 +61,6 @@ protected:
   }
 };
 
-// test 1 : Cycle complet de sauvegarde et chargement
 TEST_F (SaveLoadTest, FullCycle)
 {
   const char *path = "test_ok.txt";
@@ -73,7 +69,6 @@ TEST_F (SaveLoadTest, FullCycle)
 
   ASSERT_EQ (save_game (path, &config, &state), 0);
 
-  // Reinitialize to make sure load is actually working
   state.board[9][0] = CONTENT_EMPTY;
 
   ASSERT_EQ (load_game (path, &config, &state), 0);
@@ -81,42 +76,35 @@ TEST_F (SaveLoadTest, FullCycle)
   EXPECT_EQ (state.current_player, PLAYER_BLACK);
 }
 
-// test 2: corrupted file (missing data)
 TEST_F (SaveLoadTest, CorruptedFile)
 {
   const char *path = "test_corrupt.txt";
   std::ofstream f (path);
-  f << "[settings]\nboard_size=10\n[game]\n"; // pas de plateau, pas de tour
+  f << "[settings]\nboard_size=10\n[game]\n";
   f.close ();
 
-  // We expect the program not to crash
   EXPECT_EQ (load_game (path, &config, &state), 0);
 }
 
-// test 3: board larger than expected
-// Test whether the code overruns allocated memory or stops
-// correctly at the size defined in config.board_size
 TEST_F (SaveLoadTest, BoardOverflowInFile)
 {
   const char *path = "test_overflow.txt";
   std::ofstream f (path);
   f << "[settings]\nboard_size=4\n[game]\nW\n";
-  f << "Q Q Q Q Q Q Q Q Q Q\n"; // 10 reines pour un board_size=4
+  f << "Q Q Q Q Q Q Q Q Q Q\n"; // 10 columns instead of 4
   f.close ();
 
-  // The code must stop at col < state->size (4)
   ASSERT_EQ (load_game (path, &config, &state), 0);
   EXPECT_EQ (config.board_size, 4);
 }
 
-// test 4: history saturated
 TEST_F (SaveLoadTest, HistorySaturated)
 {
   const char *path = "test_hist.txt";
   std::ofstream f (path);
   f << "[settings]\nboard_size=10\n[history]\n";
   for (int i = 0; i < 150; i++)
-    { // 150 moves for a capacity of 100
+    {
       f << "a1-a2(a3)\n";
     }
   f.close ();
@@ -125,7 +113,6 @@ TEST_F (SaveLoadTest, HistorySaturated)
   EXPECT_LE (state.undo_stack.top, 99);
 }
 
-// test 5: complex commentary
 TEST_F (SaveLoadTest, ComplexComments)
 {
   const char *path = "test_comments.txt";
@@ -141,4 +128,85 @@ TEST_F (SaveLoadTest, ComplexComments)
   ASSERT_EQ (load_game (path, &config, &state), 0);
   EXPECT_EQ (config.board_size, 10);
   EXPECT_EQ (state.board[9][0], CONTENT_WHITE_QUEEN);
+}
+
+TEST_F (SaveLoadTest, MissingFile)
+{
+  EXPECT_EQ (load_game ("file_inexistant.txt", &config, &state), -1);
+}
+
+TEST_F (SaveLoadTest, BoardSizeOutOfBounds)
+{
+  const char *path = "test_bounds.txt";
+  std::ofstream f (path);
+  f << "[settings]\nboard_size=999\n";
+  f << "ai_black=false\n";
+  f.close ();
+
+  ASSERT_EQ (load_game (path, &config, &state), 0);
+  EXPECT_EQ (config.board_size, 10);
+}
+
+TEST_F (SaveLoadTest, InvalidHistoryMoves)
+{
+  const char *path = "test_inv_hist.txt";
+  std::ofstream f (path);
+  f << "[settings]\nboard_size=10\n[history]\n";
+  f << "a0-b2/c3\n";
+  f << "z9-z8/z7\n";
+  f << "invalid format line\n";
+  f.close ();
+
+  ASSERT_EQ (load_game (path, &config, &state), 0);
+  EXPECT_EQ (state.undo_stack.top, -1);
+}
+
+TEST_F (SaveLoadTest, ShortAndInvalidBoardLines)
+{
+  const char *path = "test_short_board.txt";
+  std::ofstream f (path);
+  f << "[settings]\nboard_size=5\n[game]\nW\n";
+  // Only 3 cases at instead of 5, with an invalid '$' character
+  f << "Q $ x\n";
+  f.close ();
+
+  ASSERT_EQ (load_game (path, &config, &state), 0);
+
+  EXPECT_EQ (state.board[4][0], CONTENT_WHITE_QUEEN);
+  // $ must be CONTENT_EMPTY
+  EXPECT_EQ (state.board[4][1], CONTENT_EMPTY);
+  EXPECT_EQ (state.board[4][2], CONTENT_ARROW);
+  // The missing cases must be filled with CONTENT_EMPTY
+  EXPECT_EQ (state.board[4][3], CONTENT_EMPTY);
+  EXPECT_EQ (state.board[4][4], CONTENT_EMPTY);
+}
+
+TEST_F (SaveLoadTest, MultilineBlockComments)
+{
+  const char *path = "test_multiline.txt";
+  std::ofstream f (path);
+  f << "{ Ce commentaire démarre ici\n"
+    << "et il saute des lignes\n"
+    << "avant de fermer la parenthèse }\n"
+    << "[settings]\n"
+    << "board_size=8\n";
+  f.close ();
+
+  ASSERT_EQ (load_game (path, &config, &state), 0);
+  EXPECT_EQ (config.board_size, 8);
+}
+
+TEST_F (SaveLoadTest, AINameTruncation)
+{
+  const char *path = "test_ai_name.txt";
+  std::ofstream f (path);
+  f << "[settings]\nboard_size=10\n";
+  f << "ai_black=this_name_is_way_too_long_and_should_be_truncated_to_31_"
+       "characters_in_the"
+       "structure\n";
+  f.close ();
+
+  ASSERT_EQ (load_game (path, &config, &state), 0);
+  EXPECT_TRUE (config.ai_black_cfg.enabled);
+  EXPECT_EQ (strlen (config.ai_black_cfg.name), 31);
 }
