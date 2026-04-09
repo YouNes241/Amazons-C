@@ -40,6 +40,11 @@ parse_coordinates (const char *input, Move *move)
       return -1;
     }
 
+  if (r_src < 1 || r_dst < 1 || r_arr < 1)
+    {
+      return -1;
+    }
+
   /* Fill the Move structure with converted coordinates.
    * Note: rows are zero-indexed in the structure, hence the -1.
    */
