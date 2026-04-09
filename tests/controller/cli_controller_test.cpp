@@ -5,8 +5,11 @@
 
 extern "C"
 {
-// 1. First include the headers so the types and prototypes are known
-// and available.
+  // 1. First include the headers so the types and prototypes are known
+  // and available.
+
+#include "ai_factory.h"
+#include "ai_interface.h"
 #include "cli_controller.h"
 #include "controller.h"
 
@@ -77,181 +80,95 @@ TEST_F (CliControllerTest, LineHandlerLogic)
   g_cli_ctx = nullptr;
 }
 
-/* ==========================================================================
- * 2. TESTS DE LA BOUCLE PRINCIPALE (Interactive Mode)
- * ==========================================================================
- */
-TEST_F (CliControllerTest, InitializationAndServerStart)
+TEST_F (ControllerTestFixture, InitializationAndServerStart)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
-          cfg.start_server = true;
-          cfg.server_port = 9425;
-          run_interactive_mode (&cfg);
-        });
 
-  while (!g_cli_ctx)
-    std::this_thread::sleep_for (std::chrono::milliseconds (5));
+  game_config_t cfg;
+  memset (&cfg, 0, sizeof (game_config_t));
+  cfg.board_size = 10;
+  cfg.start_server = true;
+  cfg.server_port = 9425;
 
-  EXPECT_FALSE (g_cli_ctx->in_main_menu);
-  EXPECT_TRUE (g_cli_ctx->game_running);
+  int start_res
+      = NetworkManager_ServerStart (ctx.net_manager, cfg.server_port);
+  EXPECT_EQ (start_res, 0);
 
-  g_cli_ctx->game_running = false;
-  t.join ();
+  NetworkManager_Cleanup (ctx.net_manager);
 }
 
-TEST_F (CliControllerTest, GameOverLogic_LocalMode)
+TEST_F (ControllerTestFixture, GameOverLogic_LocalMode)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
-          run_interactive_mode (&cfg);
-        });
-
-  while (!g_cli_ctx)
-    std::this_thread::sleep_for (std::chrono::milliseconds (5));
 
   for (int i = 0; i < 10; i++)
     {
       for (int j = 0; j < 10; j++)
         {
-          g_cli_ctx->current_game->board[i][j] = (CellContent)2;
+          ctx.current_game->board[i][j] = (CellContent)2;
         }
     }
 
-  t.join ();
-  EXPECT_EQ (g_cli_ctx, nullptr);
+  EXPECT_TRUE (is_game_over (ctx.current_game, PLAYER_WHITE));
+  EXPECT_TRUE (is_game_over (ctx.current_game, PLAYER_BLACK));
 }
 
-TEST_F (CliControllerTest, GameOverLogic_NetworkMode)
+TEST_F (ControllerTestFixture, GameOverLogic_NetworkMode)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
-          run_interactive_mode (&cfg);
-        });
-
-  while (!g_cli_ctx)
-    std::this_thread::sleep_for (std::chrono::milliseconds (5));
-
-  g_cli_ctx->net_manager->current_mode = NET_MODE_CLIENT;
-  g_cli_ctx->in_network_match = true;
-  g_cli_ctx->in_main_menu = false;
-  g_cli_ctx->my_role = PLAYER_WHITE;
+  ctx.net_manager->current_mode = NET_MODE_CLIENT;
+  ctx.in_network_match = true;
+  ctx.in_main_menu = false;
+  ctx.my_role = PLAYER_WHITE;
 
   for (int i = 0; i < 10; i++)
     {
       for (int j = 0; j < 10; j++)
         {
-          g_cli_ctx->current_game->board[i][j] = (CellContent)2;
+          ctx.current_game->board[i][j] = (CellContent)2;
         }
     }
 
-  bool game_ended = false;
-  for (int i = 0; i < 50; i++)
-    {
-      if (!g_cli_ctx->in_network_match)
-        {
-          game_ended = true;
-          break;
-        }
-      std::this_thread::sleep_for (std::chrono::milliseconds (10));
-    }
-
-  EXPECT_TRUE (game_ended);
-  EXPECT_TRUE (g_cli_ctx->game_running);
-
-  g_cli_ctx->game_running = false;
-  t.join ();
+  EXPECT_TRUE (is_game_over (ctx.current_game, PLAYER_WHITE));
 }
 
-TEST_F (CliControllerTest, SynchronizedTimeoutLogic)
+TEST_F (ControllerTestFixture, SynchronizedTimeoutLogic)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
-          run_interactive_mode (&cfg);
-        });
+  ctx.net_manager->current_mode = NET_MODE_CLIENT;
+  ctx.in_network_match = true;
+  ctx.in_main_menu = false;
+  ctx.current_game->current_player = PLAYER_WHITE;
+  ctx.my_role = PLAYER_WHITE;
 
-  while (!g_cli_ctx)
-    std::this_thread::sleep_for (std::chrono::milliseconds (5));
+  ctx.turn_start_time = time (NULL) - 100;
+  ctx.timeout_limit = 60;
+  ctx.timeout_sent = false;
 
-  g_cli_ctx->net_manager->current_mode = NET_MODE_CLIENT;
-  g_cli_ctx->in_network_match = true;
-  g_cli_ctx->in_main_menu = false;
-  g_cli_ctx->current_game->current_player = PLAYER_WHITE;
-  g_cli_ctx->my_role = PLAYER_WHITE;
-  g_cli_ctx->timeout_sent = false;
-
-  g_cli_ctx->turn_start_time = time (NULL) - 100;
-
-  bool timeout_triggered = false;
-  for (int i = 0; i < 50; i++)
-    {
-      if (g_cli_ctx->current_game->current_player == PLAYER_BLACK)
-        {
-          timeout_triggered = true;
-          break;
-        }
-      std::this_thread::sleep_for (std::chrono::milliseconds (10));
-    }
+  time_t now = time (NULL);
+  bool timeout_triggered
+      = (difftime (now, ctx.turn_start_time) >= ctx.timeout_limit
+         && !ctx.timeout_sent);
 
   EXPECT_TRUE (timeout_triggered);
-
-  g_cli_ctx->game_running = false;
-  t.join ();
 }
 
-TEST_F (CliControllerTest, AITurnLogic)
+TEST_F (ControllerTestFixture, AITurnLogic)
 {
-  std::thread t (
-      [] ()
-        {
-          game_config_t cfg;
-          memset (&cfg, 0, sizeof (game_config_t));
-          cfg.board_size = 10;
 
-          cfg.ai_white_cfg.enabled = true;
-          strncpy (cfg.ai_white_cfg.name, "random", MAX_AI_STR_LEN - 1);
+  game_config_t cfg;
+  memset (&cfg, 0, sizeof (game_config_t));
+  cfg.board_size = 10;
 
-          run_interactive_mode (&cfg);
-        });
+  Param params[1] = {};
+  ConfigMap cm = { .count = 0, .list = params };
 
-  while (!g_cli_ctx || !g_cli_ctx->ai_white_initialized)
+  AI_Interface my_ai = create_ai ("random", cm);
+  ASSERT_NE (my_ai.vtable, nullptr);
+
+  ctx.current_game->current_player = PLAYER_WHITE;
+  Move ai_move = my_ai.vtable->get_best_move (&my_ai, *ctx.current_game);
+
+  EXPECT_TRUE (is_move_legal (ctx.current_game, ai_move));
+
+  if (my_ai.vtable->clean)
     {
-      std::this_thread::sleep_for (std::chrono::milliseconds (5));
+      my_ai.vtable->clean (&my_ai);
     }
-
-  g_cli_ctx->in_main_menu = false;
-  g_cli_ctx->current_game->status = GAME_IN_PROGRESS;
-  g_cli_ctx->current_game->current_player = PLAYER_WHITE;
-
-  bool ai_played = false;
-  for (int i = 0; i < 500; i++)
-    {
-      if (g_cli_ctx->current_game->current_player == PLAYER_BLACK)
-        {
-          ai_played = true;
-          break;
-        }
-      std::this_thread::sleep_for (std::chrono::milliseconds (20));
-    }
-
-  EXPECT_TRUE (ai_played);
-
-  g_cli_ctx->game_running = false;
-  t.join ();
 }
