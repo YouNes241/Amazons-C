@@ -46,8 +46,10 @@ typedef struct
   bool isNetworkMatch;
   PlayerColor selfPlayerColor;
   bool isHintActive;
-  AI_Interface ai_engine;
-  bool is_ai_initialized;
+  AI_Interface ai_white;
+  AI_Interface ai_black;
+  bool is_ai_white_initialized;
+  bool is_ai_black_initialized;
 } GuiContext;
 
 GuiContext *initGuiContext (game_config_t *config);

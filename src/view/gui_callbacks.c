@@ -155,9 +155,9 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   gtk_spin_button_set_value (GTK_SPIN_BUTTON (boardSizeField),
                              ctx->gameConfig->board_size);
   gtk_switch_set_active (GTK_SWITCH (aiWhiteSwitch),
-                         ctx->gameConfig->ai_white);
+                         ctx->gameConfig->ai_white_cfg.enabled);
   gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
-                         ctx->gameConfig->ai_black);
+                         ctx->gameConfig->ai_black_cfg.enabled);
 
   g_signal_connect (verboseSwitch, "notify::active",
                     G_CALLBACK (updateConfigVerbose), ctx);
@@ -239,7 +239,8 @@ undoButtonClick (GtkButton *button, gpointer user_data)
 
   if (undo_move (ctx->gameState))
     {
-      bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+      bool has_ai = ctx->gameConfig->ai_white_cfg.enabled
+                    || ctx->gameConfig->ai_black_cfg.enabled;
       if (has_ai && ctx->gameState->undo_stack.top >= 0)
         {
           undo_move (ctx->gameState);
@@ -251,6 +252,7 @@ undoButtonClick (GtkButton *button, gpointer user_data)
       clearHighlights (ctx);
       drawBoard (ctx);
       updateTurnDisplay (ctx);
+      guiCheckAndTriggerAI (ctx);
     }
 }
 
@@ -277,7 +279,8 @@ redoButtonClick (GtkButton *button, gpointer user_data)
 
   if (redo_move (ctx->gameState))
     {
-      bool has_ai = ctx->gameConfig->ai_white || ctx->gameConfig->ai_black;
+      bool has_ai = ctx->gameConfig->ai_white_cfg.enabled
+                    || ctx->gameConfig->ai_black_cfg.enabled;
       if (has_ai && ctx->gameState->redo_stack.top >= 0)
         {
           redo_move (ctx->gameState);
@@ -289,6 +292,7 @@ redoButtonClick (GtkButton *button, gpointer user_data)
       clearHighlights (ctx);
       drawBoard (ctx);
       updateTurnDisplay (ctx);
+      guiCheckAndTriggerAI (ctx);
     }
 }
 
@@ -756,9 +760,10 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
       return NULL;
     }
 
-  bool is_ai_turn
-      = (currentPlayer == PLAYER_WHITE && ctx->gameConfig->ai_white)
-        || (currentPlayer == PLAYER_BLACK && ctx->gameConfig->ai_black);
+  bool is_ai_turn = (currentPlayer == PLAYER_WHITE
+                     && ctx->gameConfig->ai_white_cfg.enabled)
+                    || (currentPlayer == PLAYER_BLACK
+                        && ctx->gameConfig->ai_black_cfg.enabled);
 
   if (is_ai_turn && !ctx->isNetworkMatch)
     {
@@ -1047,7 +1052,7 @@ updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameConfig != NULL);
 
-  ctx->gameConfig->ai_white = gtk_switch_get_active (widget);
+  ctx->gameConfig->ai_white_cfg.enabled = gtk_switch_get_active (widget);
 }
 
 void
@@ -1061,7 +1066,7 @@ updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
   assert (ctx != NULL);
   assert (ctx->gameConfig != NULL);
 
-  ctx->gameConfig->ai_black = gtk_switch_get_active (widget);
+  ctx->gameConfig->ai_black_cfg.enabled = gtk_switch_get_active (widget);
 }
 
 #if GTK_CHECK_VERSION(4, 10, 0)

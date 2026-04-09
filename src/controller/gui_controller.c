@@ -16,23 +16,31 @@
 /** @name Forward Declarations
  */
 ///@{
-void guiHandlePlayerMove (GuiContext *ctx, Move move);
 static gboolean guiAIPlayTurn (gpointer user_data);
 static gboolean gui_network_tick_loop (gpointer user_data);
 static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
-
 ///@}
 
-/** @name Global Variables
- * @brief GUI AI instances and state
- */
-///@{
-static AI_Interface g_gui_ai_white;
-static bool g_gui_ai_white_initialized = false;
+void
+guiCheckAndTriggerAI (GuiContext *ctx)
+{
+  assert (ctx != NULL);
+  assert (ctx->gameConfig != NULL);
+  assert (ctx->gameState != NULL);
 
-static AI_Interface g_gui_ai_black;
-static bool g_gui_ai_black_initialized = false;
-///@}
+  if (ctx->isNetworkMatch)
+    return;
+
+  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
+  bool current_ai_init = is_white_turn ? ctx->is_ai_white_initialized
+                                       : ctx->is_ai_black_initialized;
+
+  if (current_ai_init
+      && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
+    {
+      g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
+    }
+}
 
 void
 guiHandlePlayerMove (GuiContext *ctx, Move move)
@@ -83,15 +91,7 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
           return;
         }
 
-      bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-      bool current_ai_init = is_white_turn ? g_gui_ai_white_initialized
-                                           : g_gui_ai_black_initialized;
-
-      if (current_ai_init
-          && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
-        {
-          g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
-        }
+      guiCheckAndTriggerAI (ctx);
     }
   else
     {
@@ -109,19 +109,19 @@ guiStartNewGame (GuiContext *ctx)
   assert (ctx->gameConfig != NULL);
   assert (ctx->gameState != NULL);
 
-  if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
-      && g_gui_ai_white.vtable->clean)
+  if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
+      && ctx->ai_white.vtable->clean)
     {
-      g_gui_ai_white.vtable->clean (&g_gui_ai_white);
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
     }
-  if (g_gui_ai_black_initialized && g_gui_ai_black.vtable
-      && g_gui_ai_black.vtable->clean)
+  if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
+      && ctx->ai_black.vtable->clean)
     {
-      g_gui_ai_black.vtable->clean (&g_gui_ai_black);
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
     }
 
-  g_gui_ai_white_initialized = false;
-  g_gui_ai_black_initialized = false;
+  ctx->is_ai_white_initialized = false;
+  ctx->is_ai_black_initialized = false;
 
   if (ctx->gameConfig->ai_white_cfg.enabled)
     {
@@ -133,8 +133,8 @@ guiStartNewGame (GuiContext *ctx)
         }
       ConfigMap cm = { .count = ctx->gameConfig->ai_white_cfg.param_count,
                        .list = params };
-      g_gui_ai_white = create_ai (ctx->gameConfig->ai_white_cfg.name, cm);
-      g_gui_ai_white_initialized = (g_gui_ai_white.vtable != NULL);
+      ctx->ai_white = create_ai (ctx->gameConfig->ai_white_cfg.name, cm);
+      ctx->is_ai_white_initialized = (ctx->ai_white.vtable != NULL);
     }
 
   if (ctx->gameConfig->ai_black_cfg.enabled)
@@ -147,19 +147,11 @@ guiStartNewGame (GuiContext *ctx)
         }
       ConfigMap cm = { .count = ctx->gameConfig->ai_black_cfg.param_count,
                        .list = params };
-      g_gui_ai_black = create_ai (ctx->gameConfig->ai_black_cfg.name, cm);
-      g_gui_ai_black_initialized = (g_gui_ai_black.vtable != NULL);
+      ctx->ai_black = create_ai (ctx->gameConfig->ai_black_cfg.name, cm);
+      ctx->is_ai_black_initialized = (ctx->ai_black.vtable != NULL);
     }
 
-  bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-  bool current_ai_init = is_white_turn ? g_gui_ai_white_initialized
-                                       : g_gui_ai_black_initialized;
-
-  if (current_ai_init
-      && is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
-    {
-      g_timeout_add (GUI_AI_DELAY, guiAIPlayTurn, ctx);
-    }
+  guiCheckAndTriggerAI (ctx);
 }
 
 void
@@ -198,15 +190,15 @@ run_gui_mode (game_config_t *config)
 
   runApplication (app, 0, NULL);
 
-  if (g_gui_ai_white_initialized && g_gui_ai_white.vtable
-      && g_gui_ai_white.vtable->clean)
+  if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
+      && ctx->ai_white.vtable->clean)
     {
-      g_gui_ai_white.vtable->clean (&g_gui_ai_white);
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
     }
-  if (g_gui_ai_black_initialized && g_gui_ai_black.vtable
-      && g_gui_ai_black.vtable->clean)
+  if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
+      && ctx->ai_black.vtable->clean)
     {
-      g_gui_ai_black.vtable->clean (&g_gui_ai_black);
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
     }
 
   NetworkManager_Cleanup (ctx->networkManager);
@@ -243,12 +235,20 @@ guiAIPlayTurn (gpointer user_data)
   GuiContext *ctx = (GuiContext *)user_data;
   assert (ctx != NULL);
   assert (ctx->gameState != NULL);
-  assert (ctx->ai_engine.vtable != NULL);
 
-  g_print ("\n[AI] Thinking...\n");
+  if (ctx->isNetworkMatch
+      || !is_it_ai_turn (ctx->gameConfig, ctx->gameState->current_player))
+    {
+      return G_SOURCE_REMOVE;
+    }
 
   bool is_white_turn = (ctx->gameState->current_player == PLAYER_WHITE);
-  AI_Interface *current_ai = is_white_turn ? &g_gui_ai_white : &g_gui_ai_black;
+  AI_Interface *current_ai = is_white_turn ? &ctx->ai_white : &ctx->ai_black;
+
+  if (current_ai == NULL || current_ai->vtable == NULL)
+    {
+      return G_SOURCE_REMOVE;
+    }
 
   Move ai_move
       = current_ai->vtable->get_best_move (current_ai, *(ctx->gameState));

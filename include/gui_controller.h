@@ -8,5 +8,6 @@
 void guiHandlePlayerMove (GuiContext *ctx, Move move);
 void guiStartNewGame (GuiContext *ctx);
 void guiDisconnectAndRestartNetwork (GuiContext *ctx);
+void guiCheckAndTriggerAI (GuiContext *ctx);
 
 #endif // GUI_CONTROLLER_H

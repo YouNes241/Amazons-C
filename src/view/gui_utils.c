@@ -28,7 +28,8 @@ initGuiContext (game_config_t *config)
   ctx->currentPhase = PHASE_MOVE_QUEEN;
   ctx->isNetworkMatch = false;
   ctx->isHintActive = false;
-  ctx->is_ai_initialized = false;
+  ctx->is_ai_white_initialized = false;
+  ctx->is_ai_black_initialized = false;
 
   memset (&ctx->keyBindings, 0, sizeof (ctx->keyBindings));
   strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE - 1);
@@ -53,7 +54,10 @@ freeGuiContext (GuiContext *ctx)
   if (ctx->gameBoard)
     free (ctx->gameBoard);
   if (ctx->gameState)
-    game_cleanup (ctx->gameState);
+    {
+      game_cleanup (ctx->gameState);
+      free (ctx->gameState);
+    }
   free (ctx);
 }
 
@@ -236,7 +240,8 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
     }
   else
     {
-      flipBoard = (ctx->gameConfig->ai_white && !ctx->gameConfig->ai_black);
+      flipBoard = (ctx->gameConfig->ai_white_cfg.enabled
+                   && !ctx->gameConfig->ai_black_cfg.enabled);
     }
 
   for (unsigned int i = 0; i < size * size; i++)
