@@ -804,7 +804,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       execute_hint (ctx);
     }
-  else if (strncmp (input_buffer, "show ", 5) == 0)
+  else if (strncmp (input_buffer, "show", 5) == 0)
     {
       char *sub = input_buffer + 5;
       if (strcmp (sub, "history") == 0)

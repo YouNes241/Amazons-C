@@ -57,7 +57,11 @@ linehandler (char *line)
     return;
 
   printf ("\n"); // Visually validate the entry
-
+  if (line == NULL)
+    {
+      g_cli_ctx->game_running = false;
+      return;
+    }
   if (line[0] != '\0')
     {
       add_history (line);
@@ -308,9 +312,28 @@ run_interactive_mode (game_config_t *config)
           ctx->turn_start_time = time (NULL);
         }
 
-      if (poll (fds, STDIN_FD_COUNT, POLL_STDIN_TIMEOUT_MS) > 0
-          && (fds[STDIN_FD_INDEX].revents & POLLIN))
-        rl_callback_read_char ();
+      int poll_res = poll (fds, STDIN_FD_COUNT, POLL_STDIN_TIMEOUT_MS);
+      if (poll_res > 0)
+        {
+
+          if (fds[STDIN_FD_INDEX].revents & (POLLHUP | POLLERR | POLLNVAL))
+            {
+              ctx->game_running = false;
+              break;
+            }
+
+          if (fds[STDIN_FD_INDEX].revents & POLLIN)
+            {
+              rl_callback_read_char ();
+
+              if (feof (stdin))
+                {
+                  printf ("\n[CLI] Fin de fichier (EOF) atteinte. Arrêt.\n");
+                  ctx->game_running = false;
+                  break;
+                }
+            }
+        }
     }
 
   rl_callback_handler_remove ();
