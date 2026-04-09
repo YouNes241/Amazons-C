@@ -226,7 +226,8 @@ parse_options (int argc, char *argv[], game_config_t *config)
 
         case 'V':
           printf ("amazons-c version %s\n", VERSION);
-          return EXIT_SUCCESS;
+          free (config);
+          exit (EXIT_SUCCESS);
 
         case 'h':
           printf ("Usage: ./amazons [OPTIONS]\n");
@@ -258,7 +259,8 @@ parse_options (int argc, char *argv[], game_config_t *config)
           printf ("  -v, --verbose   Enable verbose mode\n");
           printf ("  -h, --help      Display this help\n");
           printf ("  -V, --version   Display game version\n");
-          return EXIT_SUCCESS;
+          free (config);
+          exit (EXIT_SUCCESS);
 
         default:
           return EXIT_FAILURE;
