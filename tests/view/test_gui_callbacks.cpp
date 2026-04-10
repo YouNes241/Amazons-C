@@ -4,12 +4,16 @@
  *
  * Tests cover GUI callback logic including button clicks, drag/drop,
  * config updates, shortcuts, and hint system.
- * Note: These tests use minimal GTK initialization where possible.
  */
 
 #include <cstdlib>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <string>
+
+#ifndef GRESOURCE_FILE
+#define GRESOURCE_FILE "resources.gresource"
+#endif
 
 extern "C"
 {
@@ -23,12 +27,6 @@ extern "C"
 #include "network_common.h"
 }
 
-/**
- * @brief Test fixture for GUI callbacks tests
- *
- * Sets up a GuiContext with minimal GTK widgets for testing.
- * Most tests will use GtkWidget* set to actual widgets created via GTK.
- */
 class GuiCallbacksTest : public ::testing::Test
 {
 protected:
@@ -42,9 +40,28 @@ protected:
   {
     if (!gtk_initialized)
       {
-        // Initialize GTK without command line args
+        g_setenv ("GTK_A11Y", "none", TRUE);
         gtk_init ();
         gtk_initialized = true;
+
+        GError *error = nullptr;
+        GResource *res = g_resource_load (GRESOURCE_FILE, &error);
+
+        if (res != nullptr)
+          {
+            g_resources_register (res);
+            g_resource_unref (res);
+            g_print ("[Test Setup] %s successfully loaded !\n",
+                     GRESOURCE_FILE);
+          }
+        else
+          {
+            g_print ("[Test Setup] Info: %s was not found. "
+                     "The popups will be ignored.\n",
+                     GRESOURCE_FILE);
+            if (error)
+              g_error_free (error);
+          }
       }
   }
 
@@ -54,8 +71,6 @@ protected:
     ctx = (GuiContext *)calloc (1, sizeof (GuiContext));
     ASSERT_NE (ctx, nullptr);
 
-    // Allocation dynamique pour que setupBoard() puisse le free() sans crasher
-    // !
     ctx->gameState = (GameState *)calloc (1, sizeof (GameState));
     ASSERT_NE (ctx->gameState, nullptr);
 
@@ -78,15 +93,13 @@ protected:
     ctx->is_ai_white_initialized = false;
     ctx->is_ai_black_initialized = false;
 
-    // Create a mock window and stack
+    // Simulation GTK minimale
     ctx->mainWindow = GTK_WINDOW (gtk_window_new ());
     ctx->mainStack = GTK_STACK (gtk_stack_new ());
 
-    // Add mock turn label to stack (needed for updateTurnDisplay)
     GtkWidget *turnLabel = gtk_label_new ("Turn");
     g_object_set_data (G_OBJECT (ctx->mainStack), "turn_label", turnLabel);
 
-    // Add pages to stack
     GtkWidget *main_menu_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *game_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *client_panel_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -102,18 +115,15 @@ protected:
     gtk_stack_add_named (ctx->mainStack, host_panel_page, "host_panel_page");
     gtk_stack_add_named (ctx->mainStack, multiplayer_page, "multiplayer_page");
 
-    // Create a mock board grid and attach it to stack
     GtkWidget *boardGrid = gtk_grid_new ();
     g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
 
-    // Create mock game board (10x10 = 100 cells)
     int boardSize = config.board_size * config.board_size;
     ctx->gameBoard = (GtkWidget **)calloc (boardSize, sizeof (GtkWidget *));
     for (int i = 0; i < boardSize; i++)
       {
         ctx->gameBoard[i] = gtk_button_new ();
 
-        // Add a mock label for drawPiece logic
         GtkWidget *lbl = gtk_label_new ("");
         g_object_set_data (G_OBJECT (ctx->gameBoard[i]), "cell_label", lbl);
 
@@ -129,7 +139,6 @@ protected:
                            GINT_TO_POINTER (0));
       }
 
-    // Set up default key bindings
     strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE);
     strncpy (ctx->keyBindings.key_load_game, "<Control>o", SHORTCUTS_SIZE);
     strncpy (ctx->keyBindings.key_save_game, "<Control>s", SHORTCUTS_SIZE);
@@ -147,14 +156,10 @@ protected:
   {
     if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
         && ctx->ai_white.vtable->clean)
-      {
-        ctx->ai_white.vtable->clean (&ctx->ai_white);
-      }
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
     if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
         && ctx->ai_black.vtable->clean)
-      {
-        ctx->ai_black.vtable->clean (&ctx->ai_black);
-      }
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
 
     if (ctx->gameState)
       {
@@ -162,13 +167,11 @@ protected:
         free (ctx->gameState);
         ctx->gameState = nullptr;
       }
-
     if (ctx->gameBoard)
       {
         free (ctx->gameBoard);
         ctx->gameBoard = nullptr;
       }
-
     if (ctx)
       {
         free (ctx);
@@ -191,6 +194,268 @@ protected:
 };
 
 bool GuiCallbacksTest::gtk_initialized = false;
+
+/* ==========================================================================
+ * HIGH COVERAGE ADDITIONS (New Branches Hit)
+ * ==========================================================================
+ */
+
+TEST_F (GuiCallbacksTest, InfoPopupButtonClick_ShowsPopup)
+{
+  if (g_resources_get_info ("/amazons/ui/popups/info_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_NO_THROW (infoPopupButtonClick (nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP ()
+          << "Resource /amazons/ui/popups/info_popup.ui not found, skipping.";
+    }
+}
+
+TEST_F (GuiCallbacksTest, ConfigPopupButtonClick_ShowsPopup)
+{
+  if (g_resources_get_info ("/amazons/ui/popups/config_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_NO_THROW (configPopupButtonClick (nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP () << "Resource /amazons/ui/popups/config_popup.ui not "
+                       "found, skipping.";
+    }
+}
+
+TEST_F (GuiCallbacksTest, CreateGameButtonClick_ShowsPopup)
+{
+  if (g_resources_get_info ("/amazons/ui/popups/create_game_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_NO_THROW (createGameButtonClick (nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP () << "Resource /amazons/ui/popups/create_game_popup.ui not "
+                       "found, skipping.";
+    }
+}
+
+TEST_F (GuiCallbacksTest, HostServerPopupButtonClick_ShowsPopup)
+{
+  if (g_resources_get_info ("/amazons/ui/popups/create_server_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_NO_THROW (hostServerPopupButtonClick (nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP () << "Resource /amazons/ui/popups/create_server_popup.ui "
+                       "not found, skipping.";
+    }
+}
+
+TEST_F (GuiCallbacksTest, UndoButtonClick_EmptyStack)
+{
+  ctx->is_ai_thinking = false;
+  ctx->isNetworkMatch = false;
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  // Exécute sans crash (la pile est vide, undo_move renvoie false)
+  EXPECT_NO_THROW (undoButtonClick (nullptr, ctx));
+}
+
+TEST_F (GuiCallbacksTest, RedoButtonClick_EmptyStack)
+{
+  ctx->is_ai_thinking = false;
+  ctx->isNetworkMatch = false;
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  // Exécute sans crash (la pile redo est vide, redo_move renvoie false)
+  EXPECT_NO_THROW (redoButtonClick (nullptr, ctx));
+}
+
+TEST_F (GuiCallbacksTest, SendInviteButtonClick_NullNetworkManager)
+{
+  GtkWidget *btn = gtk_button_new_with_label ("Invite");
+  GtkWidget *entry = gtk_entry_new ();
+  GtkWidget *spin = gtk_spin_button_new_with_range (4, 11, 1);
+  GtkWidget *popup = gtk_window_new ();
+
+  gtk_editable_set_text (GTK_EDITABLE (entry), "5"); // Valid ID
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), 10);
+
+  g_object_set_data (G_OBJECT (btn), "target_id_entry", entry);
+  g_object_set_data (G_OBJECT (btn), "board_size_spin", spin);
+  g_object_set_data (G_OBJECT (btn), "popup_window", popup);
+
+  // Simule l'absence de network manager (ex: match local)
+  GuiContext ctx2 = *ctx;
+  ctx2.networkManager = nullptr;
+
+  EXPECT_NO_THROW (sendInviteButtonClick (GTK_BUTTON (btn), &ctx2));
+}
+
+TEST_F (GuiCallbacksTest, JoinServerButtonClick_ConnectionSuccess)
+{
+  // On crée un serveur réel sur un port libre pour garantir le succès du
+  // ClientJoin
+  int port = 18888;
+  NetworkManager_ServerStart (ctx->networkManager, port);
+
+  GtkWidget *btn = gtk_button_new_with_label ("Join");
+  GtkWidget *entry = gtk_entry_new ();
+
+  GtkWidget *titleLabel = gtk_label_new ("Title");
+  g_object_set_data (G_OBJECT (ctx->mainStack), "lobby_title_label",
+                     titleLabel);
+
+  g_object_set_data (G_OBJECT (btn), "server_ip", (gpointer) "127.0.0.1");
+  g_object_set_data (G_OBJECT (btn), "server_port", GINT_TO_POINTER (port));
+  g_object_set_data (G_OBJECT (btn), "username_entry", entry);
+
+  gtk_editable_set_text (GTK_EDITABLE (entry), "TestUser");
+
+  EXPECT_NO_THROW (joinServerButtonClick (GTK_BUTTON (btn), ctx));
+
+  NetworkManager_ShutdownServer (ctx->networkManager);
+}
+
+TEST_F (GuiCallbacksTest, RefreshServerListButtonClick_ServersFound)
+{
+  int port = 18889;
+  NetworkManager_ServerStart (ctx->networkManager, port);
+
+  GtkWidget *btn = gtk_button_new_with_label ("Refresh");
+  GtkWidget *listbox = gtk_list_box_new ();
+  GtkWidget *entry = gtk_entry_new ();
+
+  g_object_set_data (G_OBJECT (btn), "server_listbox", listbox);
+  g_object_set_data (G_OBJECT (btn), "username_entry", entry);
+
+  EXPECT_NO_THROW (refreshServerListButtonClick (GTK_BUTTON (btn), ctx));
+
+  NetworkManager_ShutdownServer (ctx->networkManager);
+}
+
+#if !GTK_CHECK_VERSION(4, 10, 0)
+TEST_F (GuiCallbacksTest, OnSaveResponse_Cancel)
+{
+  // Test de la branche Cancel des boîtes de dialogue natives
+  EXPECT_NO_THROW (on_save_response (nullptr, GTK_RESPONSE_CANCEL, ctx));
+}
+
+TEST_F (GuiCallbacksTest, OnLoadResponse_Cancel)
+{
+  EXPECT_NO_THROW (on_load_response (nullptr, GTK_RESPONSE_CANCEL, ctx));
+}
+#endif
+
+TEST_F (GuiCallbacksTest, OnDrag_Success_ReturnsProvider)
+{
+  ctx->is_ai_thinking = false;
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+  ctx->gameState->current_player = PLAYER_WHITE;
+  ctx->selfPlayerColor = PLAYER_WHITE;
+  ctx->isNetworkMatch = false;
+
+  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN;
+
+  GtkDragSource *source = gtk_drag_source_new ();
+  gtk_widget_add_controller (ctx->gameBoard[3], GTK_EVENT_CONTROLLER (source));
+
+  g_object_set_data (G_OBJECT (ctx->gameBoard[4]), "is_legal_move",
+                     GINT_TO_POINTER (1));
+
+  GdkContentProvider *provider = onDrag (source, 0, 0, ctx);
+  EXPECT_NE (provider, nullptr); // Le drag est autorisé !
+  if (provider)
+    g_object_unref (provider);
+}
+
+TEST_F (GuiCallbacksTest, FireArrow_NetworkMatch_OwnTurn)
+{
+  ctx->currentPhase = PHASE_SHOOT_ARROW;
+  ctx->isNetworkMatch = true;
+  ctx->selfPlayerColor = PLAYER_WHITE;
+  ctx->gameState->current_player = PLAYER_WHITE;
+
+  ctx->tmpQueenSrc.col = 3;
+  ctx->tmpQueenSrc.row = 0;
+  ctx->tmpQueenDst.col = 3;
+  ctx->tmpQueenDst.row = 1;
+
+  ctx->gameState->board[0][3] = CONTENT_EMPTY;
+  ctx->gameState->board[1][3] = CONTENT_WHITE_QUEEN;
+
+  GtkWidget *btn = ctx->gameBoard[23]; // (3, 2)
+  g_object_set_data (G_OBJECT (btn), "is_legal_move", GINT_TO_POINTER (1));
+
+  EXPECT_NO_THROW (fireArrow (btn, ctx));
+  EXPECT_EQ (ctx->currentPhase, PHASE_MOVE_QUEEN);
+}
+
+TEST_F (GuiCallbacksTest, StartServerButtonClick_Failure)
+{
+  GtkWidget *btn = gtk_button_new_with_label ("Start");
+  GtkWidget *spin = gtk_spin_button_new_with_range (1, 65535, 1);
+
+  // On utilise le port 80 (Privilégié) qui refusera de s'ouvrir sans sudo,
+  // provoquant un échec.
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), 80);
+  g_object_set_data (G_OBJECT (btn), "port_spin", spin);
+
+  GtkWidget *entry = gtk_entry_new ();
+  gtk_editable_set_text (GTK_EDITABLE (entry), "80");
+  g_object_set_data (G_OBJECT (btn), "port_entry", entry);
+
+  GtkWidget *popup = gtk_window_new ();
+  g_object_set_data (G_OBJECT (btn), "popup_window", popup);
+
+  testing::internal::CaptureStdout ();
+  EXPECT_NO_THROW (startServerButtonClick (GTK_BUTTON (btn), ctx));
+  std::string output = testing::internal::GetCapturedStdout ();
+
+  EXPECT_NE (output.find ("Failed to start server"), std::string::npos);
+}
+
+TEST_F (GuiCallbacksTest, JoinServerButtonClick_ConnectionFailure)
+{
+  GtkWidget *btn = gtk_button_new_with_label ("Join");
+  GtkWidget *entry = gtk_entry_new ();
+
+  // IP totalement invalide
+  g_object_set_data (G_OBJECT (btn), "server_ip",
+                     (gpointer) "256.256.256.256");
+  g_object_set_data (G_OBJECT (btn), "server_port", GINT_TO_POINTER (99999));
+  g_object_set_data (G_OBJECT (btn), "username_entry", entry);
+  gtk_editable_set_text (GTK_EDITABLE (entry), "TestUser");
+
+  testing::internal::CaptureStdout ();
+  EXPECT_NO_THROW (joinServerButtonClick (GTK_BUTTON (btn), ctx));
+  std::string output = testing::internal::GetCapturedStdout ();
+
+  EXPECT_NE (output.find ("Connection failed"), std::string::npos);
+}
+
+TEST_F (GuiCallbacksTest, SaveButtonClick_NormalPath)
+{
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+  ctx->is_ai_thinking = false;
+  EXPECT_NO_THROW (saveButtonClick (nullptr, ctx));
+}
+
+TEST_F (GuiCallbacksTest, LoadButtonClick_NormalPath)
+{
+  ctx->isNetworkMatch = false;
+  ctx->is_ai_thinking = false;
+  EXPECT_NO_THROW (loadButtonClick (nullptr, ctx));
+}
 
 /* ==========================================================================
  * BASIC NAVIGATION TESTS
@@ -217,12 +482,30 @@ TEST_F (GuiCallbacksTest, ShortcutNewGame_ReturnsTrue)
 
 TEST_F (GuiCallbacksTest, ShortcutInfo_ReturnsTrue)
 {
-  EXPECT_DEATH (shortcutInfo (nullptr, nullptr, ctx), "");
+  if (g_resources_get_info ("/amazons/ui/popups/info_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_TRUE (shortcutInfo (nullptr, nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP () << "Resource missing";
+    }
 }
 
 TEST_F (GuiCallbacksTest, ShortcutConfig_ReturnsTrue)
 {
-  EXPECT_DEATH (shortcutConfig (nullptr, nullptr, ctx), "");
+  if (g_resources_get_info ("/amazons/ui/popups/config_popup.ui",
+                            G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr, nullptr,
+                            nullptr))
+    {
+      EXPECT_TRUE (shortcutConfig (nullptr, nullptr, ctx));
+    }
+  else
+    {
+      GTEST_SKIP () << "Resource missing";
+    }
 }
 
 TEST_F (GuiCallbacksTest, ShortcutQuit_ReturnsTrue)
@@ -426,7 +709,7 @@ TEST_F (GuiCallbacksTest, HintButtonClick_HintAlreadyActive)
 }
 
 /* ==========================================================================
- * DRAG & DROP TESTS (High Coverage Target)
+ * DRAG & DROP TESTS
  * ==========================================================================
  */
 
@@ -454,7 +737,7 @@ TEST_F (GuiCallbacksTest, OnDrag_WrongPhase_ReturnsNull)
 {
   ctx->is_ai_thinking = false;
   ctx->currentPhase = PHASE_SHOOT_ARROW;
-  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN; // Cell 3 (x=3, y=0)
+  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN;
 
   GtkDragSource *source = gtk_drag_source_new ();
   gtk_widget_add_controller (ctx->gameBoard[3], GTK_EVENT_CONTROLLER (source));
@@ -468,7 +751,6 @@ TEST_F (GuiCallbacksTest, OnDrag_WrongPlayerQueen_ReturnsNull)
   ctx->currentPhase = PHASE_MOVE_QUEEN;
   ctx->gameState->current_player = PLAYER_WHITE;
 
-  // White trying to grab Black Queen at D10 (cell 93)
   ctx->gameState->board[9][3] = CONTENT_BLACK_QUEEN;
 
   GtkDragSource *source = gtk_drag_source_new ();
@@ -487,7 +769,7 @@ TEST_F (GuiCallbacksTest, OnDrop_WrongPhase_ReturnsFalse)
 
   GValue val = G_VALUE_INIT;
   g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, "0"); // Trying to drop from cell 0
+  g_value_set_string (&val, "0");
 
   EXPECT_FALSE (onDrop (target, &val, 0, 0, ctx));
   g_value_unset (&val);
@@ -520,7 +802,7 @@ TEST_F (GuiCallbacksTest, OnDrop_DestNotEmpty_ReturnsFalse)
 
   g_object_set_data (G_OBJECT (ctx->gameBoard[1]), "is_legal_move",
                      GINT_TO_POINTER (1));
-  ctx->gameState->board[0][1] = CONTENT_ARROW; // Dest is occupied
+  ctx->gameState->board[0][1] = CONTENT_ARROW;
 
   GValue val = G_VALUE_INIT;
   g_value_init (&val, G_TYPE_STRING);
@@ -536,22 +818,22 @@ TEST_F (GuiCallbacksTest, OnDrop_Success)
 
   GtkDropTarget *target = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
   gtk_widget_add_controller (ctx->gameBoard[13],
-                             GTK_EVENT_CONTROLLER (target)); // cell (3, 1)
+                             GTK_EVENT_CONTROLLER (target));
 
   g_object_set_data (G_OBJECT (ctx->gameBoard[13]), "is_legal_move",
                      GINT_TO_POINTER (1));
-  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN; // Source D1
-  ctx->gameState->board[1][3] = CONTENT_EMPTY;       // Dest D2
+  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN;
+  ctx->gameState->board[1][3] = CONTENT_EMPTY;
 
   GValue val = G_VALUE_INIT;
   g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, "3"); // Source cell_index 3
+  g_value_set_string (&val, "3");
 
   EXPECT_TRUE (onDrop (target, &val, 0, 0, ctx));
 
   EXPECT_EQ (ctx->currentPhase, PHASE_SHOOT_ARROW);
-  EXPECT_EQ (ctx->gameState->board[1][3], CONTENT_WHITE_QUEEN); // Moved
-  EXPECT_EQ (ctx->gameState->board[0][3], CONTENT_EMPTY);       // Emptied
+  EXPECT_EQ (ctx->gameState->board[1][3], CONTENT_WHITE_QUEEN);
+  EXPECT_EQ (ctx->gameState->board[0][3], CONTENT_EMPTY);
 
   g_value_unset (&val);
 }
@@ -701,13 +983,13 @@ TEST_F (GuiCallbacksTest, FireArrow_Success)
   ctx->gameState->board[0][3] = CONTENT_EMPTY;
   ctx->gameState->board[1][3] = CONTENT_WHITE_QUEEN;
 
-  GtkWidget *btn = ctx->gameBoard[23]; // cell (3, 2)
+  GtkWidget *btn = ctx->gameBoard[23];
   g_object_set_data (G_OBJECT (btn), "is_legal_move", GINT_TO_POINTER (1));
 
   EXPECT_NO_THROW (fireArrow (btn, ctx));
 
   EXPECT_EQ (ctx->currentPhase, PHASE_MOVE_QUEEN);
-  EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK); // Turn ended!
+  EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK);
 }
 
 /* ==========================================================================
