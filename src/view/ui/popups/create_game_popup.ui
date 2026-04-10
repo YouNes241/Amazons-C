@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="create_game_window">
+    <property name="title">Create game</property>
+    <property name="modal">true</property>
+    <property name="default-width">300</property>
+    <property name="resizable">false</property>
+    
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">15</property>
+        <property name="margin-top">20</property>
+        <property name="margin-bottom">20</property>
+        <property name="margin-start">20</property>
+        <property name="margin-end">20</property>
+        
+        <child>
+          <object class="GtkLabel">
+            <property name="label">Invite a player</property>
+            <property name="css-classes">title-2</property>
+            <property name="margin-bottom">10</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkEntry" id="target_id_entry">
+            <property name="placeholder-text">Player ID</property>
+            <property name="input-purpose">digits</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Board size :</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkSpinButton" id="board_size_spin">
+                <property name="adjustment">
+                  <object class="GtkAdjustment">
+                    <property name="lower">4</property>
+                    <property name="upper">11</property>
+                    <property name="value">10</property>
+                    <property name="step-increment">1</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">10</property>
+            <property name="halign">end</property>
+            <property name="margin-top">10</property>
+            
+            <child>
+              <object class="GtkButton" id="cancel_btn">
+                <property name="label">Cancel</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="invite_btn">
+                <property name="label">Send invitation</property>
+                <property name="css-classes">suggested-action</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+      </object>
+    </child>
+  </object>
+</interface>

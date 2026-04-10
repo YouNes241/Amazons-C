@@ -1,3 +1,7 @@
+/** @file bitboard.c
+ * @brief Implementation for the bitboard operations for the Amazons game.
+ */
+
 #include "bitboard.h"
 #include <stdio.h>
 
@@ -7,6 +11,8 @@ static Bitboard BOARD_MASKS[12];
 static bool slide_masks_init = false;
 static bool masks_initialized = false;
 
+/** @brief Initializes the slide masks for different board widths.
+ */
 static void
 init_slide_masks ()
 {
@@ -25,6 +31,10 @@ init_slide_masks ()
   slide_masks_init = true;
 }
 
+/** @brief Prints the bitboard.
+ * @param bb The bitboard to print.
+ * @param width The width of the board.
+ */
 void
 bitboard_print (Bitboard bb, uint8_t width)
 {

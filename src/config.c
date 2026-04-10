@@ -1,3 +1,7 @@
+/** @file config.c
+ * @brief Configuration handling functions for the Amazons game.
+ */
+
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +12,9 @@
 #define KEY_SIZE 64
 #define VAL_SIZE 64
 
+/** @brief Initializes the game configuration with default values.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 init_default_config (game_config_t *config)
 {
@@ -15,21 +22,30 @@ init_default_config (game_config_t *config)
   config->mode = MODE_INTERACTIVE;
   config->blitz_mode = false;
   config->time_per_player = DEFAULT_TIME_BLITZ;
-  config->ai_black = false;
-  config->ai_white = false;
   config->verbose = false;
   config->language = LANG_FR;
+
+  config->ai_white_cfg.enabled = false;
+  config->ai_white_cfg.param_count = 0;
+  strncpy (config->ai_white_cfg.name, "minimax", MAX_AI_STR_LEN - 1);
+
+  config->ai_black_cfg.enabled = false;
+  config->ai_black_cfg.param_count = 0;
+  strncpy (config->ai_black_cfg.name, "minimax", MAX_AI_STR_LEN - 1);
 }
 
+/** @brief Displays the current game configuration.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 display_config (game_config_t *config)
 {
-  printf ("\n--- CONFIGURATION ACTUELLE ---\n");
-  printf ("Mode de jeu       : ");
+  printf ("\n--- CURRENT CONFIGURATION ---\n");
+  printf ("Game mode         : ");
   switch (config->mode)
     {
     case MODE_INTERACTIVE:
-      printf ("Interactif\n");
+      printf ("Interactive\n");
       break;
     case MODE_CONTEST:
       printf ("Contest\n");
@@ -38,24 +54,39 @@ display_config (game_config_t *config)
       printf ("GUI\n");
       break;
     default:
-      printf ("Inconnu\n");
+      printf ("Unknown\n");
       break;
     }
-  printf ("\n--- CONFIGURATION ACTUELLE ---\n");
-  printf ("Taille du plateau : %d x %d\n", config->board_size,
+  printf ("\n--- CURRENT CONFIGURATION ---\n");
+  printf ("Board size        : %d x %d\n", config->board_size,
           config->board_size);
-  printf ("Mode Blitz        : %s\n",
-          config->blitz_mode ? "Activé" : "Désactivé");
-  printf ("Temps par joueur  : %d s\n", config->time_per_player);
-  printf ("IA joueur Blanc        : %s\n", config->ai_white ? "Oui" : "Non");
-  printf ("IA joueur Noir        : %s\n", config->ai_black ? "Oui" : "Non");
-  printf ("Mode Verbose      : %s\n",
-          config->verbose ? "Activé" : "Désactivé");
-  printf ("Langue : %s\n",
-          config->language == LANG_FR ? "Français" : "Anglais");
+  printf ("Blitz mode        : %s\n",
+          config->blitz_mode ? "Enabled" : "Disabled");
+  printf ("Time per player   : %d s\n", config->time_per_player);
+
+  if (config->ai_white_cfg.enabled)
+    printf ("White player AI   : Yes (%s, %d parameter(s))\n",
+            config->ai_white_cfg.name, config->ai_white_cfg.param_count);
+  else
+    printf ("White player AI   : No\n");
+
+  if (config->ai_black_cfg.enabled)
+    printf ("Black player AI   : Yes (%s, %d parameter(s))\n",
+            config->ai_black_cfg.name, config->ai_black_cfg.param_count);
+  else
+    printf ("Black player AI   : No\n");
+
+  printf ("Verbose mode      : %s\n",
+          config->verbose ? "Enabled" : "Disabled");
+  printf ("Language          : %s\n",
+          config->language == LANG_FR ? "French" : "English");
   printf ("------------------------------\n");
 }
 
+/** @brief Gets the path to the configuration file.
+ * @param path A pointer to the buffer where the path will be stored.
+ * @param size The size of the buffer.
+ */
 void
 get_config_path (char *path, size_t size)
 {
@@ -72,6 +103,9 @@ get_config_path (char *path, size_t size)
     }
 }
 
+/** @brief Loads the game configuration from a file.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 load_config_file (game_config_t *config)
 {
@@ -85,7 +119,7 @@ load_config_file (game_config_t *config)
       file = fopen (path, "w");
       if (file != NULL)
         {
-          fprintf (file, "# Fichier de configuration Amazons v%s\n", VERSION);
+          fprintf (file, "# Amazons configuration file v%s\n", VERSION);
           fprintf (file, "[defaults]\n");
 
           fprintf (file, "board_size = %d\n", config->board_size);
@@ -98,18 +132,23 @@ load_config_file (game_config_t *config)
           fprintf (file, "blitz = %s\n",
                    config->blitz_mode ? "true" : "false");
           fprintf (file, "timeout = %d\n", config->time_per_player);
+
+          // Save AI name, else false
           fprintf (file, "ai_white = %s\n",
-                   config->ai_white ? "true" : "false");
+                   config->ai_white_cfg.enabled ? config->ai_white_cfg.name
+                                                : "false");
           fprintf (file, "ai_black = %s\n",
-                   config->ai_black ? "true" : "false");
+                   config->ai_black_cfg.enabled ? config->ai_black_cfg.name
+                                                : "false");
+
           fprintf (file, "verbose = %s\n", config->verbose ? "true" : "false");
 
           fprintf (file, "language = %s\n",
                    (config->language == LANG_FR) ? "french" : "english");
 
           fclose (file);
-          printf ("Note : Fichier .amazonsrc généré à partir de la "
-                  "configuration initiale.\n");
+          printf ("Note: .amazonsrc file generated from the "
+                  "initial configuration.\n");
         }
       return;
     }
@@ -123,7 +162,7 @@ load_config_file (game_config_t *config)
       if (line[0] == '[' || line[0] == '\n' || line[0] == '#')
         continue;
 
-      if (sscanf (line, "%s = %s", key, value) == 2)
+      if (sscanf (line, "%63s = %63s", key, value) == 2)
         {
           if (strcmp (key, "board_size") == 0)
             {
@@ -150,11 +189,46 @@ load_config_file (game_config_t *config)
             }
           else if (strcmp (key, "ai_white") == 0)
             {
-              config->ai_white = (strcmp (value, "true") == 0);
+              if (strcmp (value, "false") == 0)
+                {
+                  config->ai_white_cfg.enabled = false;
+                }
+              else
+                {
+                  config->ai_white_cfg.enabled = true;
+
+                  if (strcmp (value, "true") == 0)
+                    {
+                      snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN,
+                                "minimax");
+                    }
+                  else
+                    {
+                      snprintf (config->ai_white_cfg.name, MAX_AI_STR_LEN,
+                                "%.31s", value);
+                    }
+                }
             }
           else if (strcmp (key, "ai_black") == 0)
             {
-              config->ai_black = (strcmp (value, "true") == 0);
+              if (strcmp (value, "false") == 0)
+                {
+                  config->ai_black_cfg.enabled = false;
+                }
+              else
+                {
+                  config->ai_black_cfg.enabled = true;
+                  if (strcmp (value, "true") == 0)
+                    {
+                      snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN,
+                                "minimax");
+                    }
+                  else
+                    {
+                      snprintf (config->ai_black_cfg.name, MAX_AI_STR_LEN,
+                                "%.31s", value);
+                    }
+                }
             }
           else if (strcmp (key, "verbose") == 0)
             {
@@ -170,8 +244,7 @@ load_config_file (game_config_t *config)
         }
       else
         {
-          fprintf (stderr, "Avertissement : ligne invalide ignorée : %s",
-                   line);
+          fprintf (stderr, "Warning: invalid line ignored: %s", line);
         }
     }
   fclose (file);

@@ -1,3 +1,7 @@
+/** @brief Common network management interface and types.
+ * @file network_common.h
+ */
+
 /* ==========================================================================
  * network_common.h
  * Header file for the common network manager interface and types.
@@ -34,7 +38,6 @@ typedef enum
 } NetworkMode;
 
 /** @brief Forward declaration of the NetworkManager structure. */
-// TODO ?typedef struct NetworkManager NetworkManager; j'en ai besoin ?
 typedef struct ServerContext ServerContext;
 typedef struct ClientContext ClientContext;
 typedef struct ClientDiscoveryContext ClientDiscoveryContext;
@@ -306,15 +309,6 @@ int NetworkManager_GetServerStatus (NetworkManager *manager, int *out_clients,
  * @details This function updates the statistics for the specified player.
  */
 void NetworkManager_UpdatePlayerStats (const char *username, bool won);
-
-/** @brief Discover available servers on the local network.
- * @details This function sends out discovery packets on the local network to
- * find available game servers. It listens for responses and updates the
- * discovery context with the list of discovered servers, including their IP
- * addresses, ports, names, and last seen timestamps. The discovery results can
- * be retrieved using NetworkManager_GetServerList.
- */
-void NetworkManager_DiscoverServers ();
 
 /** @brief Shutdown the game server.
  *  @param manager Pointer to the network manager.

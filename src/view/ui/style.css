@@ -109,3 +109,18 @@ popover button:hover {
 .highlight-valid {
     background-image: radial-gradient(circle, rgba(76, 175, 80, 0.8) 15%, transparent 16%);
 }
+
+.hint-queen {
+  border: 6px solid rgba(76, 175, 80, 0.8);
+}
+
+.hint-arrow {
+  background-color: #ff4500;
+}
+
+.server-console {
+  background-color: #1e1e1e;
+  color: gold;
+  font-family: monospace;
+  padding: 10px;
+}

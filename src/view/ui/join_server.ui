@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkBox" id="join_server_box">
+    <property name="orientation">vertical</property>
+
+    <child>
+      <object class="GtkButton" id="return_btn">
+        <property name="icon-name">go-previous-symbolic</property>
+        <property name="halign">start</property> 
+        <property name="valign">start</property>
+        <property name="margin-top">30</property>
+        <property name="margin-start">30</property> 
+        <property name="css-classes">circular flat</property>
+        <property name="tooltip-text">Return</property>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">20</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="label">JOIN A SERVER</property>
+            <property name="css-classes">title-1</property>
+            <property name="margin-bottom">20</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkLabel">
+            <property name="label">Available Servers:</property>
+            <property name="halign">start</property>
+            <property name="margin-top">10</property>
+          </object>
+        </child>
+        
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="height-request">400</property>
+            <property name="width-request">600</property>
+            <property name="hscrollbar-policy">never</property>
+            <property name="vscrollbar-policy">automatic</property>
+            <child>
+              <object class="GtkListBox" id="server_listbox">
+                <property name="selection-mode">none</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">10</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Username:</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkEntry" id="username_entry">
+            <property name="placeholder-text">Enter your username</property>
+            <property name="hexpand">true</property>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">20</property>
+            <property name="halign">center</property>
+            <property name="margin-top">20</property>
+            
+            <child>
+              <object class="GtkButton" id="refresh_btn">
+                <property name="label">Refresh</property>
+                <property name="css-classes">suggested-action</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+      </object>
+    </child>
+
+  </object>
+</interface>

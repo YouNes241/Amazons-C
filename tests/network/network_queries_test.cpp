@@ -71,12 +71,20 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_IDLE;
   strncpy (server_mgr.server_ctx->clients[1].username, "Alice", 31);
 
+  server_mgr.server_ctx->clients[1].wins = 0;
+  server_mgr.server_ctx->clients[1].losses = 0;
+  server_mgr.server_ctx->clients[1].games_played = 0;
+
   server_mgr.server_ctx->fds[2].fd = 101;
   server_mgr.server_ctx->clients[2].is_joined = true;
   server_mgr.server_ctx->clients[2].status = CLIENT_STATUS_INGAME;
   strncpy (server_mgr.server_ctx->clients[2].username, "Bob", 31);
 
-  // Test 2: Liste complète avec 2 joueurs
+  server_mgr.server_ctx->clients[2].wins = 0;
+  server_mgr.server_ctx->clients[2].losses = 0;
+  server_mgr.server_ctx->clients[2].games_played = 0;
+
+  // Test 2: Full list with 2 players
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer),
                                       -1);
   EXPECT_NE (std::string (buffer).find ("[ID 1] Alice - (idle)"),
@@ -84,12 +92,12 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   EXPECT_NE (std::string (buffer).find ("[ID 2] Bob - (ingame)"),
              std::string::npos);
 
-  // Test 3: Infos détaillées sur le joueur 1 (IDLE)
+  // Test 3: Detailed info for player 1 (IDLE)
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Name: Alice | Status: idle"),
              std::string::npos);
 
-  // Test 4: Différents statuts pour couvrir le switch-case
+  // Test 4: Different statuses to cover the switch-case
   server_mgr.server_ctx->clients[1].status = CLIENT_STATUS_AWAY;
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Status: away"), std::string::npos);
@@ -99,7 +107,8 @@ TEST_F (NetworkManagerTest, GetServerPlayerList_Success)
   EXPECT_NE (std::string (buffer).find ("Status: waitgame"),
              std::string::npos);
 
-  server_mgr.server_ctx->clients[1].status = (ClientStatus)99; // Cas "default"
+  server_mgr.server_ctx->clients[1].status
+      = (ClientStatus)99; // "default" case
   NetworkManager_GetServerPlayerList (&server_mgr, buffer, sizeof (buffer), 1);
   EXPECT_NE (std::string (buffer).find ("Status: connected"),
              std::string::npos);
@@ -110,8 +119,7 @@ TEST_F (NetworkManagerTest, GetServerList_Success)
   char buffer[512];
 
   // we simulate a discovered server in the client's discovery context
-  client_mgr.discovery_ctx = (struct ClientDiscoveryContext *)calloc (
-      1, sizeof (struct ClientDiscoveryContext));
+
   client_mgr.discovery_ctx->server_count = 1;
   client_mgr.discovery_ctx->servers[0].port = 1234;
   client_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
@@ -125,7 +133,7 @@ TEST_F (NetworkManagerTest, GetServerList_Success)
                  "[1] TestServer (IP: 192.168.1.50, Port: 1234)"),
              std::string::npos);
 
-  // Test: Un serveur "fantôme" qui a timeout (vu il y a 60 secondes)
+  // Test: A "ghost" server that timed out (seen 60 seconds ago)
   client_mgr.discovery_ctx->servers[0].last_seen = time (NULL) - 60;
   count = NetworkManager_GetServerList (&client_mgr, buffer, sizeof (buffer));
   EXPECT_EQ (count, 0);
@@ -159,7 +167,7 @@ TEST_F (NetworkManagerTest, GetServerStatus_Robustness)
   EXPECT_EQ (
       NetworkManager_GetServerStatus (&none_mgr, &clients, &games, &port),
       NET_ERROR);
-
+  NetworkManager_Cleanup (&none_mgr);
   // 4. Passing NULL pointers as output should not cause a crash.
   EXPECT_EQ (
       NetworkManager_GetServerStatus (&server_mgr, nullptr, nullptr, nullptr),
@@ -229,21 +237,29 @@ TEST_F (NetworkManagerTest, GetServerList_Robustness)
   NetworkManager_Init (&no_discovery_mgr, test_callbacks);
   free (no_discovery_mgr.discovery_ctx);
   no_discovery_mgr.discovery_ctx = nullptr;
+
   EXPECT_EQ (NetworkManager_GetServerList (&no_discovery_mgr, buffer,
                                            sizeof (buffer)),
              -1);
 
+  // FIX: clean up the CORRECT manager
+  NetworkManager_Cleanup (&no_discovery_mgr);
+
   // 3. Buffer Overflow protection with very long server names
-  client_mgr.discovery_ctx = (struct ClientDiscoveryContext *)calloc (
-      1, sizeof (struct ClientDiscoveryContext));
-  client_mgr.discovery_ctx->server_count = 1;
-  client_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
+  NetworkManager overflow_mgr;
+  NetworkManager_Init (&overflow_mgr, test_callbacks);
+
+  overflow_mgr.discovery_ctx->server_count = 1;
+  overflow_mgr.discovery_ctx->servers[0].last_seen = time (NULL);
+
   // An abusive name that exceeds the buffer size when formatted
-  memset (client_mgr.discovery_ctx->servers[0].name, 'A',
+  memset (overflow_mgr.discovery_ctx->servers[0].name, 'A',
           MAX_SERVER_NAME_LEN - 1);
-  client_mgr.discovery_ctx->servers[0].name[MAX_SERVER_NAME_LEN - 1] = '\0';
+  overflow_mgr.discovery_ctx->servers[0].name[MAX_SERVER_NAME_LEN - 1] = '\0';
 
   char tiny_buffer[20];
-  EXPECT_NO_THROW (NetworkManager_GetServerList (&client_mgr, tiny_buffer,
+  EXPECT_NO_THROW (NetworkManager_GetServerList (&overflow_mgr, tiny_buffer,
                                                  sizeof (tiny_buffer)));
+
+  NetworkManager_Cleanup (&overflow_mgr);
 }

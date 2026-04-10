@@ -5,13 +5,13 @@
 #include "i18n.h"
 
 /**
- * @brief Efface l'écran du terminal
+ * @brief Clears the terminal screen
  */
 void cli_clear_screen ();
 
 /**
- * @brief Affiche le plateau de jeu actuel avec les coordonnées
- * @param state Le GameState contenant la matrice 2D du plateau
+ * @brief Displays the current game board with coordinates
+ * @param state The GameState containing the 2D board matrix
  */
 void cli_display_board (const GameState *state);
 

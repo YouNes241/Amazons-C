@@ -1,3 +1,8 @@
+/** @file main.c
+ * @brief Main entry point for the Amazons game.
+ */
+
+#include "cli_parser.h"
 #include "config.h"
 #include "controller.h"
 #include "gui_application.h"
@@ -5,7 +10,7 @@
 #include "input.h"
 #include "network_common.h"
 #include "utils.h"
-#include <getopt.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,204 +20,25 @@
 
 static NetworkManager *g_daemon_net_manager = NULL;
 
+/** @brief Handles the shutdown signal for the daemon.
+ * @param sig The signal number.
+ */
 void
 handle_shutdown_signal (int sig)
 {
   (void)sig;
   if (g_daemon_net_manager)
     {
-
       NetworkManager_ShutdownServer (g_daemon_net_manager);
     }
   exit (EXIT_SUCCESS);
 }
 
-int
-parse_options (int argc, char *argv[], game_config_t *config)
-{
-  int opt;
-  int option_index = 0;
-  bool d_short_passed = false;
-  static struct option long_options[]
-      = { { "size", required_argument, 0, 'n' },
-          { "blitz", no_argument, 0, 'b' },
-          { "time", required_argument, 0, 't' },
-          { "contest", no_argument, 0, 'c' },
-          { "gui", no_argument, 0, 'g' },
-          { "ai", optional_argument, 0, 'a' },
-          { "debug", no_argument, 0, 'd' },
-          { "server", optional_argument, 0, 's' },
-          { "daemon", no_argument, 0, 1000 },
-          { "verbose", no_argument, 0, 'v' },
-          { "help", no_argument, 0, 'h' },
-          { "version", no_argument, 0, 'V' },
-          { 0, 0, 0, 0 } };
-
-  init_default_config (config);
-
-  load_config_file (config);
-
-  // getopt_long parcourt les arguments de la ligne de commande et les compare
-  // aux options définies dans long_options.
-  // il prend en arguments argc et argv, qui sont les paramètres standard de la
-  // fonction main représentant le nombre d'arguments et les arguments
-  // eux-mêmes. ainsi que une chaîne de caractères "n:bt:cga::dvVh" qui indique
-  // les options courtes acceptées par le programme.
-  while ((opt = getopt_long (argc, argv, "n:bt:cga::s::dvVh", long_options,
-                             &option_index))
-         != -1)
-    {
-      switch (opt)
-        {
-        case 'n':
-          config->board_size = atoi (optarg);
-          if (config->board_size < MIN_BOARD_SIZE
-              || config->board_size > MAX_BOARD_SIZE)
-            {
-              fprintf (
-                  stderr,
-                  "Erreur : La taille du plateau doit etre entre %d et %d.\n",
-                  MIN_BOARD_SIZE, MAX_BOARD_SIZE);
-              return EXIT_FAILURE;
-            }
-          break;
-
-        case 'b':
-          config->blitz_mode = true;
-          break;
-
-        case 't':
-          config->time_per_player = atoi (optarg);
-          if (config->time_per_player <= 0 || config->time_per_player > 1800)
-            {
-              fprintf (stderr, "Erreur : Le temps par joueur doit etre un "
-                               "entier positif entre 1 et 1800 secondes.\n");
-              return EXIT_FAILURE;
-            }
-          break;
-
-        case 'c':
-          config->mode = MODE_CONTEST;
-          break;
-
-        case 'g':
-          config->mode = MODE_GUI;
-          break;
-
-        case 'a':
-          // Par défaut, si l'option est présente, on active l'IA pour les
-          // Noirs
-          config->ai_white = false;
-          config->ai_black = true;
-
-          // optarg contient l'argument si l'utilisateur a fait -aW ou --ai=W
-          if (optarg != NULL)
-            {
-              if (strcmp (optarg, "W") == 0)
-                {
-                  config->ai_white = true;
-                  config->ai_black = false;
-                }
-              else if (strcmp (optarg, "B") == 0)
-                {
-                  config->ai_white = false;
-                  config->ai_black = true;
-                }
-              else if (strcmp (optarg, "A") == 0)
-                {
-                  config->ai_white = true;
-                  config->ai_black = true;
-                }
-              else
-                {
-                  if (strcmp (optarg, "emon") == 0)
-                    {
-                      fprintf (stderr,
-                               "Error : To launch daemon mode, use the option "
-                               "'--daemon' or '-d'.\n");
-                      return EXIT_FAILURE;
-                    }
-                }
-            }
-          break;
-        case 's':
-          config->start_server = true;
-          if (optarg)
-            {
-              config->server_port = atoi (optarg);
-            }
-          else if (optind < argc && argv[optind][0] != '-')
-            {
-              config->server_port = atoi (argv[optind++]);
-            }
-          else
-            {
-              config->server_port = 12345;
-            }
-          break;
-
-        case 1000:
-          config->daemon_mode = true;
-          break;
-
-        case 'd':
-
-          d_short_passed = true;
-          break;
-        case 'v':
-
-          config->verbose = true;
-          break;
-
-        case 'V':
-          printf ("amazons-c version %s\n", VERSION);
-          return EXIT_SUCCESS;
-
-        case 'h':
-          printf ("Usage: ./amazons [OPTIONS]\n");
-          printf ("  -n, --size N    Taille du plateau (%d-%d, defaut: %d)\n",
-                  MIN_BOARD_SIZE, MAX_BOARD_SIZE, DEFAULT_BOARD_SIZE);
-          printf ("  -b, --blitz     Activer le mode blitz\n");
-          printf ("  -t, --time T    Temps par joueur en secondes\n");
-          printf ("  -c, --contest   Lancer en mode contest\n");
-          printf ("  -g, --gui       Lancer en mode graphique\n");
-          printf ("  -a, --ai [C]    Activer l'IA\n");
-          printf ("  -d, --debug     Afficher les messages de debug\n");
-          printf ("  -s, --server [P] Lancer en tant que serveur (Port "
-                  "optionnel)\n");
-          printf ("  -d, --daemon    Lancer le serveur en arrière-plan "
-                  "(Headless)\n");
-          printf ("  -v, --verbose   Activer le mode bavard\n");
-          printf ("  -h, --help      Afficher cette aide\n");
-          printf ("  -V, --version   Affiche la version du jeu\n");
-          return EXIT_SUCCESS;
-
-        default:
-          return EXIT_FAILURE;
-        }
-    }
-
-  if (optind < argc)
-    {
-      fprintf (stderr, "Erreur : argument inconnu '%s'\n", argv[optind]);
-      return EXIT_FAILURE;
-    }
-
-  if (d_short_passed)
-    {
-      if (config->start_server)
-        {
-          // Si le serveur est demandé, -d devient Daemon
-          config->daemon_mode = true;
-        }
-      else
-        {
-          config->verbose = true;
-        }
-    }
-  return EXIT_SUCCESS;
-}
-
+/** @brief Main entry point for the Amazons game.
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line arguments.
+ * @return The exit status of the program.
+ */
 int
 main (int argc, char *argv[])
 {
@@ -229,9 +55,7 @@ main (int argc, char *argv[])
     }
 
   setlocale (LC_ALL, "");
-
   bindtextdomain ("amazons", "./locale");
-
   textdomain ("amazons");
 
   game_config_t *config = malloc (sizeof (game_config_t));
@@ -250,26 +74,21 @@ main (int argc, char *argv[])
 
   if (config->daemon_mode)
     {
-      printf ("\n[DAEMON] Démarrage du serveur en mode Headless...\n");
-      printf ("[DAEMON] Le terminal va vous rendre la main. Tapez 'pkill "
-              "amazons-c' plus tard pour l'arrêter.\n");
+      printf ("\n[DAEMON] Starting server in Headless mode...\n");
+      printf ("[DAEMON] The terminal will return control to you. Type 'pkill "
+              "amazons' later to stop it.\n");
 
       if (daemon (1, 0) == -1)
         {
-          perror ("Erreur lors de la création du daemon");
+          perror ("Error creating daemon");
           return EXIT_FAILURE;
         }
       NetworkManager net_manager;
-      NetworkEvents callbacks = { 0 }; // no use for callbacks in daemon mode,
-                                       // but we need to pass something valid
+      NetworkEvents callbacks = { 0 };
       NetworkManager_Init (&net_manager, callbacks);
       g_daemon_net_manager = &net_manager;
-      signal (SIGINT,
-              handle_shutdown_signal); // capture the Ctrl+C signal to allow
-                                       // graceful shutdown in daemon mode
-      signal (SIGTERM,
-              handle_shutdown_signal); // Capture SIGTERM for graceful shutdown
-                                       // when using 'pkill'
+      signal (SIGINT, handle_shutdown_signal);
+      signal (SIGTERM, handle_shutdown_signal);
 
       if (NetworkManager_ServerStart (&net_manager, config->server_port) == 0)
         {

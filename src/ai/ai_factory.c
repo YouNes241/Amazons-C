@@ -1,3 +1,15 @@
+/**
+ * @file ai_factory.c
+ * @author tdecabrat
+ * @brief This file implements the AI factory, which is responsible for
+ * creating AI instances based on a given name and configuration parameters.
+ * The factory maintains a registry of available AI types and their
+ * corresponding creation functions. It provides a unified interface for
+ * initializing different AI strategies, allowing for easy extension and
+ * maintenance of the AI system.
+ * @note If you want to add an AI, simply implement its creation function and
+ * add it to the registry + the method as extern.
+ */
 #include "ai_factory.h"
 #include <stdio.h>
 #include <string.h>
@@ -23,6 +35,7 @@ extern void create_mcts_ai (AI_Interface *ai);
 static const AI_RegistryEntry AI_REGISTRY[]
     = { { "random", create_random_ai },
         { "minimax", create_minimax_ai },
+        { "iterative", create_minimax_ai }, // alias for cli
         { "mcts", create_mcts_ai } };
 
 static const size_t AI_REGISTRY_SIZE
@@ -52,5 +65,25 @@ create_ai (const char *name, ConfigMap params)
 
   // Should not be reached.
   fprintf (stderr, "[Factory] AI unrecognized : '%s'\n", name);
+  fprintf (stderr, "[Factory] Available AIs are: ");
+  for (size_t i = 0; i < AI_REGISTRY_SIZE; i++)
+    {
+      fprintf (stderr, "'%s'", AI_REGISTRY[i].name);
+      if (i < AI_REGISTRY_SIZE - 1)
+        {
+          fprintf (stderr, ", ");
+        }
+    }
+  fprintf (stderr, ".\n");
+  fprintf (stderr, "[Factory] Defaulting on AI : '%s'\n", AI_REGISTRY[0].name);
+
+  // We take the basis that there is at least ONE ai in the registry.
+  AI_REGISTRY[0].create_func (&ai);
+
+  if (ai.vtable && ai.vtable->init)
+    {
+      ai.vtable->init (&ai, &params);
+    }
+
   return ai;
 }

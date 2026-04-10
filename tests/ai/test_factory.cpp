@@ -29,7 +29,7 @@ protected:
 // Testing default values
 TEST_F (MinimaxParamTest, UseDefaultValuesWhenNoParams)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
 
   ai.vtable->init (&ai, &empty_params);
 
@@ -45,7 +45,7 @@ TEST_F (MinimaxParamTest, UseDefaultValuesWhenNoParams)
 TEST_F (MinimaxParamTest, UpdatesDepthFromParams)
 {
   Param p[] = { { "depth", "10" }, { "time_limit", "30" } };
-  ConfigMap params = { p, 2 };
+  ConfigMap params = { 2, p };
 
   ai.vtable->init (&ai, &params);
   Minimax_Data *data = (Minimax_Data *)ai.context;
@@ -60,7 +60,7 @@ TEST_F (MinimaxParamTest, UpdatesDepthFromParamsWithUnused)
   Param p[] = { { "depth", "10" },
                 { "time_limit", "30" },
                 { "a_random_parameter", "comic_sans_ms" } };
-  ConfigMap params = { p, 2 };
+  ConfigMap params = { 2, p };
 
   ai.vtable->init (&ai, &params);
   Minimax_Data *data = (Minimax_Data *)ai.context;
@@ -72,14 +72,14 @@ TEST_F (MinimaxParamTest, UpdatesDepthFromParamsWithUnused)
 // Testing creating a random AI using the factory
 TEST (AIFactoryTest, CreateRandomReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface ai = create_ai ("random", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
   ASSERT_EQ (ai.context, nullptr);
 
   EXPECT_EQ (ai.vtable, &random_vtable)
-      << "La Factory n'a pas renvoyé la bonne implémentation pour 'random'";
+      << "The Factory did not return the correct implementation for 'random'";
 
   ai.vtable->clean (&ai);
 }
@@ -87,28 +87,26 @@ TEST (AIFactoryTest, CreateRandomReturnsCorrectImplementation)
 // Testing creating a minimax AI using the factory
 TEST (AIFactoryTest, CreateMinimaxReturnsCorrectImplementation)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
   AI_Interface ai = create_ai ("minimax", empty_params);
 
   ASSERT_NE (ai.vtable, nullptr);
   ASSERT_NE (ai.context, nullptr);
 
   EXPECT_EQ (ai.vtable, &minimax_vtable)
-      << "La Factory n'a pas renvoyé la bonne implémentation pour 'minimax'";
+      << "The Factory did not return the correct implementation for 'minimax'";
 
   ai.vtable->clean (&ai);
 }
 
 // Testing creating an unknown AI using the factory
-TEST (AIFactoryTest, CreateUnknownReturnsNull)
+TEST (AIFactoryTest, CreateUnknownReturnsDefault)
 {
-  ConfigMap empty_params = { NULL, 0 };
+  ConfigMap empty_params = { 0, NULL };
 
-  // On demande un truc qui n'existe pas
+  // Request unexisting AI
   AI_Interface ai = create_ai ("skynet", empty_params);
 
-  // On s'attend à ce que la vtable soit NULL (selon ton implémentation de
-  // factory)
-  EXPECT_EQ (ai.vtable, nullptr);
-  EXPECT_EQ (ai.context, nullptr);
+  // We expect that it defaulted on random.
+  EXPECT_NE (ai.vtable, nullptr);
 }

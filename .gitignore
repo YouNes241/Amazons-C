@@ -1,4 +1,6 @@
 build/*
+build-afl/*
+fuzzing/*
 libs/*
 coverage/*
 docs/*

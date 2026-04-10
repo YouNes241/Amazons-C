@@ -11,6 +11,7 @@
  * the poll() system call for efficient multiplexing of multiple connections.
  */
 
+#include "game_engine.h"
 #include "network_includes/network_handlers.h"
 #include "network_protocol.h"
 #include <arpa/inet.h>
@@ -73,8 +74,13 @@ NetworkManager_Init (NetworkManager *manager, NetworkEvents callbacks)
           local_addr.sin_port = htons (UDP_DISCOVERY_PORT);
           local_addr.sin_addr.s_addr = INADDR_ANY;
 
-          bind (manager->discovery_ctx->udp_listen_socket,
-                (struct sockaddr *)&local_addr, sizeof (local_addr));
+          if (bind (manager->discovery_ctx->udp_listen_socket,
+                    (struct sockaddr *)&local_addr, sizeof (local_addr))
+              < 0)
+            {
+              perror (
+                  _ ("[NETWORK WARNING] Failed to bind UDP discovery socket"));
+            }
         }
     }
 }
@@ -122,6 +128,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
 
   if (bind (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
+      perror (_ ("[NETWORK] Bind error (Port already in use)"));
       close (sock);
       return NET_ERROR;
     }
@@ -137,7 +144,7 @@ NetworkManager_ServerStart (NetworkManager *manager, int port)
   set_nonblocking (sock);
 
   // initialize Server Context
-  manager->server_ctx = malloc (sizeof (ServerContext));
+  manager->server_ctx = calloc (1, sizeof (ServerContext));
   if (manager->server_ctx == NULL)
     {
       perror (_ ("Server memory allocation error"));
@@ -219,7 +226,7 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   int sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
     {
-      perror (_ ("Client socket creation error"));
+      perror (_ ("[NETWORK] Client socket creation error"));
       return NET_ERROR;
     }
 
@@ -240,17 +247,17 @@ NetworkManager_ClientJoin (NetworkManager *manager, const char *ip, int port)
   // this call is blocking until the handshake is complete or fails.
   if (connect (sock, (struct sockaddr *)&addr, sizeof (addr)) < 0)
     {
-      perror (_ ("Server connection error"));
+      perror (_ ("[NETWORK] Server connection error"));
       close (sock);
       return NET_ERROR;
     }
   set_nonblocking (sock);
 
   // initialize Client Context
-  manager->client_ctx = malloc (sizeof (ClientContext));
+  manager->client_ctx = calloc (1, sizeof (ClientContext));
   if (manager->client_ctx == NULL)
     {
-      perror (_ ("Client memory allocation error"));
+      perror (_ ("[NETWORK] Client memory allocation error"));
       close (sock);
       return NET_ERROR;
     }
@@ -278,6 +285,10 @@ NetworkManager_Cleanup (NetworkManager *manager)
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
     {
+      for (int g = 0; g < (MAX_CLIENTS / 2); g++)
+        {
+          game_cleanup (&manager->server_ctx->active_games[g]);
+        }
       for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
         {
           if (manager->server_ctx->fds[i].fd != INVALID_SOCKET)
@@ -302,8 +313,17 @@ NetworkManager_Cleanup (NetworkManager *manager)
       printf ("%s", _ ("\n[NETWORK] Disconnected from the server.\n"));
     }
 
-  // --- Le nettoyage du carnet d'adresses doit se faire tout le temps ---
-  // Car on l'a alloué dans NetworkManager_Init, peu importe le mode !
+  if (manager->discovery_ctx != NULL)
+    {
+
+      if (manager->discovery_ctx->udp_listen_socket >= 0)
+        {
+          close (manager->discovery_ctx->udp_listen_socket);
+        }
+
+      free (manager->discovery_ctx);
+      manager->discovery_ctx = NULL;
+    }
 
   manager->current_mode = NET_MODE_NONE;
 }
@@ -323,8 +343,9 @@ NetworkManager_Tick (NetworkManager *manager)
   if (manager == NULL)
     {
       return;
-      // ATTENTION: On a enlevé le "|| manager->current_mode == NET_MODE_NONE"
-      // Car on VEUT que le tick s'exécute dans le menu pour l'écoute UDP !
+      // NOTE: We removed "|| manager->current_mode == NET_MODE_NONE"
+      // because we WANT the tick to execute in menu for UDP discovery
+      // listening
     }
 
   if (manager->current_mode == NET_MODE_SERVER && manager->server_ctx)
@@ -476,10 +497,20 @@ NetworkManager_Send (NetworkManager *manager, int target_client,
     }
 
   // 3. One single sending call for everyone!
-  if (send (target_socket, message, strlen (message), 0) < 0)
+  int total_sent = 0;
+  int bytes_left = strlen (message);
+  int n;
+
+  while (total_sent < bytes_left)
     {
-      perror (log_prefix);
-      return NET_ERROR;
+      n = send (target_socket, message + total_sent, bytes_left - total_sent,
+                0);
+      if (n < 0)
+        {
+          perror (log_prefix);
+          return NET_ERROR;
+        }
+      total_sent += n;
     }
 
   return NET_SUCCESS;
@@ -675,14 +706,14 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
         {
           double elapsed_time
               = difftime (now, ctx->clients[i].invite_timestamp);
-          if (elapsed_time >= 300.0) // 5 minutes = 300 secondes
+          if (elapsed_time >= TIMEOUT_INVITE)
             {
               int challenger_idx = ctx->clients[i].pending_invite_from;
 
-              // 1. On efface l'invitation périmée chez la cible
+              // Delete the expired invitation at the target
               ctx->clients[i].pending_invite_from = -1;
 
-              // On prévient la cible que l'invitation a expiré
+              // Warn the target that the invitation has expired
               Packet pkt_target;
               pkt_target.type = S2C_ERROR;
               strncpy (pkt_target.payload,
@@ -696,7 +727,7 @@ handle_server_tick (NetworkManager *manager, ServerContext *ctx)
                   NetworkManager_Send (manager, i, out_buf_target);
                 }
 
-              // 2. On libère le challenger qui attendait depuis 5 minutes !
+              // Release the challenger who was waiting for 5 minutes
               if (challenger_idx >= FIRST_CLIENT_INDEX
                   && challenger_idx <= MAX_CLIENTS
                   && ctx->fds[challenger_idx].fd != INVALID_SOCKET
@@ -733,18 +764,18 @@ handle_client_tick (NetworkManager *manager, ClientContext *ctx)
 {
 
   time_t now = time (NULL);
-  if (difftime (now, ctx->last_heartbeat) >= 30.0) // Toutes les 30 secondes
+  if (difftime (now, ctx->last_heartbeat) >= 30.0)
     {
       Packet pkt;
       pkt.type = C2S_HEARTBEAT;
-      pkt.payload[0] = '\0'; // Pas de texte
+      pkt.payload[0] = '\0';
 
       char out_buf[MAX_FORMATTED_PKT_SIZE];
       if (SerializePacket (&pkt, out_buf, sizeof (out_buf)) >= 0)
         {
           NetworkManager_Send (manager, TARGET_SERVER, out_buf);
         }
-      ctx->last_heartbeat = now; // On remet le chrono à zéro
+      ctx->last_heartbeat = now; ///< Reset the heartbeat timer
     }
   int poll_count
       = poll (&ctx->fd_info, SINGLE_FD_COUNT, POLL_TIMEOUT_IMMEDIATE);

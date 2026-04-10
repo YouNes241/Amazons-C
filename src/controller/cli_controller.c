@@ -32,30 +32,44 @@
 #else
 #define TEST_STATIC static
 #endif
-/* --- Variables globales --- */
+/* ============================================================================
+ * Global Variables
+ * ============================================================================
+ */
 TEST_STATIC CliContext *g_cli_ctx = NULL;
 TEST_STATIC bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
   if (current_p == PLAYER_WHITE)
-    return config->ai_white;
+    return config->ai_white_cfg.enabled;
   if (current_p == PLAYER_BLACK)
-    return config->ai_black;
+    return config->ai_black_cfg.enabled;
   return false;
 }
 
-/* ==========================================================================
-   LINEHANDLER (Readline)
-   ==========================================================================
+/** @name LINEHANDLER Readline Callback
+ */
+///@{
+/** @brief The readline callback function for handling user input
+ * @param line The user input line
  */
 TEST_STATIC void
 linehandler (char *line)
 {
-  if (line == NULL || !g_cli_ctx)
+  // 1. Only guard against a missing context here
+  if (!g_cli_ctx)
     return;
 
   printf ("\n"); // Visually validate the entry
 
+  // 2. Handle EOF (Ctrl+D / Test termination) properly
+  if (line == NULL)
+    {
+      g_cli_ctx->game_running = false;
+      return;
+    }
+
+  // 3. Handle normal input
   if (line[0] != '\0')
     {
       add_history (line);
@@ -66,27 +80,30 @@ linehandler (char *line)
     {
       rl_replace_line ("", READLINE_NO_CLEAR);
     }
+
   free (line);
 
+  // 4. Update UI if the game is still running
   if (g_cli_ctx->game_running)
     {
-      // 1. The plateau is displayed at the end of the processing.
       if (!g_cli_ctx->in_main_menu)
         {
           cli_display_board (g_cli_ctx->current_game);
         }
 
-      // 2. We are updating the text of the prompt
       update_prompt_string (g_cli_ctx);
       rl_on_new_line ();
     }
 }
+///@}
 
-/* ==========================================================================
-   RUN_INTERACTIVE_MODE
-   ==========================================================================
+/** @name RUN_INTERACTIVE_MODE Main Interactive Game Loop
  */
+///@{
 
+/** @brief Runs the interactive mode for the CLI
+ * @param config The game configuration
+ */
 void
 run_interactive_mode (game_config_t *config)
 {
@@ -98,7 +115,7 @@ run_interactive_mode (game_config_t *config)
   CliContext *ctx = (CliContext *)calloc (1, sizeof (CliContext));
   if (!ctx)
     {
-      fprintf (stderr, "Failed to allocate memory for CLI context.\n");
+      fprintf (stderr, "[ERROR] Failed to allocate memory for CLI context.\n");
       exit (EXIT_FAILURE);
     }
   NetworkManager_Init (&net_manager, create_cli_network_events (ctx));
@@ -119,27 +136,32 @@ run_interactive_mode (game_config_t *config)
   rl_attempted_completion_function = amazons_completion;
   cli_clear_screen ();
 
-  // 1. Démarrage
+  // Startup initialization
   if (config->start_server)
     {
       if (NetworkManager_ServerStart (ctx->net_manager, config->server_port)
           == 0)
         {
-          ctx->in_main_menu = false; // On passe en mode Lobby
+          ctx->in_main_menu = false; // Switch to Lobby mode
           printf (_ ("[INFO] Server started directly from command line on "
                      "port %d.\n"),
                   config->server_port);
         }
       else
         {
-          printf (_ ("[ERROR] Failed to start server from command line.\n"));
+
           ctx->in_main_menu = true;
           cli_display_main_menu ();
+          printf (_ ("[ERROR] Failed to start server on port %d. It might be "
+                     "in use.\n"),
+                  config->server_port);
+          printf (_ ("[INFO] Redirected to local menu type help for more "
+                     "information.\n"));
         }
     }
   else
     {
-      cli_display_main_menu (); // Mode normal
+      cli_display_main_menu (); // Normal mode initialization
     }
 
   rl_callback_handler_install ("", linehandler);
@@ -149,17 +171,40 @@ run_interactive_mode (game_config_t *config)
   fds[STDIN_FD_INDEX].fd = STDIN_FILENO;
   fds[STDIN_FD_INDEX].events = POLLIN;
 
-  if ((config->ai_white || config->ai_black))
+  ctx->ai_white_initialized = false;
+  ctx->ai_black_initialized = false;
+
+  if (config->ai_white_cfg.enabled)
     {
-      Param p_mini[] = { { (char *)"depth", (char *)"4" },
-                         { (char *)"evaluator", (char *)"qd&kd" } };
-      ConfigMap cm_mini = { .list = p_mini, .count = 2 };
-      ctx->ai = create_ai ("minimax", cm_mini);
-      ctx->ai_initialized = (ctx->ai.vtable != NULL);
+      Param params[MAX_AI_PARAMS];
+      for (int i = 0; i < config->ai_white_cfg.param_count; i++)
+        {
+          params[i].key = config->ai_white_cfg.param_keys[i];
+          params[i].value = config->ai_white_cfg.param_vals[i];
+        }
+      ConfigMap cm
+          = { .count = config->ai_white_cfg.param_count, .list = params };
+      ctx->ai_white = create_ai (config->ai_white_cfg.name, cm);
+      ctx->ai_white_initialized = (ctx->ai_white.vtable != NULL);
+    }
+
+  if (config->ai_black_cfg.enabled)
+    {
+      Param params[MAX_AI_PARAMS];
+      for (int i = 0; i < config->ai_black_cfg.param_count; i++)
+        {
+          params[i].key = config->ai_black_cfg.param_keys[i];
+          params[i].value = config->ai_black_cfg.param_vals[i];
+        }
+      ConfigMap cm
+          = { .count = config->ai_black_cfg.param_count, .list = params };
+      ctx->ai_black = create_ai (config->ai_black_cfg.name, cm);
+      ctx->ai_black_initialized = (ctx->ai_black.vtable != NULL);
     }
 
   while (ctx->game_running)
     {
+      NetworkManager_Tick (ctx->net_manager);
       if (is_game_over (ctx->current_game, ctx->current_game->current_player))
         {
           cli_display_board (ctx->current_game);
@@ -178,6 +223,7 @@ run_interactive_mode (game_config_t *config)
               bool i_won = (winner == ctx->my_role);
               NetworkManager_SendGameOver (ctx->net_manager, i_won);
               ctx->in_network_match = false;
+              game_cleanup (ctx->current_game);
               game_init (ctx->current_game);
               printf (_ ("\n[LOBBY] Match ended. Returning to Lobby.\n"));
               refresh_prompt (ctx);
@@ -189,9 +235,16 @@ run_interactive_mode (game_config_t *config)
               break;
             }
         }
-      NetworkManager_Tick (ctx->net_manager);
 
-      if (ctx->ai_initialized
+      bool is_white_turn = (ctx->current_game->current_player == PLAYER_WHITE);
+      AI_Interface *current_ai
+          = is_white_turn ? &ctx->ai_white : &ctx->ai_black;
+      bool current_ai_init = is_white_turn ? ctx->ai_white_initialized
+                                           : ctx->ai_black_initialized;
+      bool game_is_active = (!ctx->in_main_menu
+                             && ctx->current_game->status == GAME_IN_PROGRESS);
+
+      if (game_is_active && current_ai_init
           && is_it_ai_turn (ctx->config, ctx->current_game->current_player))
         {
 
@@ -210,9 +263,8 @@ run_interactive_mode (game_config_t *config)
           if (allowed_to_play)
             {
               printf (_ ("\n[AI] Thinking...\n"));
-              Move ai_move = ctx->ai.vtable->get_best_move (
-                  &ctx->ai, *ctx->current_game);
-
+              Move ai_move = current_ai->vtable->get_best_move (
+                  current_ai, *ctx->current_game);
               if (is_move_legal (ctx->current_game, ai_move))
                 {
                   apply_move (ctx->current_game, ai_move);
@@ -272,17 +324,38 @@ run_interactive_mode (game_config_t *config)
           ctx->turn_start_time = time (NULL);
         }
 
-      if (poll (fds, STDIN_FD_COUNT, POLL_STDIN_TIMEOUT_MS) > 0
-          && (fds[STDIN_FD_INDEX].revents & POLLIN))
-        rl_callback_read_char ();
+      int poll_res = poll (fds, STDIN_FD_COUNT, POLL_STDIN_TIMEOUT_MS);
+      if (poll_res > 0)
+        {
+
+          if (fds[STDIN_FD_INDEX].revents & (POLLHUP | POLLERR | POLLNVAL))
+            {
+              ctx->game_running = false;
+              break;
+            }
+
+          if (fds[STDIN_FD_INDEX].revents & POLLIN)
+            {
+              rl_callback_read_char ();
+
+              if (feof (stdin))
+                {
+                  printf ("\n[CLI] Fin de fichier (EOF) atteinte. Arrêt.\n");
+                  ctx->game_running = false;
+                  break;
+                }
+            }
+        }
     }
 
   rl_callback_handler_remove ();
-  if (ctx->ai_initialized && ctx->ai.vtable->clean)
-    {
-      ctx->ai.vtable->clean (&ctx->ai);
-    }
+  if (ctx->ai_white_initialized && ctx->ai_white.vtable->clean)
+    ctx->ai_white.vtable->clean (&ctx->ai_white);
+  if (ctx->ai_black_initialized && ctx->ai_black.vtable->clean)
+    ctx->ai_black.vtable->clean (&ctx->ai_black);
   NetworkManager_Cleanup (ctx->net_manager);
+  game_cleanup (ctx->current_game);
   free (ctx);
   g_cli_ctx = NULL;
 }
+///@}

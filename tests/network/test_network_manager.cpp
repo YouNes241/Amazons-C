@@ -143,6 +143,7 @@ TEST_F (NetworkManagerTest, RobustnessCapacityLimits)
 
 TEST_F (NetworkManagerTest, RobustnessInternalConsistency)
 {
+  NetworkManager_Cleanup (&server_mgr);
   // Missing Callbacks
   NetworkEvents empty_ev = {};
   NetworkManager_Init (&server_mgr, empty_ev);
@@ -164,6 +165,8 @@ TEST_F (NetworkManagerTest, RobustnessInternalConsistency)
   server_mgr.server_ctx = nullptr;
   EXPECT_NO_THROW (NetworkManager_Tick (&server_mgr));
   server_mgr.server_ctx = temp_ctx;
+  NetworkManager_Cleanup (&server_mgr);
+  NetworkManager_Cleanup (&client_mgr);
 }
 
 /* ==========================================================================
@@ -180,18 +183,19 @@ TEST_F (NetworkManagerTest, ShutdownServerRobustness)
   NetworkManager_Init (&none_mgr, test_callbacks);
   EXPECT_NO_THROW (NetworkManager_ShutdownServer (&none_mgr));
 
-  // Un client ne peut pas éteindre le serveur
+  // A client cannot shut down the server
   NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port);
   EXPECT_NO_THROW (NetworkManager_ShutdownServer (&client_mgr));
 
-  // 2. Happy Path : Shutdown d'un vrai serveur avec un client connecté
+  // 2. Happy path: shutdown a real server with a client connected
   NetworkManager_ServerStart (&server_mgr, test_port);
   NetworkManager_Tick (&server_mgr);
 
-  // On vérifie que la mémoire est bien nettoyée sans crash
+  // Verify that memory is cleaned up without crashing
   EXPECT_NO_THROW (NetworkManager_ShutdownServer (&server_mgr));
   EXPECT_EQ (server_mgr.current_mode, NET_MODE_NONE);
   EXPECT_EQ (server_mgr.server_ctx, nullptr);
+  NetworkManager_Cleanup (&none_mgr);
 }
 
 /* ==========================================================================
@@ -205,15 +209,15 @@ TEST_F (NetworkManagerTest, ServerDropsInactiveClient)
   NetworkManager_ClientJoin (&client_mgr, "127.0.0.1", test_port);
   NetworkManager_Tick (&server_mgr);
 
-  // On triche : on modifie manuellement l'heure de la dernière activité du
-  // client On simule qu'il n'a rien fait depuis 100 secondes (ce qui dépasse
+  // We're cheating: manually modify the last activity time of the
+  // client. We simulate no activity for 100 seconds (which exceeds
   // CLIENT_TIMEOUT_SEC)
   server_mgr.server_ctx->clients[1].last_activity = time (NULL) - 100;
 
-  // Au prochain Tick, le serveur doit le détecter et le virer !
+  // On the next Tick, the server should detect and kick them!
   NetworkManager_Tick (&server_mgr);
 
-  // Le slot 1 doit être de nouveau libre
+  // Slot 1 should be free again
   EXPECT_EQ (server_mgr.server_ctx->fds[1].fd, INVALID_SOCKET);
 }
 
@@ -228,11 +232,11 @@ TEST_F (NetworkManagerTest, ClientDetectsServerCrash)
   close (server_mgr.server_ctx->fds[1].fd);
   server_mgr.server_ctx->fds[1].fd = INVALID_SOCKET;
 
-  // Le client fait un Tick et doit recevoir un NET_ERROR car le tuyau est
-  // cassé
+  // The client does a Tick and should receive NET_ERROR because the pipe is
+  // broken
   EXPECT_NO_THROW (NetworkManager_Tick (&client_mgr));
 
-  // Le manager du client doit s'être auto-nettoyé
+  // The client manager should have cleaned itself up
   EXPECT_EQ (client_mgr.current_mode, NET_MODE_NONE);
 }
 
@@ -243,8 +247,8 @@ TEST_F (NetworkManagerTest, ClientDetectsServerCrash)
 
 TEST_F (NetworkManagerTest, UDPDiscoveryParsingRobustness)
 {
-  // Le client initialise son écoute UDP
-  NetworkManager_Init (&client_mgr, test_callbacks);
+  // The client initializes its UDP listener
+
   int udp_sock = socket (AF_INET, SOCK_DGRAM, 0);
 
   struct sockaddr_in dest;
@@ -252,7 +256,7 @@ TEST_F (NetworkManagerTest, UDPDiscoveryParsingRobustness)
   dest.sin_port = htons (UDP_DISCOVERY_PORT);
   inet_pton (AF_INET, "127.0.0.1", &dest.sin_addr);
 
-  // 1. Format valide ("NomDuServeur;Port")
+  // 1. Valid format ("ServerName;Port")
   const char *valid_msg = "TestUDP;9999";
   sendto (udp_sock, valid_msg, strlen (valid_msg), 0, (struct sockaddr *)&dest,
           sizeof (dest));
@@ -279,7 +283,7 @@ TEST_F (NetworkManagerTest, UDPDiscoveryParsingRobustness)
           sizeof (dest));
   usleep (10000);
   EXPECT_NO_THROW (NetworkManager_Tick (
-      &client_mgr)); // Doit tronquer proprement grâce au strncpy
+      &client_mgr)); // Must truncate properly thanks to strncpy
 
   close (udp_sock);
 }

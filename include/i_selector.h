@@ -15,7 +15,7 @@ typedef struct ISelector ISelector;
  */
 typedef struct
 {
-  MCTS_Node *(*select_child) (ISelector *self, MCTS_Node *parent);
+  MCTS_Node *(*select_child) (const ISelector *self, const MCTS_Node *parent);
   void (*clean) (ISelector *self);
 } ISelector_VTable;
 

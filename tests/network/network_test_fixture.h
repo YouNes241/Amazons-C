@@ -18,7 +18,12 @@ extern "C"
 #include "network_protocol.h"
 }
 
-// Variables globales externes pour les compteurs de callbacks
+extern "C" void mock_on_player_joined (const char *name);
+extern "C" void mock_on_player_disconnected (const char *reason);
+extern "C" void mock_on_timeout (void);
+extern "C" void mock_on_error (const char *err);
+extern "C" void mock_on_invite (int id);
+
 extern int cb_joined_count;
 extern int cb_disconnected_count;
 extern int cb_timeout_count;

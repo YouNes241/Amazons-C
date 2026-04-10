@@ -14,13 +14,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ==========================================================================
- * Public API Implementation
- * ==========================================================================
+/** @name Scoreboard and Statistics Management
+ * @brief Public API for managing player scores and statistics
  */
+///@{
 
 /**
- * @brief Saves the current player statistics to a file named "scoreboard.txt".
+ * @brief Saves the current player statistics to a file named scoreboard.txt
  *
  * The function iterates through the list of connected clients and writes their
  * username, wins, losses, and games played to the file. Each line in the file
@@ -38,8 +38,8 @@ SaveScoreboard (NetworkManager *manager)
   if (!f)
     return;
 
-  // Ici, on pourrait parcourir une liste globale,
-  // mais pour l'instant sauvegardons les clients actifs
+  // Could iterate through a global player list here, but for now we save
+  // the active connected clients
   for (int i = FIRST_CLIENT_INDEX; i <= MAX_CLIENTS; i++)
     {
       if (manager->server_ctx->clients[i].is_joined)
@@ -75,8 +75,8 @@ LoadScoreboardForClient (ConnectedClient *client)
     return;
 
   char name[MAX_USERNAME_LENGTH];
-  int w, l, g;
-  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+  int w = 0, l = 0, g = 0;
+  while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) == 4)
     {
       if (strcmp (name, client->username) == 0)
         {
@@ -106,34 +106,39 @@ NetworkManager_UpdatePlayerStats (const char *username, bool won)
   if (!username)
     return;
   FILE *f = fopen ("scoreboard.txt", "r");
-  // On utilise un fichier temporaire pour réécrire les données
+  // Use a temporary file to rewrite the updated statistics
   FILE *temp = fopen ("scoreboard.tmp", "w");
   if (!temp)
     return;
 
   bool found = false;
-  char name[32];
-  int w, l, g;
+  char name[32] = { 0 };
+  int w = 0, l = 0, g = 0;
 
   if (f)
     {
-      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) != EOF)
+      while (fscanf (f, "%s %d %d %d", name, &w, &l, &g) == 4)
         {
           if (strcmp (name, username) == 0)
             {
               found = true;
-              g++; // +1 partie jouée
+              g++; ///< Increment games played count
               if (won)
                 w++;
               else
-                l++; // +1 victoire ou défaite
+                l++; ///< Increment wins or losses count
             }
           fprintf (temp, "%s %d %d %d\n", name, w, l, g);
+          // we reset w,l,g for the next line to avoid carrying over values if
+          // the file is malformed
+          w = 0;
+          l = 0;
+          g = 0;
         }
       fclose (f);
     }
 
-  // Si le joueur n'existait pas encore dans le fichier
+  // If the player did not yet exist in the scoreboard file
   if (!found)
     {
       fprintf (temp, "%s %d %d %d\n", username, won ? 1 : 0, won ? 0 : 1, 1);
@@ -142,3 +147,4 @@ NetworkManager_UpdatePlayerStats (const char *username, bool won)
   fclose (temp);
   rename ("scoreboard.tmp", "scoreboard.txt");
 }
+///@}

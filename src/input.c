@@ -1,28 +1,32 @@
+/** @file input.c
+ * @brief Input handling functions for the Amazons game.
+ */
+
 #include "input.h"
 #include <stdio.h>
 #include <string.h>
 
 /**
- * @brief Transforme une chaîne "d4-d7(g10)" en structure Move.
- * @return 0 si succès, -1 si le format est invalide.
+ * @brief Transforms a string "d4-d7/g10" into a Move structure.
+ * @return 0 on success, -1 if the format is invalid.
  */
 int
 parse_coordinates (const char *input, Move *move)
 {
-  char c_src, c_dst, c_arr; // Pour stocker les colonnes
-  int r_src, r_dst, r_arr;  // Pour stocker lignes
+  char c_src, c_dst, c_arr; // To store columns
+  int r_src, r_dst, r_arr;  // To store rows
 
-  /* sscanf lit la chaîne selon un format.*/
-  int result = sscanf (input, " %c%d - %c%d ( %c%d )", &c_src, &r_src, &c_dst,
+  /* sscanf reads the string according to a format. */
+  int result = sscanf (input, " %c%d - %c%d / %c%d ", &c_src, &r_src, &c_dst,
                        &r_dst, &c_arr, &r_arr);
 
-  // Entrée invalide si on a pas exactement 6 elts
+  // Invalid input when there are not exactly 6 elements
   if (result != 6)
     {
       return -1;
     }
 
-  /* Conversion des lettres en indices de colonnes */
+  /* Conversion of letters to column indices */
   int col_src = (c_src >= 'a' && c_src <= 'z')   ? c_src - 'a'
                 : (c_src >= 'A' && c_src <= 'Z') ? c_src - 'A'
                                                  : -1;
@@ -40,9 +44,13 @@ parse_coordinates (const char *input, Move *move)
       return -1;
     }
 
-  /* Remplissage de la structure Move avec les coordonnées converties.
-   * Note : les lignes sont indexées à partir de 0 dans la structure, d'où le
-   * -1.
+  if (r_src < 1 || r_dst < 1 || r_arr < 1)
+    {
+      return -1;
+    }
+
+  /* Fill the Move structure with converted coordinates.
+   * Note: rows are zero-indexed in the structure, hence the -1.
    */
   move->queen_src.col = (uint8_t)col_src;
   move->queen_src.row = (uint8_t)(r_src - 1);

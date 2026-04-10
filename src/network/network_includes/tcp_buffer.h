@@ -19,15 +19,40 @@
  * ==========================================================================
  */
 
+/** @brief Length of an empty buffer.
+ * @details This value represents the size of a buffer that contains no data.
+ */
 #define EMPTY_BUFFER_LENGTH 0
 
 // Constants related to the message end character
+
+/** @brief The newline character used to terminate messages.
+ * @details This character is used to delimit the end of a message in the
+ * buffer.
+ */
 #define NEWLINE_CHAR '\n'
+
+/** @brief Length of the newline character.
+ * @details This value represents the number of bytes occupied by the newline
+ * character.
+ */
 #define NEWLINE_CHAR_LEN 1 // Space occupied by the character '\n'
 
 // Return codes for line extraction
+/** @brief Return code indicating successful line extraction.
+ * @details This value is returned by tcp_buffer_extract_line when a complete
+ * line is found.
+ */
 #define EXTRACT_SUCCESS 1
+/** @brief Return code indicating no complete message was found.
+ * @details This value is returned by tcp_buffer_extract_line when no newline
+ * character is found.
+ */
 #define EXTRACT_NO_MSG 0
+/** @brief Return code indicating message overflow.
+ * @details This value is returned by tcp_buffer_extract_line when the
+ * extracted message exceeds the output buffer size.
+ */
 #define EXTRACT_MSG_OVERFLOW -1
 
 /**

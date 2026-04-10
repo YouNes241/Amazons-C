@@ -12,14 +12,22 @@
 #include <stdio.h>
 #include <string.h>
 
-// Helper to convert a column index (0-9) into a letter (a-j)
+/**
+ * @brief Converts a column index (0-9) into its letter representation (a-j)
+ * @param col Column index (0 to 9)
+ * @return Character representing the column (a-j)
+ */
 static char
 ColToChar (int col)
 {
   return (char)(MIN_COL_CHAR + col);
 }
 
-// Helper to convert a letter (MIN_COL_CHAR-'j') into a column (0-9)
+/**
+ * @brief Converts a letter (a-j) into its column index (0-9)
+ * @param c Character representing the column (a-j)
+ * @return Column index (0 to 9)
+ */
 static int
 CharToCol (char c)
 {
@@ -46,7 +54,7 @@ Protocol_MoveToString (Move m, char *buffer_out, size_t buf_size)
     return;
 
   // Final format: "MOVE a1-a4-b4\n"
-  // Note: often in board games, row 0 is marked '1'.
+  // Note: In board games, row 0 is conventionally displayed as '1'
   snprintf (buffer_out, buf_size, "MOVE %c%d-%c%d-%c%d\n",
             ColToChar (m.queen_src.col), m.queen_src.row + 1,
             ColToChar (m.queen_dst.col), m.queen_dst.row + 1,

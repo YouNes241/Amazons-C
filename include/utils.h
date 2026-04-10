@@ -29,6 +29,7 @@ bool moves_are_equal (Move a, Move b);
 
 void pos_to_string (Position pos, char *out, size_t out_size);
 
+uint64_t next_xoshiro ();
 uint64_t random_uint (uint64_t limit);
 void seed_xoshiro (uint64_t seed);
 #endif

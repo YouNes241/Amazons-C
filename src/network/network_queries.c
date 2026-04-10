@@ -60,7 +60,7 @@ NetworkManager_GetServerList (NetworkManager *manager, char *buffer,
 
   for (int i = 0; i < manager->discovery_ctx->server_count; i++)
     {
-      // On vérifie le timeout de 30 secondes ici !
+      // Check the 30 second timeout for server visibility
       if (difftime (now, manager->discovery_ctx->servers[i].last_seen)
           <= SERVER_TIMEOUT_SEC)
         {
@@ -180,10 +180,7 @@ NetworkManager_GetServerPlayerList (NetworkManager *manager, char *buffer,
           break;
         }
 
-      // detailled format for a specific player, as requested in F40. Note that
-      // we don't have real score data, so we put placeholders for
-      // wins/losses/matches.
-      // TODO: Replace placeholders with actual score data when available
+      // Detailed format for a specific player
       snprintf (
           buffer, max_len,
           _ ("Details -> ID: %d | Name: %s | Status: %s | Score: %dWon %dLost "

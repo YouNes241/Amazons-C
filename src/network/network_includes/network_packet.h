@@ -95,16 +95,62 @@ typedef enum
  * ==========================================================================
  */
 
+/** @brief Maximum size of the payload for a network packet.
+ * @details This defines the maximum number of characters that can be included
+ *in the payload of a packet. It is set to 256 bytes to allow for sufficient
+ *information to be
+ * transmitted while keeping the packet size manageable for network
+ *communication. This size should be large enough to accommodate typical
+ *messages such as move descriptions, player lists, and error messages without
+ *exceeding typical limits for UDP/TCP packets.
+ */
 #define MAX_PAYLOAD_SIZE 256
 
+/** @brief Error code for serialization failures.
+ * @details This value is returned by the SerializePacket function when it
+ * fails to serialize a packet, either due to invalid input or insufficient
+ * buffer size. It allows the caller to detect and handle serialization errors
+ * appropriately.
+ */
 #define SERIALIZE_ERROR -1 // Return code in case of serialization failure
-#define EMPTY_LEN 0        // Zero size for validation
 
+/** @brief Length of an empty payload.
+ * @details This value represents the size of a payload that contains no data.
+ */
+#define EMPTY_LEN 0 // Zero size for validation
+
+/** @brief Separator for the packet format.
+ * @details This character is used to delimit the PAYLOAD and the TYPE in the
+ * packet format.
+ */
 #define PACKET_SEPARATOR '|' // Character delimiting the PAYLOAD and the TYPE
+
+/** @brief Format for the packet structure.
+ * @details This defines the output format for a network packet, including the
+ * type and payload.
+ */
 #define PACKET_FORMAT "%d|%s\n" // Output format: "TYPE|PAYLOAD\n"
-#define TYPE_PARSE_FORMAT "%d"  // Format for reading the package type
-#define PAYLOAD_PTR_OFFSET 1    // Offset to point just after the separator
-#define EXPECTED_TYPE_TOKENS 1  // Number of elements that sscanf should find
+
+/** @brief Format for parsing the packet type.
+ * @details This defines the format for reading the type from a received
+ * packet.
+ */
+#define TYPE_PARSE_FORMAT "%d" // Format for reading the package type
+
+/** @brief Offset for the payload pointer.
+ * @details This value represents the number of characters to skip after the
+ * separator to reach the start of the payload.
+ */
+#define PAYLOAD_PTR_OFFSET 1 // Offset to point just after the separator
+/** @brief Number of tokens expected when parsing the packet type.
+ * @details This value represents the number of elements that sscanf should
+ * find when parsing the packet type from a received string.
+ */
+#define EXPECTED_TYPE_TOKENS 1 // Number of elements that sscanf should find
+/** @brief Space reserved for the null terminator.
+ * @details This value represents the space reserved for the end-of-string
+ * character '\0'.
+ */
 #define NULL_CHAR_SPACE                                                       \
   1 // Reserved space for the end-of-string character '\0'
 

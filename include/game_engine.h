@@ -2,7 +2,9 @@
 #define GAME_ENGINE_H
 
 #include "bitboard.h"
+#include "bitboard_state.h"
 #include "game_types.h"
+#include "utils.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -132,7 +134,28 @@ PlayerColor get_winner (const GameState *state);
  */
 void game_cleanup (GameState *state);
 
+/**
+ * @brief Reverts the last applied move and restores the previous game state.
+ * The move is transferred to the redo stack so it can be reapplied later.
+ * @param state The game state to modify.
+ * @return True if a move was successfully undone, false otherwise.
+ */
 bool undo_move (GameState *state);
+
+/**
+ * @brief Reapplies the most recently undone move from the redo stack.
+ * The move is moved back to the undo stack if it succeeds.
+ * @param state The game state to modify.
+ * @return True if a move was successfully redone, false otherwise.
+ */
 bool redo_move (GameState *state);
+
+/**
+ * @brief Updates blitz mode timing and enforces blitz loss conditions.
+ * If blitz mode is enabled, it subtracts elapsed time from the current
+ * player's clock and may set the game status to a blitz defeat.
+ * @param state The game state containing blitz timer values.
+ */
+void update_blitz_timer (GameState *state);
 
 #endif

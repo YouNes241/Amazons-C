@@ -15,10 +15,10 @@ cli_display_board (const GameState *state)
     }
   printf ("\n");
 
-  // Affichage des lignes
+  // Display the board rows
   for (int row = state->size - 1; row >= 0; row--)
     {
-      printf ("%2d ", row + 1); // Numéro de ligne
+      printf ("%2d ", row + 1); ///< Row number (1-indexed)
 
       for (int col = 0; col < state->size; col++)
         {
@@ -27,19 +27,16 @@ cli_display_board (const GameState *state)
           switch (content)
             {
             case CONTENT_WHITE_QUEEN:
-              printf ("[W]");
+              printf ("[%s]", _ ("W"));
               break;
             case CONTENT_BLACK_QUEEN:
-              printf ("[B]");
+              printf ("[%s]", _ ("B"));
               break;
             case CONTENT_ARROW:
               printf (" X ");
               break;
             case CONTENT_EMPTY:
               printf (" . ");
-              break;
-            default:
-              printf (" ? ");
               break;
             }
         }
@@ -52,6 +49,12 @@ cli_display_board (const GameState *state)
       printf (" %c ", 'a' + col);
     }
   printf ("\n\n");
+
+  if (state->blitz_mode)
+    {
+      printf ("\n[TIME] W: %.1f s | B: %.1f s\n", state->white_time_left,
+              state->black_time_left);
+    }
 }
 
 void
@@ -84,7 +87,7 @@ cli_display_main_menu (void)
   printf ("\n");
   printf (_ ("  --- Playing a Move ---\n"));
   printf (
-      _ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9(d8)\n"));
+      _ ("  Format: [QueenStart]-[QueenEnd]([ArrowEnd])  Ex: d10-d9/d8\n"));
   printf ("\n");
   printf (_ ("  --- Other ---\n"));
   printf (_ ("  help    Show help\n"));

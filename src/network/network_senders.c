@@ -18,15 +18,16 @@
 #include <string.h>
 #include <sys/time.h>
 
-/* ==========================================================================
- * Public API Implementation
- * ==========================================================================
+/** @name Public API Implementation - Packet Senders
  */
+///@{
 
-/* --- Client-side senders --- */
+/** @name Client-side Senders
+ */
+///@{
 
 /**
- * @brief Sends a Join packet to the server with the specified username.
+ * @brief Sends a Join packet to the server with the specified username
  *
  * @param manager Pointer to the NetworkManager instance.
  * @param username The username to join with.
@@ -78,9 +79,8 @@ NetworkManager_SendMove (NetworkManager *manager, Move m)
   if (SerializePacket (&pkt, formatted_buffer, sizeof (formatted_buffer)) < 0)
     return NET_ERROR;
 
-  int target = (manager->current_mode == NET_MODE_CLIENT)
-                   ? TARGET_SERVER
-                   : TARGET_CLIENT_1; // TODO
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? TARGET_SERVER
+                                                          : TARGET_CLIENT_1;
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
@@ -110,9 +110,8 @@ NetworkManager_SendTimeout (NetworkManager *manager)
       return NET_ERROR;
     }
 
-  int target = (manager->current_mode == NET_MODE_CLIENT)
-                   ? TARGET_SERVER
-                   : TARGET_CLIENT_1; // TODO
+  int target = (manager->current_mode == NET_MODE_CLIENT) ? TARGET_SERVER
+                                                          : TARGET_CLIENT_1;
   return NetworkManager_Send (manager, target, formatted_buffer);
 }
 
@@ -329,7 +328,7 @@ NetworkManager_SendPing (NetworkManager *manager)
   if (manager == NULL || manager->current_mode != NET_MODE_CLIENT)
     return NET_ERROR;
 
-  // On récupère le temps actuel en millisecondes
+  // Get current time in milliseconds
   struct timeval tv;
   gettimeofday (&tv, NULL);
   long long now_ms = (long long)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
