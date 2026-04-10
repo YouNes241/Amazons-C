@@ -1,3 +1,14 @@
+/**
+ * @file gui_callbacks.c
+ * @brief Implementation of GTK GUI callbacks and signal handlers.
+ *
+ * @details This file implements all the functions triggered by user
+ * interactions within the GTK4 application. It includes handlers for button
+ * clicks, page navigation, board gestures (drag-and-drop, right-clicks),
+ * configuration updates, file saving/loading, and background thread
+ * dispatching for AI hints.
+ */
+
 #include "gui_callbacks.h"
 #include "ai_factory.h"
 #include "game_engine.h"
@@ -8,6 +19,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* ==========================================================================
+ * NAVIGATION AND POPUP CALLBACKS
+ * ==========================================================================
+ */
+
+/**
+ * @brief Handles navigation between different pages in the main UI stack.
+ * @details Extracts the "target_page" string attached to the button and
+ * switches the GtkStack to that page.
+ * @param button The button triggering the navigation.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 navigationClick (GtkButton *button, gpointer user_data)
 {
@@ -25,6 +48,11 @@ navigationClick (GtkButton *button, gpointer user_data)
   gtk_stack_set_visible_child_name (ctx->mainStack, targetPage);
 }
 
+/**
+ * @brief Closes the main application window, triggering application shutdown.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 quitButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -37,6 +65,11 @@ quitButtonClick (GtkButton *button, gpointer user_data)
   gtk_window_close (GTK_WINDOW (ctx->mainWindow));
 }
 
+/**
+ * @brief Opens the Information/Rules modal popup.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 infoPopupButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -60,6 +93,14 @@ infoPopupButtonClick (GtkButton *button, gpointer user_data)
   g_object_unref (builder);
 }
 
+/**
+ * @brief Opens the Configuration modal popup and binds its widgets.
+ * @details Loads the popup from resources, sets the UI switch/spin button
+ * states to match the current configuration, and connects their signals to
+ * update the config dynamically.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 configPopupButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -80,6 +121,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
 
   gtk_window_set_transient_for (configWindow, GTK_WINDOW (ctx->mainWindow));
 
+  /* Fetch UI elements */
   GtkWidget *verboseSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
   assert (verboseSwitch != NULL);
@@ -107,46 +149,39 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   GtkWidget *langDropdownContainer = GTK_WIDGET (
       gtk_builder_get_object (builder, "lang_dropdown_container"));
 
+  /* Fetch shortcut binding buttons */
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
   assert (bindNewGameBtn != NULL);
-
   GtkWidget *bindLoadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
   assert (bindLoadBtn != NULL);
-
   GtkWidget *bindSaveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
   assert (bindSaveBtn != NULL);
-
   GtkWidget *bindUndoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
   assert (bindUndoBtn != NULL);
-
   GtkWidget *bindRedoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
   assert (bindRedoBtn != NULL);
-
   GtkWidget *bindPauseBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
   assert (bindPauseBtn != NULL);
-
   GtkWidget *bindHintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
   assert (bindHintBtn != NULL);
-
   GtkWidget *bindConfigBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
   assert (bindConfigBtn != NULL);
-
   GtkWidget *bindInfoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
   assert (bindInfoBtn != NULL);
-
   GtkWidget *bindQuitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
   assert (bindQuitBtn != NULL);
 
+  /* Set initial states */
   gtk_switch_set_active (GTK_SWITCH (verboseSwitch), ctx->gameConfig->verbose);
   gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
                          ctx->gameConfig->blitz_mode);
@@ -159,6 +194,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
                          ctx->gameConfig->ai_black_cfg.enabled);
 
+  /* Connect update signals */
   g_signal_connect (verboseSwitch, "notify::active",
                     G_CALLBACK (updateConfigVerbose), ctx);
   g_signal_connect (blitzSwitch, "notify::active",
@@ -172,6 +208,8 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   g_signal_connect (aiBlackSwitch, "notify::active",
                     G_CALLBACK (updateConfigAiBlack), ctx);
 
+  /* Language Dropdown Handling (GTK 4.10+ uses GtkDropDown, older uses
+   * GtkComboBoxText) */
   GtkWidget *langDropdown;
 #if GTK_CHECK_VERSION(4, 10, 0)
   const char *langs[] = { "English", "Français", NULL };
@@ -200,6 +238,7 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
       gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
     }
 
+  /* Setup keyboard shortcut binding buttons */
   setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
   setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
   setupBindingButton (bindSaveBtn, ctx->keyBindings.key_save_game, ctx);
@@ -216,6 +255,19 @@ configPopupButtonClick (GtkButton *button, gpointer user_data)
   g_object_unref (builder);
 }
 
+/* ==========================================================================
+ * IN-GAME ACTION CALLBACKS
+ * ==========================================================================
+ */
+
+/**
+ * @brief Handles the Undo action.
+ * @details Reverts the last move. If playing against an AI, it reverts two
+ * moves so it remains the human's turn. Rejected if AI is thinking or in a
+ * network match.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 undoButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -262,6 +314,13 @@ undoButtonClick (GtkButton *button, gpointer user_data)
     }
 }
 
+/**
+ * @brief Handles the Redo action.
+ * @details Reapplies the previously undone move. Operates identically to undo
+ * regarding AI bypasses and network restrictions.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 redoButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -308,6 +367,13 @@ redoButtonClick (GtkButton *button, gpointer user_data)
     }
 }
 
+/**
+ * @brief Requests an AI hint for the current turn.
+ * @details Spawns a background worker thread with a Minimax AI instance to
+ * calculate the best move. Rejects if a move is partially completed.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 hintButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -354,6 +420,13 @@ hintButtonClick (GtkButton *button, gpointer user_data)
   g_thread_new ("hint_thread", guiHintWorkerThread, data);
 }
 
+/**
+ * @brief Quits the current active game.
+ * @details Disconnects from the network match if active, or simply returns to
+ * the main menu for local matches.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 quitGameButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -382,6 +455,17 @@ quitGameButtonClick (GtkButton *button, gpointer user_data)
     }
 }
 
+/* ==========================================================================
+ * NETWORK CALLBACKS
+ * ==========================================================================
+ */
+
+/**
+ * @brief Attempts to join a multiplayer server as a client.
+ * @details Extracts the IP, port, and desired username from the form.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 joinServerButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -435,6 +519,13 @@ joinServerButtonClick (GtkButton *button, gpointer user_data)
     }
 }
 
+/**
+ * @brief Refreshes the visual list of local servers.
+ * @details Uses UDP broadcasting to discover active servers on the local
+ * network and populates the GTK ListBox with joinable entries.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 refreshServerListButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -452,6 +543,7 @@ refreshServerListButtonClick (GtkButton *button, gpointer user_data)
       = GTK_WIDGET (g_object_get_data (G_OBJECT (button), "username_entry"));
   assert (username_entry != NULL);
 
+  /* Clear existing list */
   GtkWidget *child;
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (listbox))) != NULL)
     {
@@ -522,6 +614,11 @@ refreshServerListButtonClick (GtkButton *button, gpointer user_data)
     }
 }
 
+/**
+ * @brief Disconnects the local client from the current server.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -536,6 +633,12 @@ disconnectFromServerButtonClick (GtkButton *button, gpointer user_data)
   gtk_stack_set_visible_child_name (ctx->mainStack, "join_server_page");
 }
 
+/**
+ * @brief Opens the modal to send a match invitation to another player in the
+ * lobby.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 createGameButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -585,6 +688,11 @@ createGameButtonClick (GtkButton *button, gpointer user_data)
   g_object_unref (builder);
 }
 
+/**
+ * @brief Extracts the network invitation settings and sends the invite packet.
+ * @param button The button triggering the action (from the invite popup).
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 sendInviteButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -622,6 +730,11 @@ sendInviteButtonClick (GtkButton *button, gpointer user_data)
   gtk_window_destroy (popup_window);
 }
 
+/**
+ * @brief Starts a new local game immediately.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 newGameButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -648,11 +761,16 @@ newGameButtonClick (GtkButton *button, gpointer user_data)
   assert (boardGrid != NULL);
 
   setupBoard (ctx, boardGrid);
-
   guiStartNewGame (ctx);
+
   gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
 }
 
+/**
+ * @brief Opens the modal popup to configure and host a new UDP/TCP server.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -691,7 +809,6 @@ hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
   g_signal_connect_swapped (cancelBtn, "clicked",
                             G_CALLBACK (gtk_window_destroy),
                             createServerWindow);
-
   g_signal_connect (startBtn, "clicked", G_CALLBACK (startServerButtonClick),
                     ctx);
 
@@ -699,6 +816,11 @@ hostServerPopupButtonClick (GtkButton *button, gpointer user_data)
   g_object_unref (builder);
 }
 
+/**
+ * @brief Reads the chosen port and launches the internal server daemon.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 startServerButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -719,9 +841,7 @@ startServerButtonClick (GtkButton *button, gpointer user_data)
 
   if (NetworkManager_ServerStart (ctx->networkManager, port) == 0)
     {
-
       assert (ctx->mainStack != NULL);
-
       gtk_stack_set_visible_child_name (ctx->mainStack, "host_panel_page");
 
       gui_log_to_server_console (ctx, "[*] Server initialized on port %d",
@@ -737,6 +857,11 @@ startServerButtonClick (GtkButton *button, gpointer user_data)
   gtk_window_destroy (popup_window);
 }
 
+/**
+ * @brief Stops the local host server.
+ * @param button The button triggering the action.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 stopServerButtonClick (GtkButton *button, gpointer user_data)
 {
@@ -753,6 +878,23 @@ stopServerButtonClick (GtkButton *button, gpointer user_data)
   gtk_stack_set_visible_child_name (ctx->mainStack, "multiplayer_page");
 }
 
+/* ==========================================================================
+ * BOARD INTERACTION CALLBACKS (Drag & Drop, Clicks)
+ * ==========================================================================
+ */
+
+/**
+ * @brief Initiates a drag event when the user clicks and holds a Queen.
+ * @details Validates that the piece belongs to the current player, it's their
+ * turn, and no AI is taking control. If valid, generates a
+ * `GdkContentProvider` and highlights destinations.
+ * @param source The drag source controller.
+ * @param x X coordinate of the event.
+ * @param y Y coordinate of the event.
+ * @param user_data Pointer to the GuiContext.
+ * @return A valid ContentProvider if dragging is allowed, or NULL to reject
+ * the drag.
+ */
 GdkContentProvider *
 onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
 {
@@ -765,9 +907,7 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   assert (ctx->gameBoard != NULL);
 
   if (ctx->is_ai_thinking)
-    {
-      return NULL;
-    }
+    return NULL;
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (source));
@@ -785,17 +925,13 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   CellContent piece = ctx->gameState->board[srcY][srcX];
 
   if (piece == CONTENT_EMPTY || piece == CONTENT_ARROW)
-    {
-      return NULL;
-    }
+    return NULL;
 
   PlayerColor currentPlayer = ctx->gameState->current_player;
 
   if ((ctx->isNetworkMatch && currentPlayer != ctx->selfPlayerColor)
       || ctx->currentPhase != PHASE_MOVE_QUEEN)
-    {
-      return NULL;
-    }
+    return NULL;
 
   bool is_ai_turn = (currentPlayer == PLAYER_WHITE
                      && ctx->gameConfig->ai_white_cfg.enabled)
@@ -803,15 +939,11 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
                         && ctx->gameConfig->ai_black_cfg.enabled);
 
   if (is_ai_turn && !ctx->isNetworkMatch)
-    {
-      return NULL;
-    }
+    return NULL;
 
   if ((currentPlayer == PLAYER_WHITE && piece != CONTENT_WHITE_QUEEN)
       || (currentPlayer == PLAYER_BLACK && piece != CONTENT_BLACK_QUEEN))
-    {
-      return NULL;
-    }
+    return NULL;
 
   highlightReachableSquares (ctx, srcX, srcY);
 
@@ -821,9 +953,7 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
       if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (ctx->gameBoard[i]),
                                               "is_legal_move"))
           == 1)
-        {
-          foundCells++;
-        }
+        foundCells++;
     }
 
   if (foundCells == 0)
@@ -845,6 +975,18 @@ onDrag (GtkDragSource *source, double x, double y, gpointer user_data)
   return provider;
 }
 
+/**
+ * @brief Concludes the drag-and-drop operation, validating the Queen's new
+ * location.
+ * @details Checks if the drop target is a legal move. If so, updates the local
+ * UI state and transitions the phase to `PHASE_SHOOT_ARROW`.
+ * @param target The drop target.
+ * @param value The string value representing the source index.
+ * @param x X coordinate.
+ * @param y Y coordinate.
+ * @param user_data Pointer to the GuiContext.
+ * @return TRUE if the drop was accepted, FALSE otherwise.
+ */
 gboolean
 onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
         gpointer user_data)
@@ -857,9 +999,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   assert (ctx->gameState != NULL);
 
   if (ctx->currentPhase != PHASE_MOVE_QUEEN)
-    {
-      return FALSE;
-    }
+    return FALSE;
 
   GtkWidget *btn
       = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (target));
@@ -875,9 +1015,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   int isLegal
       = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (btn), "is_legal_move"));
   if (!isLegal)
-    {
-      return FALSE;
-    }
+    return FALSE;
 
   assert (value != NULL);
   const char *srcString = g_value_get_string (value);
@@ -889,9 +1027,7 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   assert (srcY >= 0 && srcY < size);
 
   if (ctx->gameState->board[destY][destX] != CONTENT_EMPTY)
-    {
-      return FALSE;
-    }
+    return FALSE;
 
   ctx->tmpQueenSrc.col = srcX;
   ctx->tmpQueenSrc.row = srcY;
@@ -911,6 +1047,14 @@ onDrop (GtkDropTarget *target, const GValue *value, double x, double y,
   return TRUE;
 }
 
+/**
+ * @brief Cleanup callback fired when a drag gesture ends naturally or is
+ * cancelled.
+ * @param source The drag source.
+ * @param drag The drag context.
+ * @param delete_data Boolean indicating deletion requirement.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
            gpointer user_data)
@@ -929,6 +1073,14 @@ onDragEnd (GtkDragSource *source, GdkDrag *drag, gboolean delete_data,
     }
 }
 
+/**
+ * @brief Completes the full turn by shooting an arrow to the clicked cell.
+ * @details Only active during `PHASE_SHOOT_ARROW`. Assembles the complete
+ * `Move` (Queen Src -> Dst + Arrow Dst) and sends it to the main controller
+ * for validation.
+ * @param button The board cell clicked.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 fireArrow (GtkWidget *button, gpointer user_data)
 {
@@ -938,9 +1090,7 @@ fireArrow (GtkWidget *button, gpointer user_data)
   assert (button != NULL);
 
   if (ctx->is_ai_thinking)
-    {
-      return;
-    }
+    return;
 
   if (ctx->currentPhase != PHASE_SHOOT_ARROW
       || (ctx->isNetworkMatch
@@ -961,6 +1111,7 @@ fireArrow (GtkWidget *button, gpointer user_data)
   if (!isLegal)
     return;
 
+  /* Revert temporary UI state so engine can validate cleanly */
   CellContent piece
       = ctx->gameState->board[ctx->tmpQueenDst.row][ctx->tmpQueenDst.col];
   ctx->gameState->board[ctx->tmpQueenDst.row][ctx->tmpQueenDst.col]
@@ -980,6 +1131,17 @@ fireArrow (GtkWidget *button, gpointer user_data)
   guiHandlePlayerMove (ctx, current_move);
 }
 
+/**
+ * @brief Handles right-clicks on the board to cancel an ongoing Queen move.
+ * @details If a player drops a Queen but realizes they made a mistake,
+ * right-clicking before shooting the arrow returns the Queen to its original
+ * position.
+ * @param gesture The gesture controller.
+ * @param n_press Press count.
+ * @param x X coordinate.
+ * @param y Y coordinate.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
               gpointer user_data)
@@ -994,9 +1156,7 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
   assert (ctx->gameState != NULL);
 
   if (ctx->is_ai_thinking)
-    {
-      return;
-    }
+    return;
 
   if (ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
@@ -1020,6 +1180,15 @@ onRightClick (GtkGestureClick *gesture, int n_press, double x, double y,
     }
 }
 
+/**
+ * @brief Intercepts general mouse clicks on board cells.
+ * @details Acts as a wrapper targeting `fireArrow` to handle primary clicks.
+ * @param gesture The gesture controller.
+ * @param n_press Press count.
+ * @param x X coordinate.
+ * @param y Y coordinate.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
                gpointer user_data)
@@ -1035,17 +1204,17 @@ onCellClicked (GtkGestureClick *gesture, int n_press, double x, double y,
   fireArrow (cellBox, user_data);
 }
 
+/* ==========================================================================
+ * CONFIGURATION SETTERS
+ * ==========================================================================
+ */
+
 void
 updateConfigVerbose (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-
   assert (widget != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->verbose = gtk_switch_get_active (widget);
 }
 
@@ -1053,13 +1222,8 @@ void
 updateConfigBlitz (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-
   assert (widget != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->blitz_mode = gtk_switch_get_active (widget);
 }
 
@@ -1067,11 +1231,7 @@ void
 updateConfigTimeout (GtkSpinButton *spin_button, gpointer user_data)
 {
   assert (spin_button != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->time_per_player
       = gtk_spin_button_get_value_as_int (spin_button);
 }
@@ -1080,11 +1240,7 @@ void
 updateConfigBoardSize (GtkSpinButton *spin_button, gpointer user_data)
 {
   assert (spin_button != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->board_size = gtk_spin_button_get_value_as_int (spin_button);
 }
 
@@ -1092,13 +1248,8 @@ void
 updateConfigAiWhite (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-
   assert (widget != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->ai_white_cfg.enabled = gtk_switch_get_active (widget);
 }
 
@@ -1106,27 +1257,23 @@ void
 updateConfigAiBlack (GtkSwitch *widget, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-
   assert (widget != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   ctx->gameConfig->ai_black_cfg.enabled = gtk_switch_get_active (widget);
 }
+
+/* ==========================================================================
+ * FILE I/O (SAVE / LOAD) & LANGUAGE
+ * ==========================================================================
+ */
 
 #if GTK_CHECK_VERSION(4, 10, 0)
 void
 updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
 {
   (void)pspec;
-
   assert (object != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
 
   guint active = gtk_drop_down_get_selected (GTK_DROP_DOWN (object));
   if (active == 0 || active == 1)
@@ -1135,15 +1282,17 @@ updateConfigLanguage (GObject *object, GParamSpec *pspec, gpointer user_data)
     }
 }
 
+/**
+ * @brief Async callback handler for the GTK 4.10+ Save Dialog.
+ * @param source_object The dialog object.
+ * @param res The async result payload.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 on_save_file_selected (GObject *source_object, GAsyncResult *res,
                        gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-  assert (ctx->gameState != NULL);
-
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
   GFile *file = gtk_file_dialog_save_finish (dialog, res, &error);
@@ -1161,15 +1310,17 @@ on_save_file_selected (GObject *source_object, GAsyncResult *res,
     }
 }
 
+/**
+ * @brief Async callback handler for the GTK 4.10+ Load Dialog.
+ * @param source_object The dialog object.
+ * @param res The async result payload.
+ * @param user_data Pointer to the GuiContext.
+ */
 void
 on_load_file_selected (GObject *source_object, GAsyncResult *res,
                        gpointer user_data)
 {
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-  assert (ctx->mainStack != NULL);
-
   GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
   GError *error = NULL;
   GFile *file = gtk_file_dialog_open_finish (dialog, res, &error);
@@ -1187,13 +1338,10 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
       if (status == SAVE_OK)
         {
           g_print ("[GUI] Game loaded from : %s\n", path);
-
           ctx->gameConfig->board_size = dummy_state.size;
 
           GtkWidget *boardGrid = GTK_WIDGET (
               g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
-          assert (boardGrid != NULL);
-
           setupBoard (ctx, boardGrid);
           load_game (path, ctx->gameConfig, ctx->gameState);
           guiStartNewGame (ctx);
@@ -1202,7 +1350,6 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
           clearHighlights (ctx);
           drawBoard (ctx);
           updateTurnDisplay (ctx);
-
           gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
         }
       else
@@ -1233,7 +1380,6 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
               break;
             }
         }
-
       game_cleanup (&dummy_state);
       g_free (path);
       g_object_unref (file);
@@ -1244,22 +1390,11 @@ void
 saveButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->mainWindow != NULL);
-  assert (ctx->gameState != NULL);
 
-  if (ctx->is_ai_thinking)
+  if (ctx->is_ai_thinking || ctx->currentPhase == PHASE_SHOOT_ARROW)
     {
-      guiShowPopup (ctx, "Action disabled. AI is thinking...");
-      return;
-    }
-
-  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
-    {
-      guiShowPopup (
-          ctx, "Please finish your move (shoot the arrow) before saving.");
+      guiShowPopup (ctx, "Action disabled or move unfinished.");
       return;
     }
 
@@ -1273,20 +1408,11 @@ void
 loadButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->mainWindow != NULL);
 
-  if (ctx->is_ai_thinking)
+  if (ctx->is_ai_thinking || ctx->isNetworkMatch)
     {
-      guiShowPopup (ctx, "Action disabled. AI is thinking...");
-      return;
-    }
-
-  if (ctx->isNetworkMatch)
-    {
-      guiShowPopup (ctx, "Action disabled during a network match.");
+      guiShowPopup (ctx, "Action disabled.");
       return;
     }
 
@@ -1295,21 +1421,17 @@ loadButtonClick (GtkButton *button, gpointer user_data)
   gtk_file_dialog_open (dialog, ctx->mainWindow, NULL, on_load_file_selected,
                         ctx);
 }
+
 #else
+
+/* Deprecated GTK < 4.10 fallbacks */
 void
 updateConfigLanguage (GtkComboBoxText *combo_box, gpointer user_data)
 {
-  assert (combo_box != NULL);
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameConfig != NULL);
-
   int active = gtk_combo_box_get_active (GTK_COMBO_BOX (combo_box));
   if (active == 0 || active == 1)
-    {
-      ctx->gameConfig->language = (lang_t)active;
-    }
+    ctx->gameConfig->language = (lang_t)active;
 }
 
 void
@@ -1318,20 +1440,12 @@ on_save_response (GtkNativeDialog *native, int response, gpointer user_data)
   if (response == GTK_RESPONSE_ACCEPT)
     {
       GuiContext *ctx = (GuiContext *)user_data;
-      assert (ctx != NULL);
-      assert (ctx->gameConfig != NULL);
-      assert (ctx->gameState != NULL);
-
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
       if (file)
         {
           char *path = g_file_get_path (file);
-          if (save_game (path, ctx->gameConfig, ctx->gameState) == 0)
-            g_print ("[GUI] Game saved to : %s\n", path);
-          else
-            g_print ("[GUI ERROR] Saving failed.\n");
-
+          save_game (path, ctx->gameConfig, ctx->gameState);
           g_free (path);
           g_object_unref (file);
         }
@@ -1345,10 +1459,6 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
   if (response == GTK_RESPONSE_ACCEPT)
     {
       GuiContext *ctx = (GuiContext *)user_data;
-      assert (ctx != NULL);
-      assert (ctx->gameConfig != NULL);
-      assert (ctx->mainStack != NULL);
-
       GtkFileChooser *chooser = GTK_FILE_CHOOSER (native);
       GFile *file = gtk_file_chooser_get_file (chooser);
       if (file)
@@ -1359,18 +1469,11 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
           dummy_state.size = MAX_BOARD_SIZE;
           game_init (&dummy_state);
 
-          int original_size = ctx->gameConfig->board_size;
-          SaveReturn status = load_game (path, ctx->gameConfig, &dummy_state);
-          if (status == SAVE_OK)
+          if (load_game (path, ctx->gameConfig, &dummy_state) == SAVE_OK)
             {
-              g_print ("[GUI] Load game from : %s\n", path);
-
               ctx->gameConfig->board_size = dummy_state.size;
-
               GtkWidget *boardGrid = GTK_WIDGET (
                   g_object_get_data (G_OBJECT (ctx->mainStack), "board_grid"));
-              assert (boardGrid != NULL);
-
               setupBoard (ctx, boardGrid);
               load_game (path, ctx->gameConfig, ctx->gameState);
               guiStartNewGame (ctx);
@@ -1379,41 +1482,8 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
               clearHighlights (ctx);
               drawBoard (ctx);
               updateTurnDisplay (ctx);
-
               gtk_stack_set_visible_child_name (ctx->mainStack, "game_page");
             }
-          else
-            {
-              ctx->gameConfig->board_size = original_size;
-              switch (status)
-                {
-                case ERR_FILE_NOT_FOUND:
-                  g_print ("[GUI ERROR] File not found: %s\n", path);
-                  break;
-                case ERR_BOARD_SIZE_MISMATCH:
-                  g_print ("[GUI ERROR] Board size mismatch in file.\n");
-                  break;
-                case ERR_CORRUPT_GAME_SECTION:
-                  g_print (
-                      "[GUI ERROR] Invalid board data in section [game].\n");
-                  break;
-                case ERR_CORRUPT_HISTORY_SECTION:
-                  g_print (
-                      "[GUI ERROR] Invalid moves in section [history].\n");
-                  break;
-                case ERR_PREMATURE_EOF:
-                  g_print ("[GUI ERROR] Unexpected end of file.\n");
-                  break;
-                case ERR_INVALID_QUEEN_COUNT:
-                  g_print (
-                      "[GUI ERROR] Corruption: Invalid number of queens.\n");
-                  break;
-                default:
-                  g_print ("[GUI ERROR] Unknown error code: %d\n", status);
-                  break;
-                }
-            }
-
           game_cleanup (&dummy_state);
           g_free (path);
           g_object_unref (file);
@@ -1426,24 +1496,10 @@ void
 saveButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameState != NULL);
-  assert (ctx->mainWindow != NULL);
 
-  if (ctx->is_ai_thinking)
-    {
-      guiShowPopup (ctx, "Action disabled. AI is thinking...");
-      return;
-    }
-
-  if (ctx->currentPhase == PHASE_SHOOT_ARROW)
-    {
-      guiShowPopup (
-          ctx, "Please finish your move (shoot the arrow) before saving.");
-      return;
-    }
+  if (ctx->is_ai_thinking || ctx->currentPhase == PHASE_SHOOT_ARROW)
+    return;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new (
       "Save the current game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_SAVE,
@@ -1456,23 +1512,10 @@ void
 loadButtonClick (GtkButton *button, gpointer user_data)
 {
   (void)button;
-
   GuiContext *ctx = (GuiContext *)user_data;
-  assert (ctx != NULL);
-  assert (ctx->gameState != NULL);
-  assert (ctx->mainWindow != NULL);
 
-  if (ctx->is_ai_thinking)
-    {
-      guiShowPopup (ctx, "Action disabled. AI is thinking...");
-      return;
-    }
-
-  if (ctx->isNetworkMatch)
-    {
-      guiShowPopup (ctx, "Action disabled during a network match.");
-      return;
-    }
+  if (ctx->is_ai_thinking || ctx->isNetworkMatch)
+    return;
 
   GtkFileChooserNative *native = gtk_file_chooser_native_new (
       "Load a game", ctx->mainWindow, GTK_FILE_CHOOSER_ACTION_OPEN, "Open",
@@ -1482,36 +1525,35 @@ loadButtonClick (GtkButton *button, gpointer user_data)
 }
 #endif
 
+/* ==========================================================================
+ * KEYBOARD SHORTCUT DISPATCHERS
+ * ==========================================================================
+ */
+
 gboolean
 shortcutNewGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   newGameButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutInfo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   infoPopupButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutConfig (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   configPopupButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
@@ -1520,68 +1562,67 @@ shortcutQuit (GtkWidget *widget, GVariant *args, gpointer user_data)
   quitGameButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutUndo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   undoButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutRedo (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   redoButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutSaveGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   saveButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutLoadGame (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   loadButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutHint (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
-
   hintButtonClick (NULL, user_data);
   return TRUE;
 }
-
 gboolean
 shortcutDummy (GtkWidget *widget, GVariant *args, gpointer user_data)
 {
   (void)widget;
   (void)args;
   (void)user_data;
-
   g_print ("Not implemented.\n");
   return TRUE;
 }
 
+/* ==========================================================================
+ * BACKGROUND HINT WORKER
+ * ==========================================================================
+ */
+
+/**
+ * @brief Applies the generated hint to the GUI.
+ * @details Runs on the main GTK thread to safely highlight the suggested move.
+ * @param user_data Pointer to the AIWorkerData context.
+ * @return G_SOURCE_REMOVE to cleanly detach the idle process.
+ */
 gboolean
 guiHintApplyMove (gpointer user_data)
 {
@@ -1608,6 +1649,11 @@ guiHintApplyMove (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+/**
+ * @brief Background thread computing the optimal hint move.
+ * @param user_data Pointer to the AIWorkerData context.
+ * @return NULL.
+ */
 gpointer
 guiHintWorkerThread (gpointer user_data)
 {

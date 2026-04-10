@@ -1,8 +1,26 @@
+/**
+ * @file gui_pages.c
+ * @brief Implementation of GTK page and view creation functions.
+ *
+ * @details This file contains factory functions responsible for building the
+ * various screens (pages) of the application. Each function loads a specific
+ * GTK Builder XML resource (`.ui` file), resolves the necessary UI widgets,
+ * sets up required object data, and connects signals to the appropriate
+ * callbacks defined in `gui_callbacks.c`.
+ */
+
 #include "gui_pages.h"
 #include "gui_callbacks.h"
 #include <assert.h>
 #include <gtk/gtk.h>
 
+/**
+ * @brief Creates the main menu page.
+ * @details Loads `/amazons/ui/main_menu.ui` and binds navigation buttons
+ * (Singleplayer, Multiplayer, Config, Info) and the Quit application button.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the main menu.
+ */
 GtkWidget *
 createMainMenuPage (GuiContext *ctx)
 {
@@ -36,6 +54,7 @@ createMainMenuPage (GuiContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
   assert (quitBtn != NULL);
 
+  /* Set target pages for navigation callbacks */
   g_object_set_data (G_OBJECT (singleplayerBtn), "target_page",
                      "singleplayer_page");
   g_object_set_data (G_OBJECT (multiplayerBtn), "target_page",
@@ -43,6 +62,7 @@ createMainMenuPage (GuiContext *ctx)
   g_object_set_data (G_OBJECT (configBtn), "target_page", "config_page");
   g_object_set_data (G_OBJECT (infoBtn), "target_page", "info_page");
 
+  /* Connect signals */
   g_signal_connect (singleplayerBtn, "clicked", G_CALLBACK (navigationClick),
                     ctx);
   g_signal_connect (multiplayerBtn, "clicked", G_CALLBACK (navigationClick),
@@ -57,6 +77,14 @@ createMainMenuPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the single-player setup menu.
+ * @details Loads `/amazons/ui/singleplayer.ui` and binds the New Game,
+ * Load Game, and Return (back) buttons.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the single-player
+ * menu.
+ */
 GtkWidget *
 createSingleplayerMenuPage (GuiContext *ctx)
 {
@@ -95,6 +123,13 @@ createSingleplayerMenuPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the multiplayer selection menu.
+ * @details Loads `/amazons/ui/multiplayer.ui` and binds the Host Server popup,
+ * Join Server navigation, and Return buttons.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the multiplayer menu.
+ */
 GtkWidget *
 createMultiplayerMenuPage (GuiContext *ctx)
 {
@@ -137,6 +172,14 @@ createMultiplayerMenuPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the configuration and settings page.
+ * @details Loads `/amazons/ui/config.ui` and binds all parameter controls
+ * (Blitz mode, timers, AI toggles, board size, language drop-downs) and
+ * keyboard shortcut binding buttons to their respective update callbacks.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the config page.
+ */
 GtkWidget *
 createConfigPage (GuiContext *ctx)
 {
@@ -154,6 +197,7 @@ createConfigPage (GuiContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "return_btn"));
   assert (returnBtn != NULL);
 
+  /* Load Configuration Switches and Spinners */
   GtkWidget *verboseSwitch
       = GTK_WIDGET (gtk_builder_get_object (builder, "verbose_switch"));
   assert (verboseSwitch != NULL);
@@ -182,46 +226,39 @@ createConfigPage (GuiContext *ctx)
       gtk_builder_get_object (builder, "lang_dropdown_container"));
   assert (langDropdownContainer != NULL);
 
+  /* Load Shortcut Binding Buttons */
   GtkWidget *bindNewGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_new_game_btn"));
   assert (bindNewGameBtn != NULL);
-
   GtkWidget *bindLoadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_load_game_btn"));
   assert (bindLoadBtn != NULL);
-
   GtkWidget *bindSaveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_save_game_btn"));
   assert (bindSaveBtn != NULL);
-
   GtkWidget *bindUndoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_undo_btn"));
   assert (bindUndoBtn != NULL);
-
   GtkWidget *bindRedoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_redo_btn"));
   assert (bindRedoBtn != NULL);
-
   GtkWidget *bindPauseBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_pause_btn"));
   assert (bindPauseBtn != NULL);
-
   GtkWidget *bindHintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_hint_btn"));
   assert (bindHintBtn != NULL);
-
   GtkWidget *bindConfigBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_config_btn"));
   assert (bindConfigBtn != NULL);
-
   GtkWidget *bindInfoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_info_btn"));
   assert (bindInfoBtn != NULL);
-
   GtkWidget *bindQuitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "bind_quit_btn"));
   assert (bindQuitBtn != NULL);
 
+  /* Initialize current state into UI widgets */
   gtk_switch_set_active (GTK_SWITCH (verboseSwitch), ctx->gameConfig->verbose);
   gtk_switch_set_active (GTK_SWITCH (blitzSwitch),
                          ctx->gameConfig->blitz_mode);
@@ -234,6 +271,7 @@ createConfigPage (GuiContext *ctx)
   gtk_switch_set_active (GTK_SWITCH (aiBlackSwitch),
                          ctx->gameConfig->ai_black_cfg.enabled);
 
+  /* Connect standard parameter update signals */
   g_signal_connect (verboseSwitch, "notify::active",
                     G_CALLBACK (updateConfigVerbose), ctx);
   g_signal_connect (blitzSwitch, "notify::active",
@@ -247,6 +285,7 @@ createConfigPage (GuiContext *ctx)
   g_signal_connect (aiBlackSwitch, "notify::active",
                     G_CALLBACK (updateConfigAiBlack), ctx);
 
+  /* Handle Language Dropdown differences across GTK4 versions */
   GtkWidget *langDropdown;
 #if GTK_CHECK_VERSION(4, 10, 0)
   const char *langs[] = { "English", "French", NULL };
@@ -271,6 +310,7 @@ createConfigPage (GuiContext *ctx)
 
   gtk_box_append (GTK_BOX (langDropdownContainer), langDropdown);
 
+  /* Setup keyboard shortcut binders */
   setupBindingButton (bindNewGameBtn, ctx->keyBindings.key_new_game, ctx);
   setupBindingButton (bindLoadBtn, ctx->keyBindings.key_load_game, ctx);
   setupBindingButton (bindSaveBtn, ctx->keyBindings.key_save_game, ctx);
@@ -291,6 +331,12 @@ createConfigPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the information/rules display page.
+ * @details Loads `/amazons/ui/info.ui` and binds the Return button.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the info page.
+ */
 GtkWidget *
 createInfoPage (GuiContext *ctx)
 {
@@ -315,6 +361,15 @@ createInfoPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the primary game view page.
+ * @details Loads `/amazons/ui/game.ui`. This function constructs the main
+ * interactive board grid, binds the header buttons (Save, Load, Undo, Hint,
+ * etc.), initializes mouse gesture controllers (right-click to cancel moves),
+ * and applies application-wide shortcut bindings.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the game view.
+ */
 GtkWidget *
 createGamePage (GuiContext *ctx)
 {
@@ -332,35 +387,27 @@ createGamePage (GuiContext *ctx)
   GtkWidget *newGameBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "new_game_btn"));
   assert (newGameBtn != NULL);
-
   GtkWidget *loadBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "load_game_btn"));
   assert (loadBtn != NULL);
-
   GtkWidget *saveBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "save_game_btn"));
   assert (saveBtn != NULL);
-
   GtkWidget *infoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "info_btn"));
   assert (infoBtn != NULL);
-
   GtkWidget *configBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "config_btn"));
   assert (configBtn != NULL);
-
   GtkWidget *quitBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "quit_btn"));
   assert (quitBtn != NULL);
-
   GtkWidget *undoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "undo_btn"));
   assert (undoBtn != NULL);
-
   GtkWidget *redoBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "redo_btn"));
   assert (redoBtn != NULL);
-
   GtkWidget *hintBtn
       = GTK_WIDGET (gtk_builder_get_object (builder, "hint_btn"));
   assert (hintBtn != NULL);
@@ -379,16 +426,18 @@ createGamePage (GuiContext *ctx)
   ctx->gameState = NULL;
   ctx->gameBoard = NULL;
 
+  /* Initialize the actual cell widgets within the board grid */
   setupBoard (ctx, boardGrid);
 
+  /* Set up right-click cancellation gesture */
   GtkGesture *rightClick = gtk_gesture_click_new ();
   assert (rightClick != NULL);
-
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (rightClick),
                                  GDK_BUTTON_SECONDARY);
   g_signal_connect (rightClick, "pressed", G_CALLBACK (onRightClick), ctx);
   gtk_widget_add_controller (boardGrid, GTK_EVENT_CONTROLLER (rightClick));
 
+  /* Connect toolbar actions */
   g_signal_connect (quitBtn, "clicked", G_CALLBACK (quitGameButtonClick), ctx);
   g_signal_connect (newGameBtn, "clicked", G_CALLBACK (newGameButtonClick),
                     ctx);
@@ -402,6 +451,7 @@ createGamePage (GuiContext *ctx)
   g_signal_connect (redoBtn, "clicked", G_CALLBACK (redoButtonClick), ctx);
   g_signal_connect (hintBtn, "clicked", G_CALLBACK (hintButtonClick), ctx);
 
+  /* Apply custom keyboard shortcuts to the game view */
   updateGameShortcuts (ctx);
 
   g_object_ref (box);
@@ -410,6 +460,13 @@ createGamePage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the server connection interface.
+ * @details Loads `/amazons/ui/join_server.ui`. Binds the server discovery
+ * refresh button and username entry field to the connection callbacks.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the join server page.
+ */
 GtkWidget *
 createJoinServerPage (GuiContext *ctx)
 {
@@ -454,6 +511,13 @@ createJoinServerPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the server host lobby panel.
+ * @details Loads `/amazons/ui/host_panel.ui`. Binds the live server console
+ * output view and the stop server button.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the host panel.
+ */
 GtkWidget *
 createHostPanelPage (GuiContext *ctx)
 {
@@ -476,6 +540,8 @@ createHostPanelPage (GuiContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "server_console_view"));
   assert (consoleView != NULL);
 
+  /* Expose the console view globally so utility functions can log text to it
+   */
   g_object_set_data (G_OBJECT (ctx->mainStack), "server_console_view",
                      consoleView);
 
@@ -488,6 +554,14 @@ createHostPanelPage (GuiContext *ctx)
   return box;
 }
 
+/**
+ * @brief Creates the client-side lobby panel.
+ * @details Loads `/amazons/ui/client_panel.ui`. Binds the disconnect button,
+ * the game invitation popup trigger, and sets up a dynamic title label.
+ * * @param ctx Pointer to the main GUI context.
+ * @return A `GtkWidget` pointer to the root container of the client lobby
+ * panel.
+ */
 GtkWidget *
 createClientPanelPage (GuiContext *ctx)
 {
@@ -506,6 +580,7 @@ createClientPanelPage (GuiContext *ctx)
       = GTK_WIDGET (gtk_builder_get_object (builder, "lobby_title_label"));
   assert (titleLabel != NULL);
 
+  /* Expose title label so it can be updated dynamically upon joining */
   g_object_set_data (G_OBJECT (ctx->mainStack), "lobby_title_label",
                      titleLabel);
 

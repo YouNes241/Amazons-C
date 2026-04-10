@@ -1,3 +1,13 @@
+/**
+ * @file gui_utils.c
+ * @brief Implementation of GTK GUI utility functions.
+ *
+ * @details This file implements the core visual manipulation and state
+ * management functions for the GTK interface. It handles dynamic board
+ * generation, piece rendering via CSS classes, drag-and-drop highlight
+ * calculations, and custom keyboard shortcut recording mechanisms.
+ */
+
 #include "gui_utils.h"
 #include "config.h"
 #include "game_engine.h"
@@ -6,11 +16,22 @@
 #include <assert.h>
 #include <gtk/gtk.h>
 
+/* Forward declarations for static keyboard shortcut handlers */
 static void bindingButtonAnimate (GtkToggleButton *button, gpointer user_data);
 static gboolean bindingKeyPressed (GtkEventControllerKey *controller,
                                    guint keyval, guint keycode,
                                    GdkModifierType state, gpointer user_data);
 
+/**
+ * @brief Allocates and initializes a new GUI context.
+ *
+ * @details Creates the context structure, attaches the provided game
+ * configuration, initializes pointers to NULL, and sets up default keyboard
+ * shortcuts.
+ *
+ * @param config Pointer to the global game configuration.
+ * @return A dynamically allocated pointer to the initialized `GuiContext`.
+ */
 GuiContext *
 initGuiContext (game_config_t *config)
 {
@@ -47,6 +68,10 @@ initGuiContext (game_config_t *config)
   return ctx;
 }
 
+/**
+ * @brief Frees the memory allocated for the GUI context and its resources.
+ * @param ctx Pointer to the `GuiContext` to destroy.
+ */
 void
 freeGuiContext (GuiContext *ctx)
 {
@@ -62,6 +87,19 @@ freeGuiContext (GuiContext *ctx)
   free (ctx);
 }
 
+/**
+ * @brief Updates the visual representation of a single cell on the board.
+ *
+ * @details Removes previous content CSS classes from the target cell and
+ * applies the new class and unicode character representing the specified
+ * entity.
+ *
+ * @param ctx Pointer to the `GuiContext`.
+ * @param x The X coordinate (column) of the cell.
+ * @param y The Y coordinate (row) of the cell.
+ * @param content The entity to draw (Empty, White Queen, Black Queen, or
+ * Arrow).
+ */
 void
 drawPiece (GuiContext *ctx, int x, int y, CellContent content)
 {
@@ -109,6 +147,11 @@ drawPiece (GuiContext *ctx, int x, int y, CellContent content)
     }
 }
 
+/**
+ * @brief Completely redraws the visual board based on the internal
+ * `GameState`.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 drawBoard (GuiContext *ctx)
 {
@@ -127,6 +170,12 @@ drawBoard (GuiContext *ctx)
     }
 }
 
+/**
+ * @brief Clears all valid-move highlights from the board UI.
+ * @details Removes the "highlight-valid" CSS class from all cells and resets
+ * the internal "is_legal_move" UI flag to 0.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 clearHighlights (GuiContext *ctx)
 {
@@ -143,6 +192,10 @@ clearHighlights (GuiContext *ctx)
     }
 }
 
+/**
+ * @brief Clears AI hint highlights from the board UI.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 clearHintHighlights (GuiContext *ctx)
 {
@@ -158,6 +211,18 @@ clearHintHighlights (GuiContext *ctx)
     }
 }
 
+/**
+ * @brief Calculates and highlights all legal destination squares for a
+ * specific piece.
+ *
+ * @details Converts the board state into Bitboards to quickly calculate all
+ * reachable squares in 8 directions using the game engine logic. Valid squares
+ * are flagged in the GTK widgets to authorize drop/click actions.
+ *
+ * @param ctx Pointer to the `GuiContext`.
+ * @param srcX The X coordinate (column) of the selected piece.
+ * @param srcY The Y coordinate (row) of the selected piece.
+ */
 void
 highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 {
@@ -177,6 +242,7 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
 
   Bitboard obstacles = bitboard_or (bb.white_queens,
                                     bitboard_or (bb.black_queens, bb.arrows));
+  // The moving piece itself is not an obstacle
   bitboard_clear_bit (&obstacles, start_index);
 
   Bitboard reachable = get_reachable_squares (obstacles, start_index, size);
@@ -194,6 +260,18 @@ highlightReachableSquares (GuiContext *ctx, int srcX, int srcY)
   gtk_widget_add_css_class (ctx->gameBoard[start_index], "active-queen");
 }
 
+/**
+ * @brief Dynamically builds the physical GTK widgets for the game board grid.
+ *
+ * @details Clears any existing UI grid, instantiates a new internal GameState,
+ * allocates individual cell boxes (GtkBox) with labels, and attaches
+ * drag-and-drop and click gesture controllers to each cell. Handles dynamic
+ * board inversion for network matches (Black plays at the bottom).
+ *
+ * @param ctx Pointer to the `GuiContext`.
+ * @param boardGrid Pointer to the `GtkGrid` container that will hold the
+ * cells.
+ */
 void
 setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 {
@@ -216,6 +294,7 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
       ctx->gameBoard = NULL;
     }
 
+  // Clear existing grid children
   GtkWidget *child = gtk_widget_get_first_child (boardGrid);
   while (child != NULL)
     {
@@ -235,6 +314,7 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 
   bool flipBoard = false;
 
+  // Board inversion logic: The player's pieces should be at the bottom
   if (ctx->isNetworkMatch)
     {
       flipBoard = (ctx->selfPlayerColor == PLAYER_BLACK);
@@ -262,6 +342,7 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
 
       g_object_set_data (G_OBJECT (cellBox), "cell_label", label);
 
+      // Checkerboard pattern styling
       if ((logicalX + logicalY) % 2 == 0)
         gtk_widget_add_css_class (cellBox, "cell-light");
       else
@@ -276,22 +357,26 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
       g_object_set_data (G_OBJECT (cellBox), "cell_index",
                          GINT_TO_POINTER (i));
 
+      // Click gestures for Arrow Shooting
       GtkGesture *leftClick = gtk_gesture_click_new ();
       gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (leftClick),
                                      GDK_BUTTON_PRIMARY);
       g_signal_connect (leftClick, "pressed", G_CALLBACK (onCellClicked), ctx);
       gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (leftClick));
 
+      // Drag Source for Queen Moving
       GtkDragSource *dragSource = gtk_drag_source_new ();
       g_signal_connect (dragSource, "prepare", G_CALLBACK (onDrag), ctx);
       g_signal_connect (dragSource, "drag-end", G_CALLBACK (onDragEnd), ctx);
       gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dragSource));
 
+      // Drop Target for Queen Landing
       GtkDropTarget *dropTarget
           = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
       g_signal_connect (dropTarget, "drop", G_CALLBACK (onDrop), ctx);
       gtk_widget_add_controller (cellBox, GTK_EVENT_CONTROLLER (dropTarget));
 
+      // Map logical coordinates to physical grid positions
       int visualX = logicalX;
       int visualY = size - 1 - logicalY;
 
@@ -308,6 +393,15 @@ setupBoard (GuiContext *ctx, GtkWidget *boardGrid)
   updateTurnDisplay (ctx);
 }
 
+/**
+ * @brief Binds a key-capture listener to a toggle button for shortcut
+ * configuration.
+ *
+ * @param btn The `GtkToggleButton` to convert into a shortcut recorder.
+ * @param target_str The string buffer where the captured shortcut will be
+ * saved.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx)
 {
@@ -327,11 +421,15 @@ setupBindingButton (GtkWidget *btn, char *target_str, GuiContext *ctx)
   gtk_widget_add_controller (btn, key_ctrl);
 }
 
-void
+/**
+ * @brief Callback to visually update a shortcut binding button when toggled.
+ * @param button The toggle button being interacted with.
+ * @param user_data Unused context parameter.
+ */
+static void
 bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
 {
   (void)user_data;
-
   assert (button != NULL);
 
   if (gtk_toggle_button_get_active (button))
@@ -343,12 +441,25 @@ bindingButtonAnimate (GtkToggleButton *button, gpointer user_data)
       char *target_str
           = (char *)g_object_get_data (G_OBJECT (button), "target_str");
       assert (target_str != NULL);
-
       gtk_button_set_label (GTK_BUTTON (button), target_str);
     }
 }
 
-gboolean
+/**
+ * @brief Callback intercepting a key press while a shortcut button is active.
+ *
+ * @details Captures the keyboard stroke, converts it into a GTK accelerator
+ * string (e.g., "<Control>n"), saves it to the config, and deactivates the
+ * button.
+ *
+ * @param controller The key event controller.
+ * @param keyval The pressed key value.
+ * @param keycode The raw hardware keycode.
+ * @param state Modifiers (Ctrl, Shift, Alt).
+ * @param user_data Pointer to the GuiContext.
+ * @return TRUE if the key was intercepted, FALSE otherwise.
+ */
+static gboolean
 bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
                    guint keycode, GdkModifierType state, gpointer user_data)
 {
@@ -363,6 +474,7 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
   if (!gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button)))
     return FALSE;
 
+  // Ignore bare modifier presses, we want the actual key trigger
   if (keyval == GDK_KEY_Shift_L || keyval == GDK_KEY_Shift_R
       || keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R
       || keyval == GDK_KEY_Alt_L || keyval == GDK_KEY_Alt_R)
@@ -379,7 +491,6 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
       assert (target_str != NULL);
 
       snprintf (target_str, SHORTCUTS_SIZE, "%s", accel_name);
-
       gtk_button_set_label (GTK_BUTTON (button), accel_name);
     }
 
@@ -398,6 +509,11 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
   return TRUE;
 }
 
+/**
+ * @brief Refreshes the application's global shortcut controllers based on
+ * current bindings.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 updateGameShortcuts (GuiContext *ctx)
 {
@@ -459,6 +575,10 @@ updateGameShortcuts (GuiContext *ctx)
                              GTK_EVENT_CONTROLLER (shortcutController));
 }
 
+/**
+ * @brief Updates the UI label indicating whose turn it is.
+ * @param ctx Pointer to the `GuiContext`.
+ */
 void
 updateTurnDisplay (GuiContext *ctx)
 {
@@ -481,7 +601,6 @@ updateTurnDisplay (GuiContext *ctx)
           char *opponentTurnLabel = g_strdup_printf (
               "%s is playing...",
               (current == PLAYER_WHITE) ? "White" : "Black");
-
           gtk_label_set_text (GTK_LABEL (turnLabel), opponentTurnLabel);
           g_free (opponentTurnLabel);
         }
@@ -495,6 +614,13 @@ updateTurnDisplay (GuiContext *ctx)
     }
 }
 
+/**
+ * @brief Visually displays an AI-suggested move (Hint) on the board.
+ * @param ctx Pointer to the `GuiContext`.
+ * @param q_src The recommended origin position of the Queen.
+ * @param q_dst The recommended destination position of the Queen.
+ * @param a_dst The recommended target position for the Arrow.
+ */
 void
 showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
                  Position a_dst)
@@ -523,6 +649,12 @@ showHintOnBoard (GuiContext *ctx, Position q_src, Position q_dst,
   gtk_widget_add_css_class (ctx->gameBoard[arr_idx], "hint-arrow");
 }
 
+/**
+ * @brief Logs a formatted message to the built-in server console view.
+ * @param ctx Pointer to the `GuiContext`.
+ * @param format Printf-style format string.
+ * @param ... Additional arguments for the format string.
+ */
 void
 gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
 {
@@ -559,6 +691,11 @@ gui_log_to_server_console (GuiContext *ctx, const char *format, ...)
   gtk_text_buffer_delete_mark (text_buf, mark);
 }
 
+/**
+ * @brief Displays a non-blocking modal popup message to the user.
+ * @param ctx Pointer to the `GuiContext`.
+ * @param message The text to display in the popup.
+ */
 void
 guiShowPopup (GuiContext *ctx, const char *message)
 {
