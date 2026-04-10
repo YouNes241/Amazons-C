@@ -536,3 +536,41 @@ TEST_F (GuiControllerTest, GetWinner_BlackWins)
 
   EXPECT_EQ (get_winner (ctx->gameState), PLAYER_BLACK);
 }
+
+/* ==========================================================================
+ * ASYNCHRONOUS GTK EVENTS TESTS (Coverage Boost)
+ * ==========================================================================
+ */
+
+TEST_F (GuiControllerTest, AsyncAI_Execution_And_Unlock)
+{
+  ctx->isNetworkMatch = false;
+  ctx->gameState->current_player = PLAYER_WHITE;
+  config.ai_white_cfg.enabled = true;
+
+  Param params[1] = {};
+  ConfigMap cm = { .count = 0, .list = params };
+  ctx->ai_white = create_ai ("random", cm);
+  ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
+
+  // Déclenche le timer de l'IA (50ms)
+  guiCheckAndTriggerAI (ctx);
+  EXPECT_TRUE (ctx->is_ai_thinking); // Cadenas fermé
+
+  // Boucle d'attente intelligente (Timeout max : 1 seconde)
+  // On scrute GTK toutes les 10ms jusqu'à ce que l'IA déverrouille le cadenas
+  int max_retries = 100;
+  while (ctx->is_ai_thinking && max_retries > 0)
+    {
+      g_usleep (10000); // 10ms
+      while (g_main_context_pending (nullptr))
+        {
+          g_main_context_iteration (nullptr, FALSE);
+        }
+      max_retries--;
+    }
+
+  // Le coup a dû être joué, l'IA a terminé, le cadenas doit être ouvert !
+  EXPECT_FALSE (ctx->is_ai_thinking);
+  EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK);
+}

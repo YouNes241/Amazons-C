@@ -1,9 +1,6 @@
 /**
  * @file test_gui_network_events.cpp
  * @brief Unit tests for gui_network_events.c functions
- *
- * Tests cover the network event callback system for the GUI,
- * including game start, move reception, invitations, and disconnections.
  */
 
 #include <cstdlib>
@@ -22,20 +19,24 @@ extern "C"
 #include "network_common.h"
 }
 
-/**
- * @brief Test fixture for GUI network events tests
- *
- * Sets up a minimal GuiContext for testing network event callbacks
- * without actual GTK widgets.
- */
 class GuiNetworkEventsTest : public ::testing::Test
 {
 protected:
   GuiContext *ctx;
-  GameState game;
   game_config_t config;
   NetworkManager net_mgr;
   NetworkEvents events;
+  static bool gtk_initialized;
+
+  static void
+  SetUpTestSuite ()
+  {
+    if (!gtk_initialized)
+      {
+        gtk_init ();
+        gtk_initialized = true;
+      }
+  }
 
   void
   SetUp () override
@@ -43,16 +44,19 @@ protected:
     ctx = (GuiContext *)calloc (1, sizeof (GuiContext));
     ASSERT_NE (ctx, nullptr);
 
-    memset (&game, 0, sizeof (GameState));
+    // CORRECTION : Allocation dynamique pour que setupBoard() puisse le free()
+    // sans crasher
+    ctx->gameState = (GameState *)calloc (1, sizeof (GameState));
+    ASSERT_NE (ctx->gameState, nullptr);
+
     memset (&config, 0, sizeof (game_config_t));
     memset (&net_mgr, 0, sizeof (NetworkManager));
-    memset (&events, 0, sizeof (NetworkEvents));
 
     config.board_size = 10;
-    game.size = 10;
-    game_init (&game);
 
-    ctx->gameState = &game;
+    ctx->gameState->size = 10;
+    game_init (ctx->gameState);
+
     ctx->gameConfig = &config;
     ctx->networkManager = &net_mgr;
     ctx->isNetworkMatch = false;
@@ -63,19 +67,32 @@ protected:
     ctx->is_ai_white_initialized = false;
     ctx->is_ai_black_initialized = false;
 
-    // Set GTK widgets to NULL - we won't use them in tests
-    ctx->mainStack = nullptr;
-    ctx->mainWindow = nullptr;
-    ctx->gameBoard = nullptr;
+    // Simulation GTK minimale
+    ctx->mainStack = GTK_STACK (gtk_stack_new ());
+    ctx->mainWindow = GTK_WINDOW (gtk_window_new ());
 
-    // Create the network events structure
+    GtkWidget *boardGrid = gtk_grid_new ();
+    g_object_set_data (G_OBJECT (ctx->mainStack), "board_grid", boardGrid);
+
+    GtkWidget *turnLabel = gtk_label_new ("Turn");
+    g_object_set_data (G_OBJECT (ctx->mainStack), "turn_label", turnLabel);
+
+    GtkWidget *consoleView = gtk_text_view_new ();
+    g_object_set_data (G_OBJECT (ctx->mainStack), "server_console_view",
+                       consoleView);
+
+    GtkWidget *game_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    GtkWidget *client_panel_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_stack_add_named (ctx->mainStack, game_page, "game_page");
+    gtk_stack_add_named (ctx->mainStack, client_panel_page,
+                         "client_panel_page");
+
     events = create_gui_network_events (ctx);
   }
 
   void
   TearDown () override
   {
-    // Clean up any AI that was initialized
     if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
         && ctx->ai_white.vtable->clean)
       {
@@ -87,7 +104,18 @@ protected:
         ctx->ai_black.vtable->clean (&ctx->ai_black);
       }
 
-    game_cleanup (&game);
+    if (ctx->gameState)
+      {
+        game_cleanup (ctx->gameState);
+        free (ctx->gameState);
+        ctx->gameState = nullptr;
+      }
+
+    if (ctx->gameBoard)
+      {
+        free (ctx->gameBoard);
+        ctx->gameBoard = nullptr;
+      }
 
     if (ctx)
       {
@@ -95,369 +123,80 @@ protected:
         ctx = nullptr;
       }
 
-    // Reset the global context
     create_gui_network_events (nullptr);
-  }
-
-  Move
-  createLegalWhiteMove ()
-  {
-    Move m;
-    m.queen_src.col = 3;
-    m.queen_src.row = 0; // d1
-    m.queen_dst.col = 3;
-    m.queen_dst.row = 1; // d2
-    m.arrow_dst.col = 3;
-    m.arrow_dst.row = 2; // d3
-    return m;
-  }
-
-  Move
-  createLegalBlackMove ()
-  {
-    Move m;
-    m.queen_src.col = 3;
-    m.queen_src.row = 9; // d10
-    m.queen_dst.col = 3;
-    m.queen_dst.row = 8; // d9
-    m.arrow_dst.col = 3;
-    m.arrow_dst.row = 7; // d8
-    return m;
-  }
-
-  Move
-  createIllegalMove ()
-  {
-    Move m;
-    m.queen_src.col = 0;
-    m.queen_src.row = 0; // No queen at a1
-    m.queen_dst.col = 0;
-    m.queen_dst.row = 1;
-    m.arrow_dst.col = 0;
-    m.arrow_dst.row = 2;
-    return m;
   }
 };
 
+bool GuiNetworkEventsTest::gtk_initialized = false;
+
 /* ==========================================================================
- * create_gui_network_events TESTS
+ * TESTS D'EXECUTION DES CALLBACKS
  * ==========================================================================
  */
 
-TEST_F (GuiNetworkEventsTest, CreateNetworkEvents_SetsCallbacks)
+TEST_F (GuiNetworkEventsTest, Execute_OnGameStarted)
 {
-  EXPECT_NE (events.OnGameStarted, nullptr);
-  EXPECT_NE (events.OnMoveReceived, nullptr);
-  EXPECT_NE (events.OnInvitationReceived, nullptr);
-  EXPECT_NE (events.OnPlayerDisconnected, nullptr);
-  EXPECT_NE (events.OnPlayerJoined, nullptr);
-}
+  EXPECT_NO_THROW (events.OnGameStarted (PLAYER_BLACK, 8));
 
-TEST_F (GuiNetworkEventsTest, CreateNetworkEvents_WithValidContext)
-{
-  NetworkEvents new_events = create_gui_network_events (ctx);
-
-  EXPECT_NE (new_events.OnGameStarted, nullptr);
-  EXPECT_NE (new_events.OnMoveReceived, nullptr);
-  EXPECT_NE (new_events.OnInvitationReceived, nullptr);
-  EXPECT_NE (new_events.OnPlayerDisconnected, nullptr);
-  EXPECT_NE (new_events.OnPlayerJoined, nullptr);
-}
-
-/* ==========================================================================
- * CALLBACK EXISTENCE TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, OnGameStartedCallback_Exists)
-{
-  EXPECT_NE (events.OnGameStarted, nullptr);
-}
-
-TEST_F (GuiNetworkEventsTest, OnMoveReceivedCallback_Exists)
-{
-  EXPECT_NE (events.OnMoveReceived, nullptr);
-}
-
-TEST_F (GuiNetworkEventsTest, OnInvitationReceivedCallback_Exists)
-{
-  EXPECT_NE (events.OnInvitationReceived, nullptr);
-}
-
-TEST_F (GuiNetworkEventsTest, OnPlayerDisconnectedCallback_Exists)
-{
-  EXPECT_NE (events.OnPlayerDisconnected, nullptr);
-}
-
-TEST_F (GuiNetworkEventsTest, OnPlayerJoinedCallback_Exists)
-{
-  EXPECT_NE (events.OnPlayerJoined, nullptr);
-}
-
-/* ==========================================================================
- * NETWORK MANAGER STATE TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, NetworkManagerModeNone)
-{
-  net_mgr.current_mode = NET_MODE_NONE;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_NONE);
-}
-
-TEST_F (GuiNetworkEventsTest, NetworkManagerModeServer)
-{
-  net_mgr.current_mode = NET_MODE_SERVER;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_SERVER);
-}
-
-TEST_F (GuiNetworkEventsTest, NetworkManagerModeClient)
-{
-  net_mgr.current_mode = NET_MODE_CLIENT;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_CLIENT);
-}
-
-/* ==========================================================================
- * CONTEXT STATE TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, ContextInitialState)
-{
-  EXPECT_FALSE (ctx->isNetworkMatch);
-  EXPECT_EQ (ctx->selfPlayerColor, PLAYER_WHITE);
-  EXPECT_EQ (ctx->gameConfig->board_size, 10);
-}
-
-TEST_F (GuiNetworkEventsTest, NetworkMatchState_Transition)
-{
-  ctx->isNetworkMatch = false;
-  EXPECT_FALSE (ctx->isNetworkMatch);
-
-  ctx->isNetworkMatch = true;
-  EXPECT_TRUE (ctx->isNetworkMatch);
-}
-
-TEST_F (GuiNetworkEventsTest, SelfPlayerColor_White)
-{
-  ctx->selfPlayerColor = PLAYER_WHITE;
-  EXPECT_EQ (ctx->selfPlayerColor, PLAYER_WHITE);
-}
-
-TEST_F (GuiNetworkEventsTest, SelfPlayerColor_Black)
-{
-  ctx->selfPlayerColor = PLAYER_BLACK;
   EXPECT_EQ (ctx->selfPlayerColor, PLAYER_BLACK);
+  EXPECT_TRUE (ctx->isNetworkMatch);
+  EXPECT_EQ (ctx->gameConfig->board_size, 8);
+  EXPECT_STREQ (gtk_stack_get_visible_child_name (ctx->mainStack),
+                "game_page");
 }
 
-/* ==========================================================================
- * GAME STATE INTEGRATION TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, GameStateInitialized)
+TEST_F (GuiNetworkEventsTest, Execute_OnMoveReceived)
 {
-  EXPECT_NE (ctx->gameState, nullptr);
-  EXPECT_EQ (ctx->gameState->current_player, PLAYER_WHITE);
-  EXPECT_EQ (ctx->gameState->status, GAME_IN_PROGRESS);
-}
+  events.OnGameStarted (PLAYER_WHITE, 10);
 
-TEST_F (GuiNetworkEventsTest, BoardSizeConfiguration)
-{
-  EXPECT_EQ (ctx->gameConfig->board_size, 10);
-}
-
-/* ==========================================================================
- * MOVE HANDLING TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, MoveCreation)
-{
   Move m;
   m.queen_src.col = 3;
-  m.queen_src.row = 0;
+  m.queen_src.row = 9;
   m.queen_dst.col = 3;
-  m.queen_dst.row = 1;
+  m.queen_dst.row = 8;
   m.arrow_dst.col = 3;
-  m.arrow_dst.row = 2;
+  m.arrow_dst.row = 7;
 
-  // CORRECTION : col et row au lieu de x et y
-  EXPECT_EQ (m.queen_src.col, 3);
-  EXPECT_EQ (m.queen_src.row, 0);
-  EXPECT_EQ (m.queen_dst.col, 3);
-  EXPECT_EQ (m.queen_dst.row, 1);
-  EXPECT_EQ (m.arrow_dst.col, 3);
-  EXPECT_EQ (m.arrow_dst.row, 2);
+  ctx->gameState->current_player = PLAYER_BLACK;
+
+  EXPECT_NO_THROW (events.OnMoveReceived (m));
+
+  EXPECT_EQ (ctx->gameState->current_player, PLAYER_WHITE);
 }
 
-TEST_F (GuiNetworkEventsTest, MoveValidation)
+TEST_F (GuiNetworkEventsTest, Execute_OnInvitationReceived)
 {
-  Move legal_move = createLegalWhiteMove ();
-  EXPECT_TRUE (is_move_legal (ctx->gameState, legal_move));
-
-  Move illegal_move = createIllegalMove ();
-  EXPECT_FALSE (is_move_legal (ctx->gameState, illegal_move));
+  EXPECT_NO_THROW (events.OnInvitationReceived (42));
 }
 
-/* ==========================================================================
- * DISCONNECTION HANDLING TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, DisconnectionReason_Null)
+TEST_F (GuiNetworkEventsTest, Execute_OnPlayerDisconnected_ClientMode)
 {
-  const char *reason = nullptr;
-  EXPECT_EQ (reason, nullptr);
+  net_mgr.current_mode = NET_MODE_CLIENT;
+  ctx->isNetworkMatch = true;
+
+  EXPECT_NO_THROW (events.OnPlayerDisconnected ("Timeout"));
+
+  EXPECT_FALSE (ctx->isNetworkMatch);
+  EXPECT_STREQ (gtk_stack_get_visible_child_name (ctx->mainStack),
+                "client_panel_page");
 }
 
-TEST_F (GuiNetworkEventsTest, DisconnectionReason_Valid)
+TEST_F (GuiNetworkEventsTest, Execute_OnPlayerDisconnected_ServerMode)
 {
-  const char *reason = "Connection lost";
-  EXPECT_STREQ (reason, "Connection lost");
-}
-
-/* ==========================================================================
- * PLAYER JOINED TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, PlayerName_Valid)
-{
-  const char *player_name = "TestPlayer";
-  EXPECT_STREQ (player_name, "TestPlayer");
-}
-
-TEST_F (GuiNetworkEventsTest, PlayerName_Empty)
-{
-  const char *player_name = "";
-  EXPECT_STREQ (player_name, "");
-}
-
-/* ==========================================================================
- * GAME START PARAMETERS TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, GameStartParameters_WhitePlayer)
-{
-  PlayerColor color = PLAYER_WHITE;
-  int board_size = 10;
-
-  EXPECT_EQ (color, PLAYER_WHITE);
-  EXPECT_EQ (board_size, 10);
-}
-
-TEST_F (GuiNetworkEventsTest, GameStartParameters_BlackPlayer)
-{
-  PlayerColor color = PLAYER_BLACK;
-  int board_size = 8;
-
-  EXPECT_EQ (color, PLAYER_BLACK);
-  EXPECT_EQ (board_size, 8);
-}
-
-TEST_F (GuiNetworkEventsTest, GameStartParameters_DifferentBoardSizes)
-{
-  for (int size = 4; size <= 11; size++)
-    {
-      EXPECT_GE (size, MIN_BOARD_SIZE);
-      EXPECT_LE (size, MAX_BOARD_SIZE);
-    }
-}
-
-/* ==========================================================================
- * NETWORK TICK TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, NetworkTickDoesNotCrash)
-{
-  net_mgr.current_mode = NET_MODE_NONE;
-  EXPECT_NO_THROW (NetworkManager_Tick (ctx->networkManager));
-}
-
-/* ==========================================================================
- * MULTIPLE CONTEXT SWITCHES
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, MultipleEventCreations)
-{
-  NetworkEvents events1 = create_gui_network_events (ctx);
-  EXPECT_NE (events1.OnGameStarted, nullptr);
-
-  GuiContext *ctx2 = (GuiContext *)calloc (1, sizeof (GuiContext));
-  ASSERT_NE (ctx2, nullptr);
-
-  GameState game2;
-  game_config_t config2;
-  NetworkManager net_mgr2;
-
-  memset (&game2, 0, sizeof (GameState));
-  memset (&config2, 0, sizeof (game_config_t));
-  memset (&net_mgr2, 0, sizeof (NetworkManager));
-
-  config2.board_size = 8;
-  game2.size = 8;
-  game_init (&game2);
-
-  ctx2->gameState = &game2;
-  ctx2->gameConfig = &config2;
-  ctx2->networkManager = &net_mgr2;
-
-  NetworkEvents events2 = create_gui_network_events (ctx2);
-  EXPECT_NE (events2.OnGameStarted, nullptr);
-
-  game_cleanup (&game2);
-  free (ctx2);
-
-  create_gui_network_events (ctx);
-}
-
-/* ==========================================================================
- * ERROR HANDLING TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, NetworkModeTransitions)
-{
-  net_mgr.current_mode = NET_MODE_NONE;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_NONE);
-
   net_mgr.current_mode = NET_MODE_SERVER;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_SERVER);
 
-  net_mgr.current_mode = NET_MODE_CLIENT;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_CLIENT);
-
-  net_mgr.current_mode = NET_MODE_NONE;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_NONE);
+  EXPECT_NO_THROW (events.OnPlayerDisconnected ("Timeout"));
 }
 
-/* ==========================================================================
- * INTEGRATION WITH guiHandlePlayerMove
- * ==========================================================================
- */
-
-TEST_F (GuiNetworkEventsTest, MoveInNetworkMatch)
+TEST_F (GuiNetworkEventsTest, Execute_OnPlayerJoined_ServerMode)
 {
-  ctx->isNetworkMatch = true;
-  ctx->selfPlayerColor = PLAYER_WHITE;
-  ctx->gameState->current_player = PLAYER_WHITE;
-  net_mgr.current_mode = NET_MODE_CLIENT;
+  net_mgr.current_mode = NET_MODE_SERVER;
 
-  Move legal_move = createLegalWhiteMove ();
-
-  EXPECT_TRUE (is_move_legal (ctx->gameState, legal_move));
+  EXPECT_NO_THROW (events.OnPlayerJoined ("Alice"));
 }
 
-TEST_F (GuiNetworkEventsTest, MoveNotMyTurn)
+TEST_F (GuiNetworkEventsTest, CreateWithNull_ReturnsEmpty)
 {
-  ctx->isNetworkMatch = true;
-  ctx->selfPlayerColor = PLAYER_BLACK;
-  ctx->gameState->current_player = PLAYER_WHITE;
-  net_mgr.current_mode = NET_MODE_CLIENT;
-
-  EXPECT_NE (ctx->selfPlayerColor, ctx->gameState->current_player);
+  NetworkEvents empty_events = create_gui_network_events (nullptr);
+  EXPECT_EQ (empty_events.OnGameStarted, nullptr);
 }
