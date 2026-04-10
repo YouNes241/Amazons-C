@@ -14,6 +14,7 @@ Une implémentation en C du jeu de plateau "Game of the Amazons" avec support CL
 4. [Lancement du jeu](#-lancement-du-jeu)
    - [Options de ligne de commande](#options-de-ligne-de-commande)
    - [Options de l'IA](#options-de-lia)
+   - [Tests de jeux](#tests-de-jeux)
 5. [Modes de jeu](#-modes-de-jeu)
    - [Mode CLI (Interface en ligne de commande)](#mode-cli-interface-en-ligne-de-commande)
    - [Mode GUI (Interface graphique)](#mode-gui-interface-graphique)
@@ -154,6 +155,86 @@ make
 ./amazons -s 8080
 ```
 
+
+## Tests de jeux
+
+### Test : Gestion de l'historique (Undo/Redo) face à l'Intelligence Artificielle
+
+Ce test permet de vérifier que la commande d'annulation gère correctement la boucle asynchrone de l'IA et remonte bien « jusqu'au joueur humain précédent » (Exigence F12) sans corrompre l'état de la partie.
+
+  * Lancez le jeu en configurant une IA pour jouer les Noirs avec un temps de réflexion court (pour fluidifier le test) :
+     ```bash
+     ./amazons --ai black --ai-mode minimax --ai-time 1000
+     ```
+  * Démarrez la partie (`new`).
+  * **Coup du joueur :** Jouez un coup avec les Blancs (ex: `d1-d4/d5`).
+  * **Attente de l'IA :** Laissez l'IA calculer et jouer automatiquement son tour en réponse. Notez mentalement le coup qu'elle vient de jouer.
+  * **Annulation :** Tapez la commande `undo`.
+  * **Restauration du coup :** Tapez ensuite la commande `redo` pour refaire votre coup.
+
+* **Résultats attendus :**
+  * À l'étape 5 (`undo`) : L'interface ne doit pas planter. Le moteur doit exécuter une double annulation pour retirer à la fois la flèche et le déplacement de l'IA, puis la flèche et le déplacement du joueur. Le plateau revient exactement à son état d'origine et c'est de nouveau aux Blancs de jouer.
+  * À l'étape 6 (`redo`) : Le coup du joueur Blanc (`d1-d4/d5`) est réappliqué sur le plateau. Le moteur redonne instantanément la main à l'IA qui va calculer une nouvelle réponse.
+
+* Toujours sur ce même plateau, à votre tour de jeu, tapez la commande `hint`.
+* **Résultats attendus :** 
+    * Le moteur d'IA explore l'arbre des possibles. La taille du plateau étant réduite, l'exploration est quasi instantanée.
+  * L'interface affiche le meilleur coup disponible (ex: *"[ADVICE] Based on the current state: Move the queen from d2 to b2 Shoot the arrow at a1"*).
+  * Le plateau de jeu ne doit pas changer. L'IA a effectué une simulation en sans corrompre l'état de la partie en cours.
+
+### Test du mode Blitz
+Ce test valide la capacité du moteur à gérer des contraintes temporelles et à interrompre une partie en cas de dépassement du temps.
+
+* Lancez le jeu avec un temps de réflexion très court pour faciliter le test (le minimum etant 1 minute) :
+  ```bash
+  ./amazons -b -t 1
+  ```
+puis tapez *new* pour commencer.
+
+* Jouez un coup valide directement après le lancement.
+* Attendez que le temps soit écoulé.
+* Tentez de jouer n'importe quel coup.
+* Résultat attendu : 
+    * Au moment de la saisie, la logique de vérification du moteur est appelée.
+    * Le moteur détecte que le timestamp actuel dépasse le temps alloué.
+
+    * Le coup est refusé, la partie s'arrête immédiatement et le joueur adverse est déclaré vainqueur par forfait.
+
+
+
+### Test de sauvegarde et chargement
+
+Ce test valide la sérialisation de l'état du jeu dans un fichier, ainsi que la résilience de notre parser face à des fichiers manipulés ou corrompus.
+
+#### Étape 1 : Cycle de sauvegarde nominal
+* Lancez le jeu et démarrez une partie (`new`).
+* Jouez deux ou trois coups pour modifier l'état initial (ex: `d1-d4/d5` puis `d10-d7/d6`).
+* Sauvegardez la partie en tapant : `save test_partie`
+* Réinitialisez le jeu en tapant `new` (le plateau redevient vierge).
+* Chargez la sauvegarde en tapant : `load test_partie`
+* **Résultat attendu :** Le plateau retrouve son état exact incluant la position des reines et des flèches. Le tour de jeu est restitué correctement au joueur devant agir.
+
+### Étape 2 : Test face aux fichiers corrompus
+* Laissez le jeu ouvert, et ouvrez le fichier `test_partie` généré précédemment, et enregistré dans le dossier build où se trouve l'executable du jeu..
+* Insérez des éléments perturbateurs :
+     * Ajoutez des lignes vides aléatoires.
+     * Ajoutez un commentaire en ligne(ex: `# Inline comment`).
+     * Modifiez la section [Game] de façon à ce qu'elle devienne corrompue, notamment en effaçant des lignes, ou inversement, rendant la taille du plateau de jeu incohérente avec celle déclarée dans la section [Settings].
+    * Ajoutez des espaces ou des tabulations multiples entre les données.
+    * Sauvegardez le fichier texte.
+    * Dans le terminal du jeu, tapez à nouveau : `load test_partie.txt`
+* **Résultat attendu :** L'application ne doit générer aucune erreur de segmentation (*Segfault*). Un message d'erreur devrait s'afficher expliquant pourquoi le chargement de la partie a échoué.
+
+### Étape 3 : Fichier inexistant ou format invalide
+* Tentez de charger un fichier qui n'existe pas (`load fichier_fantome.txt`) ou un fichier qui n'a rien à voir avec le jeu (ex: `load main.c`).
+* **Résultat attendu :** L'interface intercepte l'erreur proprement. Un message d'erreur est affiché (ex: *"Error : Cannot find file ..."*) et le plateau actuel reste intact.
+
+### Étape 4 : Prévention de perte de données
+* Depuis votre partie en cours, jouez un nouveau coup (l'état est désormais "non sauvegardé").
+* Tapez la commande `quit`.
+* **Résultat attendu :** L'automate de l'interface détecte que l'état courant contient des mutations non persistées. L'action est suspendue et une confirmation est demandée au joueur : *"You are about to quit. Save current game? [y/N]: >>"*.
+
+
 ---
 
 ##  Modes de jeu
@@ -257,7 +338,7 @@ pkill amazons
 
 ---
 
-## 🌐 Mode Multijoueur Réseau
+## Mode Multijoueur Réseau
 
 Pour tester l'intégralité des fonctionnalités réseau (découverte, invitations, anti-triche et multiplexage), nous recommandons d'ouvrir **3 terminaux** distincts sur la même machine.
 

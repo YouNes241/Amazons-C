@@ -29,13 +29,48 @@
  */
 
 // Network Return Codes
-#define NET_SUCCESS 0           // Generic success code
-#define NET_ERROR -1            // Generic error code
-#define NET_BUFFER_FULL -2      // Buffer capacity reached
-#define NET_NO_DATA 0           // No data available to read
-#define NET_DATA_READ 1         // Data successfully retrieved
-#define EXTRACT_NO_MSG 0        // No message found in buffer
-#define EXTRACT_MSG_OVERFLOW -1 // Message exceeds buffer capacity
+
+/** @brief Indicates a successful network operation.
+ * @details Used as a return code to signify that a network operation completed
+ * successfully.
+ */
+#define NET_SUCCESS 0
+
+/** @brief Indicates a generic network error.
+ * @details Used as a return code to signify that a network operation
+ * encountered an unspecified error.
+ */
+#define NET_ERROR -1
+
+/** @brief Indicates that the network buffer is full.
+ * @details Used as a return code to signify that the buffer has reached its
+ * capacity and cannot accept more data.
+ */
+#define NET_BUFFER_FULL -2
+
+/** @brief Indicates that no data is available to read.
+ * @details Used as a return code to signify that the network operation did not
+ * retrieve any data.
+ */
+#define NET_NO_DATA 0
+
+/** @brief Indicates that data was successfully retrieved.
+ * @details Used as a return code to signify that the network operation
+ * successfully retrieved data.
+ */
+#define NET_DATA_READ 1
+
+/** @brief Indicates that no message was found in the buffer.
+ * @details Used as a return code to signify that the buffer does not contain a
+ * complete message.
+ */
+#define EXTRACT_NO_MSG 0
+
+/** @brief Indicates that a message exceeds the buffer capacity.
+ * @details Used as a return code to signify that the message size is larger
+ * than the buffer can handle.
+ */
+#define EXTRACT_MSG_OVERFLOW -1
 
 // Socket & Connection Settings
 #define INVALID_SOCKET -1
@@ -142,6 +177,7 @@
 #define LISTEN_SOCKET_INDEX 0
 #define TARGET_SERVER 0
 #define TARGET_CLIENT_1 1
+
 // Game Logic & State
 //  Opponent status
 #define HAS_OPPONENT 1
@@ -156,6 +192,131 @@
 // no game assigned
 #define NO_GAME_ID -1
 
+/** @brief Represents an invalid socket descriptor.
+ * @details Used to indicate that a socket operation failed or the socket is
+ * not initialized.
+ */
+#define INVALID_SOCKET -1
+
+/** @brief Maximum number of pending connections in the server's listen queue.
+ * @details Determines how many incoming connections can be queued before the
+ * server starts rejecting new ones.
+ */
+#define MAX_PENDING_CONNECTIONS 10
+
+/** @brief Enables or disables a socket option.
+ * @details Used to configure socket behavior, such as allowing address reuse.
+ */
+#define ENABLE_SOCKET_OPTION 1
+
+/** @brief Immediate timeout value for polling.
+ * @details Indicates that the poll operation should return immediately without
+ * waiting.
+ */
+#define POLL_TIMEOUT_IMMEDIATE 0
+
+/** @brief Represents a single file descriptor count.
+ * @details Used in scenarios where only one file descriptor is being monitored
+ * or processed.
+ */
+#define SINGLE_FD_COUNT 1
+
+/** @brief Port number used for UDP discovery.
+ * @details This port is used by the server and clients to broadcast and
+ * discover each other on the network.
+ */
+#define UDP_DISCOVERY_PORT 12346
+
+/** @brief Interval for broadcasting UDP discovery messages.
+ * @details Specifies the time in seconds between successive broadcast messages
+ * sent by the server.
+ */
+#define BROADCAST_INTERVAL_SEC 10
+
+/** @brief Timeout duration for server operations.
+ * @details Specifies the maximum time in seconds the server will wait for
+ * certain operations before timing out.
+ */
+#define SERVER_TIMEOUT_SEC 30
+
+/** @brief Timeout duration for game invitations.
+ * @details Specifies the time in seconds before a game invitation expires if
+ * not accepted or declined.
+ */
+#define TIMEOUT_INVITE 300.0 // 5 minutes in seconds
+
+/** @brief Timeout duration for client inactivity.
+ * @details Specifies the time in seconds before a client is considered
+ * inactive and disconnected.
+ */
+#define CLIENT_TIMEOUT_SEC 60
+
+/** @brief Maximum number of clients supported by the server.
+ * @details Determines the upper limit of simultaneous client connections the
+ * server can handle.
+ */
+#define MAX_CLIENTS 64
+
+/** @brief Index of the first client in the client list.
+ * @details Used as the starting index for iterating through connected clients.
+ */
+#define FIRST_CLIENT_INDEX 1
+
+/** @brief Index of the listening socket in the file descriptor list.
+ * @details Used to identify the server's listening socket among other file
+ * descriptors.
+ */
+#define LISTEN_SOCKET_INDEX 0
+
+/** @brief Target index for the server in communication scenarios.
+ * @details Represents the server as the target in client-server communication.
+ */
+#define TARGET_SERVER 0
+
+/** @brief Target index for the first client in communication scenarios.
+ * @details Represents the first client as the target in server-client
+ * communication.
+ */
+#define TARGET_CLIENT_1 1
+
+/** @brief Indicates that a player has an opponent.
+ * @details Used in game logic to signify that a player is currently matched
+ * with an opponent.
+ */
+#define HAS_OPPONENT 1
+
+/** @brief Indicates that a player does not have an opponent.
+ * @details Used in game logic to signify that a player is not currently
+ * matched with an opponent.
+ */
+#define NO_OPPONENT 0
+
+/** @brief Value representing the white player's role.
+ * @details Used in game initialization and role assignment.
+ */
+#define ROLE_WHITE_VAL 0
+
+/** @brief Value representing the black player's role.
+ * @details Used in game initialization and role assignment.
+ */
+#define ROLE_BLACK_VAL 1
+
+/** @brief String representation of the white player's role.
+ * @details Used in network communication and role assignment.
+ */
+#define ROLE_WHITE_STR "0"
+
+/** @brief String representation of the black player's role.
+ * @details Used in network communication and role assignment.
+ */
+#define ROLE_BLACK_STR "1"
+
+/** @brief Value indicating no game is assigned to a player.
+ * @details Used in game logic to signify that a player is not currently part
+ * of any game.
+ */
+#define NO_GAME_ID -1
+
 /* ==========================================================================
  * 2. Full Structure Definitions
  * ==========================================================================
@@ -164,7 +325,8 @@
 /** @brief Enumeration for client status within the server context. */
 typedef enum
 {
-  /** @brief Client is connected to the server but has not yet joined a game.
+  /** @brief Client is connected to the server but has not yet joined a
+   * game.
    */
   CLIENT_STATUS_CONNECTED,
   /** @brief Client is in the lobby and waiting for an invite. */
@@ -174,7 +336,8 @@ typedef enum
   CLIENT_STATUS_AWAY,
   /** @brief Client has sent an invite and is waiting for acceptance. */
   CLIENT_STATUS_WAITGAME,
-  /** @brief Client is currently in a game (either as challenger or invitee).
+  /** @brief Client is currently in a game (either as challenger or
+   * invitee).
    */
   CLIENT_STATUS_INGAME
 } ClientStatus;
