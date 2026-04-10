@@ -27,19 +27,16 @@ cli_display_board (const GameState *state)
           switch (content)
             {
             case CONTENT_WHITE_QUEEN:
-              printf ("[W]");
+              printf ("[%s]", _ ("W"));
               break;
             case CONTENT_BLACK_QUEEN:
-              printf ("[B]");
+              printf ("[%s]", _ ("B"));
               break;
             case CONTENT_ARROW:
               printf (" X ");
               break;
             case CONTENT_EMPTY:
               printf (" . ");
-              break;
-            default:
-              printf (" ? ");
               break;
             }
         }
