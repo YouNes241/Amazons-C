@@ -306,6 +306,48 @@ execute_quit (CliContext *ctx)
   printf (_ ("Goodbye!\n"));
 }
 
+static void
+print_load_result (SaveReturn status, const char *filename)
+{
+  switch (status)
+    {
+    case SAVE_OK:
+      printf ("Game loaded successfully!\n");
+      break;
+    case ERR_FILE_NOT_FOUND:
+      printf ("Error: Could not open file '%s'.\n", filename);
+      break;
+    case ERR_BOARD_SIZE_MISMATCH:
+      printf (
+          _ ("Error: Declared board_size does not match the actual number of "
+             "rows.\n"));
+      break;
+    case ERR_CORRUPT_GAME_SECTION:
+      printf (
+          _ ("Error: Invalid board data (illegal characters or column count "
+             "mismatch).\n"));
+      break;
+    case ERR_CORRUPT_HISTORY_SECTION:
+      printf (
+          _ ("Error: Corrupted move history (invalid syntax or out-of-bounds "
+             "move).\n"));
+      break;
+    case ERR_PREMATURE_EOF:
+      printf (
+          _ ("Error: Unexpected end of file (incomplete [game] section).\n"));
+      break;
+    case ERR_INVALID_QUEEN_COUNT:
+      printf (
+          _ ("Error: Cheating detected or corrupted file (exactly 4 queens "
+             "per player required).\n"));
+      break;
+    default:
+      printf (
+          _ ("Error: An unknown error occurred while loading the file.\n"));
+      break;
+    }
+}
+
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {
@@ -772,7 +814,9 @@ handle_command (char *input_buffer, CliContext *ctx)
           printf (_ ("[ERROR] Missing filename. Usage: load <filename>\n"));
           return;
         }
-      if (load_game (filename, ctx->config, ctx->current_game) == 0)
+      SaveReturn status = load_game (filename, ctx->config, ctx->current_game);
+
+      if (status == SAVE_OK)
         {
 
           ctx->in_main_menu = false;
@@ -791,7 +835,7 @@ handle_command (char *input_buffer, CliContext *ctx)
         }
       else
         {
-          printf (_ ("[ERROR] Failed to load the game.\n"));
+          print_load_result (status, filename);
         }
       return;
     }
@@ -804,7 +848,7 @@ handle_command (char *input_buffer, CliContext *ctx)
     {
       execute_hint (ctx);
     }
-  else if (strncmp (input_buffer, "show", 5) == 0)
+  else if (strncmp (input_buffer, "show ", 5) == 0)
     {
       char *sub = input_buffer + 5;
       if (strcmp (sub, "history") == 0)

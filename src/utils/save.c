@@ -8,6 +8,11 @@
 #define KEY_SIZE 64
 #define VAL_SIZE 64
 
+/**
+ * @brief Writes the [settings] section to the save file.
+ * @param file   Output file handle.
+ * @param config Current game configuration.
+ */
 static void
 write_settings (FILE *file, game_config_t *config)
 {
@@ -43,6 +48,11 @@ write_settings (FILE *file, game_config_t *config)
   fprintf (file, "\n");
 }
 
+/**
+ * @brief Writes the [game] section and board layout to the save file.
+ * @param file  Output file handle.
+ * @param state Current game state.
+ */
 static void
 write_game_state (FILE *file, GameState *state)
 {
@@ -79,6 +89,11 @@ write_game_state (FILE *file, GameState *state)
   fprintf (file, "\n");
 }
 
+/**
+ * @brief Writes the [history] section from the undo stack to the save file.
+ * @param file  Output file handle.
+ * @param state Current game state.
+ */
 static void
 write_history (FILE *file, GameState *state)
 {
@@ -109,6 +124,13 @@ write_history (FILE *file, GameState *state)
   fprintf (file, "\n");
 }
 
+/**
+ * @brief Saves the current game configuration, board, and move history.
+ * @param filepath Destination file path.
+ * @param config   Current configuration.
+ * @param state    Current game state.
+ * @return 0 on success, -1 on error.
+ */
 int
 save_game (const char *filepath, game_config_t *config, GameState *state)
 {
@@ -145,7 +167,7 @@ clean_line (const char *input, char *output, bool *in_block_comment)
       if (*in_block_comment)
         {
           if (input[i] == '}')
-            *in_block_comment = false; // on a fini le bloc de commentaire
+            *in_block_comment = false; // end of block comment
           continue;
         }
 
@@ -157,7 +179,7 @@ clean_line (const char *input, char *output, bool *in_block_comment)
         }
 
       if (input[i] == '#')
-        break; // Fin de la ligne utile
+        break; // rest of the line is a comment
 
       output[j++] = input[i];
     }
@@ -170,7 +192,7 @@ clean_line (const char *input, char *output, bool *in_block_comment)
  */
 static void
 parse_settings_line (const char *trimmed, game_config_t *config,
-                     GameState *state, int *row_index)
+                     int *row_index)
 {
   char key[KEY_SIZE], val_str[VAL_SIZE];
 
@@ -179,16 +201,13 @@ parse_settings_line (const char *trimmed, game_config_t *config,
       if (strcmp (key, "board_size") == 0)
         {
           int new_size = atoi (val_str);
-          if (new_size >= MIN_BOARD_SIZE && new_size <= MAX_BOARD_SIZE)
+          if (new_size < MIN_BOARD_SIZE || new_size > MAX_BOARD_SIZE)
             {
-              config->board_size = new_size;
+              new_size = DEFAULT_BOARD_SIZE;
             }
-          else
-            {
-              config->board_size = DEFAULT_BOARD_SIZE;
-            }
-          state->size = config->board_size;
-          *row_index = state->size - 1;
+
+          config->board_size = new_size;
+          *row_index = new_size - 1;
         }
       else if (strcmp (key, "time_per_player") == 0)
         {
@@ -265,65 +284,82 @@ parse_settings_line (const char *trimmed, game_config_t *config,
  * board or current player accordingly. The row_index pointer is used to keep
  * track of which row of the board we are filling, and it is updated as we
  * read lines of the board.
+ * @param trimmed  A cleaned line from the game section.
+ * @param state    The game state to modify.
+ * @param row_index Pointer to the current board row being filled.
+ * @return 0 on success, -1 on error.
  */
-static void
+static int
 parse_board_line (const char *trimmed, GameState *state, int *row_index)
 {
   if (strcmp (trimmed, "W") == 0)
     {
       state->current_player = PLAYER_WHITE;
-      return;
+      return 0;
     }
   else if (strcmp (trimmed, "B") == 0)
     {
       state->current_player = PLAYER_BLACK;
-      return;
+      return 0;
     }
 
-  if (*row_index >= 0 && *row_index < state->size)
+  if (*row_index < 0 || *row_index >= state->size)
     {
-      int col = 0;
-      for (int i = 0; trimmed[i] != '\0' && col < state->size; i++)
-        {
-          char c = trimmed[i];
-          if (c == ' ' || c == '\t')
-            continue;
-
-          switch (c)
-            {
-            case 'Q':
-              state->board[*row_index][col] = CONTENT_WHITE_QUEEN;
-              break;
-            case 'q':
-              state->board[*row_index][col] = CONTENT_BLACK_QUEEN;
-              break;
-            case 'x':
-            case 'X':
-              state->board[*row_index][col] = CONTENT_ARROW;
-              break;
-            case '_':
-            default:
-              state->board[*row_index][col] = CONTENT_EMPTY;
-              break;
-            }
-          col++;
-        }
-
-      while (col < state->size)
-        {
-          state->board[*row_index][col] = CONTENT_EMPTY;
-          col++;
-        }
-
-      (*row_index)--;
+      return -1;
     }
+
+  int col = 0;
+  for (int i = 0; trimmed[i] != '\0'; i++)
+    {
+      char c = trimmed[i];
+      if (c == ' ' || c == '\t')
+        continue;
+
+      // too many columns on this board row
+      if (col >= state->size)
+        {
+          return -1;
+        }
+
+      switch (c)
+        {
+        case 'Q':
+          state->board[*row_index][col] = CONTENT_WHITE_QUEEN;
+          break;
+        case 'q':
+          state->board[*row_index][col] = CONTENT_BLACK_QUEEN;
+          break;
+        case 'x':
+        case 'X':
+          state->board[*row_index][col] = CONTENT_ARROW;
+          break;
+        case '_':
+          state->board[*row_index][col] = CONTENT_EMPTY;
+          break;
+        default:
+          return -1; // invalid character in board row
+        }
+      col++;
+    }
+
+  // not enough columns on this board row
+  if (col < state->size)
+    {
+      return -1;
+    }
+
+  (*row_index)--;
+  return 0;
 }
 
 /**
  * @brief Parses a line from the [history] section and adds the move to the
  * undo stack.
+ * @param trimmed A cleaned line from the history section.
+ * @param state   The game state to modify.
+ * @return 0 on success, -1 on error.
  */
-static void
+static int
 parse_history_line (const char *trimmed, GameState *state)
 {
   char qs_c, qd_c, ad_c;
@@ -331,42 +367,52 @@ parse_history_line (const char *trimmed, GameState *state)
 
   if (sscanf (trimmed, "%c%d-%c%d/%c%d", &qs_c, &qs_r, &qd_c, &qd_r, &ad_c,
               &ad_r)
-      == 6)
+      != 6)
     {
-      Move m;
-      m.queen_src.col = qs_c - 'a';
-      m.queen_src.row = qs_r - 1;
-      m.queen_dst.col = qd_c - 'a';
-      m.queen_dst.row = qd_r - 1;
-      m.arrow_dst.col = ad_c - 'a';
-      m.arrow_dst.row = ad_r - 1;
-
-      if (m.queen_src.col < state->size && m.queen_src.row < state->size
-          && m.queen_dst.col < state->size && m.queen_dst.row < state->size
-          && m.arrow_dst.col < state->size && m.arrow_dst.row < state->size)
-        {
-          if (state->undo_stack.top < state->undo_stack.capacity - 1)
-            {
-              state->undo_stack.top++;
-              state->undo_stack.data[state->undo_stack.top] = m;
-            }
-        }
+      return -1;
     }
+
+  int qsc_idx = qs_c - 'a';
+  int qsr_idx = qs_r - 1;
+  int qdc_idx = qd_c - 'a';
+  int qdr_idx = qd_r - 1;
+  int adc_idx = ad_c - 'a';
+  int adr_idx = ad_r - 1;
+
+  if (qsc_idx < 0 || qsc_idx >= state->size || qsr_idx < 0
+      || qsr_idx >= state->size || qdc_idx < 0 || qdc_idx >= state->size
+      || qdr_idx < 0 || qdr_idx >= state->size || adc_idx < 0
+      || adc_idx >= state->size || adr_idx < 0 || adr_idx >= state->size)
+    {
+      return -1;
+    }
+
+  Move m;
+  m.queen_src.col = qsc_idx;
+  m.queen_src.row = qsr_idx;
+  m.queen_dst.col = qdc_idx;
+  m.queen_dst.row = qdr_idx;
+  m.arrow_dst.col = adc_idx;
+  m.arrow_dst.row = adr_idx;
+
+  if (state->undo_stack.top >= state->undo_stack.capacity - 1)
+    {
+      return -1;
+    }
+
+  state->undo_stack.top++;
+  state->undo_stack.data[state->undo_stack.top] = m;
+
+  return 0;
 }
 
-/**
- * @brief Main function to load a game from a file. It reads the file line by
- * line, determines which section it is in, and calls the appropriate parsing
- * function for each line. It also initializes the undo and redo stacks.
- */
-int
+SaveReturn
 load_game (const char *filepath, game_config_t *config, GameState *state)
 {
   FILE *file = fopen (filepath, "r");
   if (file == NULL)
     {
-      fprintf (stderr, "ERROR : Cannot open file %s\n", filepath);
-      return -1;
+      return ERR_FILE_NOT_FOUND;
     }
 
   char raw_line[BUFFER_SIZE];
@@ -375,6 +421,7 @@ load_game (const char *filepath, game_config_t *config, GameState *state)
 
   int current_section = 0; // 1=settings, 2=game, 3=history
   int row_index = -1;
+  int allocated_memory = state->size;
 
   state->undo_stack.top = -1;
   state->redo_stack.top = -1;
@@ -401,24 +448,71 @@ load_game (const char *filepath, game_config_t *config, GameState *state)
         }
       if (strncmp (trimmed, "[history]", 9) == 0)
         {
+          if (current_section == 2 && row_index != -1)
+            {
+              fclose (file);
+              return ERR_BOARD_SIZE_MISMATCH;
+            }
           current_section = 3;
           continue;
         }
 
       if (current_section == 1)
         {
-          parse_settings_line (trimmed, config, state, &row_index);
+          parse_settings_line (trimmed, config, &row_index);
+          if (config->board_size > allocated_memory)
+            {
+              fclose (file);
+              return ERR_BOARD_SIZE_MISMATCH;
+            }
+          state->size = config->board_size;
         }
       else if (current_section == 2)
         {
-          parse_board_line (trimmed, state, &row_index);
+          if (parse_board_line (trimmed, state, &row_index) == -1)
+            {
+              fclose (file);
+              return ERR_CORRUPT_GAME_SECTION;
+            }
         }
       else if (current_section == 3)
         {
-          parse_history_line (trimmed, state);
+          if (parse_history_line (trimmed, state) == -1)
+            {
+              fclose (file);
+              return ERR_CORRUPT_HISTORY_SECTION;
+            }
         }
     }
 
   fclose (file);
-  return 0;
+  if (current_section == 2 && row_index != -1)
+    {
+      return ERR_PREMATURE_EOF;
+    }
+
+  int white_queens = 0;
+  int black_queens = 0;
+
+  for (int r = 0; r < state->size; r++)
+    {
+      for (int c = 0; c < state->size; c++)
+        {
+          if (state->board[r][c] == CONTENT_WHITE_QUEEN)
+            {
+              white_queens++;
+            }
+          else if (state->board[r][c] == CONTENT_BLACK_QUEEN)
+            {
+              black_queens++;
+            }
+        }
+    }
+
+  if (white_queens != 4 || black_queens != 4)
+    {
+      return ERR_INVALID_QUEEN_COUNT;
+    }
+
+  return SAVE_OK;
 }

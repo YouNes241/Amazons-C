@@ -1156,8 +1156,8 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
       game_init (&dummy_state);
 
       int original_size = ctx->gameConfig->board_size;
-
-      if (load_game (path, ctx->gameConfig, &dummy_state) == 0)
+      SaveReturn status = load_game (path, ctx->gameConfig, &dummy_state);
+      if (status == SAVE_OK)
         {
           g_print ("[GUI] Game loaded from : %s\n", path);
 
@@ -1181,7 +1181,30 @@ on_load_file_selected (GObject *source_object, GAsyncResult *res,
       else
         {
           ctx->gameConfig->board_size = original_size;
-          g_print ("[GUI ERROR] Loading failed.\n");
+          switch (status)
+            {
+            case ERR_FILE_NOT_FOUND:
+              g_print ("[GUI ERROR] File not found: %s\n", path);
+              break;
+            case ERR_BOARD_SIZE_MISMATCH:
+              g_print ("[GUI ERROR] Board size mismatch in file.\n");
+              break;
+            case ERR_CORRUPT_GAME_SECTION:
+              g_print ("[GUI ERROR] Invalid board data in section [game].\n");
+              break;
+            case ERR_CORRUPT_HISTORY_SECTION:
+              g_print ("[GUI ERROR] Invalid moves in section [history].\n");
+              break;
+            case ERR_PREMATURE_EOF:
+              g_print ("[GUI ERROR] Unexpected end of file.\n");
+              break;
+            case ERR_INVALID_QUEEN_COUNT:
+              g_print ("[GUI ERROR] Corruption: Invalid number of queens.\n");
+              break;
+            default:
+              g_print ("[GUI ERROR] Unknown error code: %d\n", status);
+              break;
+            }
         }
 
       game_cleanup (&dummy_state);
@@ -1298,8 +1321,8 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
           game_init (&dummy_state);
 
           int original_size = ctx->gameConfig->board_size;
-
-          if (load_game (path, ctx->gameConfig, &dummy_state) == 0)
+          SaveReturn status = load_game (path, ctx->gameConfig, &dummy_state);
+          if (status == SAVE_OK)
             {
               g_print ("[GUI] Load game from : %s\n", path);
 
@@ -1323,7 +1346,33 @@ on_load_response (GtkNativeDialog *native, int response, gpointer user_data)
           else
             {
               ctx->gameConfig->board_size = original_size;
-              g_print ("[GUI ERROR] Loading failed.\n");
+              switch (status)
+                {
+                case ERR_FILE_NOT_FOUND:
+                  g_print ("[GUI ERROR] File not found: %s\n", path);
+                  break;
+                case ERR_BOARD_SIZE_MISMATCH:
+                  g_print ("[GUI ERROR] Board size mismatch in file.\n");
+                  break;
+                case ERR_CORRUPT_GAME_SECTION:
+                  g_print (
+                      "[GUI ERROR] Invalid board data in section [game].\n");
+                  break;
+                case ERR_CORRUPT_HISTORY_SECTION:
+                  g_print (
+                      "[GUI ERROR] Invalid moves in section [history].\n");
+                  break;
+                case ERR_PREMATURE_EOF:
+                  g_print ("[GUI ERROR] Unexpected end of file.\n");
+                  break;
+                case ERR_INVALID_QUEEN_COUNT:
+                  g_print (
+                      "[GUI ERROR] Corruption: Invalid number of queens.\n");
+                  break;
+                default:
+                  g_print ("[GUI ERROR] Unknown error code: %d\n", status);
+                  break;
+                }
             }
 
           game_cleanup (&dummy_state);
