@@ -54,6 +54,8 @@ protected:
     ctx = (GuiContext *)calloc (1, sizeof (GuiContext));
     ASSERT_NE (ctx, nullptr);
 
+    // Allocation dynamique pour que setupBoard() puisse le free() sans crasher
+    // !
     ctx->gameState = (GameState *)calloc (1, sizeof (GameState));
     ASSERT_NE (ctx->gameState, nullptr);
 
@@ -174,7 +176,6 @@ protected:
       }
   }
 
-  // Helper to create a legal move for white
   Move
   createLegalWhiteMove ()
   {
@@ -190,6 +191,17 @@ protected:
 };
 
 bool GuiCallbacksTest::gtk_initialized = false;
+
+/* ==========================================================================
+ * BASIC NAVIGATION TESTS
+ * ==========================================================================
+ */
+
+TEST_F (GuiCallbacksTest, QuitButtonClick_WindowClose)
+{
+  GtkWidget *btn = gtk_button_new ();
+  EXPECT_NO_THROW (quitButtonClick (GTK_BUTTON (btn), ctx));
+}
 
 /* ==========================================================================
  * SHORTCUT TESTS
@@ -414,6 +426,137 @@ TEST_F (GuiCallbacksTest, HintButtonClick_HintAlreadyActive)
 }
 
 /* ==========================================================================
+ * DRAG & DROP TESTS (High Coverage Target)
+ * ==========================================================================
+ */
+
+TEST_F (GuiCallbacksTest, OnDrag_AIThinking_ReturnsNull)
+{
+  ctx->is_ai_thinking = true;
+  GtkDragSource *source = gtk_drag_source_new ();
+  gtk_widget_add_controller (ctx->gameBoard[0], GTK_EVENT_CONTROLLER (source));
+
+  EXPECT_EQ (onDrag (source, 0, 0, ctx), nullptr);
+}
+
+TEST_F (GuiCallbacksTest, OnDrag_EmptyCell_ReturnsNull)
+{
+  ctx->is_ai_thinking = false;
+  ctx->gameState->board[0][0] = CONTENT_EMPTY;
+
+  GtkDragSource *source = gtk_drag_source_new ();
+  gtk_widget_add_controller (ctx->gameBoard[0], GTK_EVENT_CONTROLLER (source));
+
+  EXPECT_EQ (onDrag (source, 0, 0, ctx), nullptr);
+}
+
+TEST_F (GuiCallbacksTest, OnDrag_WrongPhase_ReturnsNull)
+{
+  ctx->is_ai_thinking = false;
+  ctx->currentPhase = PHASE_SHOOT_ARROW;
+  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN; // Cell 3 (x=3, y=0)
+
+  GtkDragSource *source = gtk_drag_source_new ();
+  gtk_widget_add_controller (ctx->gameBoard[3], GTK_EVENT_CONTROLLER (source));
+
+  EXPECT_EQ (onDrag (source, 0, 0, ctx), nullptr);
+}
+
+TEST_F (GuiCallbacksTest, OnDrag_WrongPlayerQueen_ReturnsNull)
+{
+  ctx->is_ai_thinking = false;
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+  ctx->gameState->current_player = PLAYER_WHITE;
+
+  // White trying to grab Black Queen at D10 (cell 93)
+  ctx->gameState->board[9][3] = CONTENT_BLACK_QUEEN;
+
+  GtkDragSource *source = gtk_drag_source_new ();
+  gtk_widget_add_controller (ctx->gameBoard[93],
+                             GTK_EVENT_CONTROLLER (source));
+
+  EXPECT_EQ (onDrag (source, 0, 0, ctx), nullptr);
+}
+
+TEST_F (GuiCallbacksTest, OnDrop_WrongPhase_ReturnsFalse)
+{
+  ctx->currentPhase = PHASE_SHOOT_ARROW;
+
+  GtkDropTarget *target = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+  gtk_widget_add_controller (ctx->gameBoard[1], GTK_EVENT_CONTROLLER (target));
+
+  GValue val = G_VALUE_INIT;
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, "0"); // Trying to drop from cell 0
+
+  EXPECT_FALSE (onDrop (target, &val, 0, 0, ctx));
+  g_value_unset (&val);
+}
+
+TEST_F (GuiCallbacksTest, OnDrop_IllegalMove_ReturnsFalse)
+{
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  GtkDropTarget *target = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+  gtk_widget_add_controller (ctx->gameBoard[1], GTK_EVENT_CONTROLLER (target));
+
+  g_object_set_data (G_OBJECT (ctx->gameBoard[1]), "is_legal_move",
+                     GINT_TO_POINTER (0));
+
+  GValue val = G_VALUE_INIT;
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, "0");
+
+  EXPECT_FALSE (onDrop (target, &val, 0, 0, ctx));
+  g_value_unset (&val);
+}
+
+TEST_F (GuiCallbacksTest, OnDrop_DestNotEmpty_ReturnsFalse)
+{
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  GtkDropTarget *target = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+  gtk_widget_add_controller (ctx->gameBoard[1], GTK_EVENT_CONTROLLER (target));
+
+  g_object_set_data (G_OBJECT (ctx->gameBoard[1]), "is_legal_move",
+                     GINT_TO_POINTER (1));
+  ctx->gameState->board[0][1] = CONTENT_ARROW; // Dest is occupied
+
+  GValue val = G_VALUE_INIT;
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, "0");
+
+  EXPECT_FALSE (onDrop (target, &val, 0, 0, ctx));
+  g_value_unset (&val);
+}
+
+TEST_F (GuiCallbacksTest, OnDrop_Success)
+{
+  ctx->currentPhase = PHASE_MOVE_QUEEN;
+
+  GtkDropTarget *target = gtk_drop_target_new (G_TYPE_STRING, GDK_ACTION_COPY);
+  gtk_widget_add_controller (ctx->gameBoard[13],
+                             GTK_EVENT_CONTROLLER (target)); // cell (3, 1)
+
+  g_object_set_data (G_OBJECT (ctx->gameBoard[13]), "is_legal_move",
+                     GINT_TO_POINTER (1));
+  ctx->gameState->board[0][3] = CONTENT_WHITE_QUEEN; // Source D1
+  ctx->gameState->board[1][3] = CONTENT_EMPTY;       // Dest D2
+
+  GValue val = G_VALUE_INIT;
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, "3"); // Source cell_index 3
+
+  EXPECT_TRUE (onDrop (target, &val, 0, 0, ctx));
+
+  EXPECT_EQ (ctx->currentPhase, PHASE_SHOOT_ARROW);
+  EXPECT_EQ (ctx->gameState->board[1][3], CONTENT_WHITE_QUEEN); // Moved
+  EXPECT_EQ (ctx->gameState->board[0][3], CONTENT_EMPTY);       // Emptied
+
+  g_value_unset (&val);
+}
+
+/* ==========================================================================
  * QUIT GAME BUTTON TESTS
  * ==========================================================================
  */
@@ -475,6 +618,12 @@ TEST_F (GuiCallbacksTest, DisconnectFromServerButtonClick)
  * ==========================================================================
  */
 
+TEST_F (GuiCallbacksTest, OnRightClick_AIThinking)
+{
+  ctx->is_ai_thinking = true;
+  EXPECT_NO_THROW (onRightClick (nullptr, 0, 0, 0, ctx));
+}
+
 TEST_F (GuiCallbacksTest, OnRightClick_NotShootArrowPhase)
 {
   ctx->currentPhase = PHASE_MOVE_QUEEN;
@@ -500,6 +649,13 @@ TEST_F (GuiCallbacksTest, OnRightClick_ShootArrowPhase)
  * FIRE ARROW TESTS
  * ==========================================================================
  */
+
+TEST_F (GuiCallbacksTest, FireArrow_AIThinking)
+{
+  ctx->is_ai_thinking = true;
+  GtkWidget *btn = ctx->gameBoard[0];
+  EXPECT_NO_THROW (fireArrow (btn, ctx));
+}
 
 TEST_F (GuiCallbacksTest, FireArrow_NotShootArrowPhase)
 {
@@ -528,6 +684,30 @@ TEST_F (GuiCallbacksTest, FireArrow_NotLegalMove)
   g_object_set_data (G_OBJECT (btn), "is_legal_move", GINT_TO_POINTER (0));
 
   EXPECT_NO_THROW (fireArrow (btn, ctx));
+}
+
+TEST_F (GuiCallbacksTest, FireArrow_Success)
+{
+  ctx->currentPhase = PHASE_SHOOT_ARROW;
+  ctx->isNetworkMatch = false;
+  ctx->is_ai_thinking = false;
+  ctx->gameState->current_player = PLAYER_WHITE;
+
+  ctx->tmpQueenSrc.col = 3;
+  ctx->tmpQueenSrc.row = 0;
+  ctx->tmpQueenDst.col = 3;
+  ctx->tmpQueenDst.row = 1;
+
+  ctx->gameState->board[0][3] = CONTENT_EMPTY;
+  ctx->gameState->board[1][3] = CONTENT_WHITE_QUEEN;
+
+  GtkWidget *btn = ctx->gameBoard[23]; // cell (3, 2)
+  g_object_set_data (G_OBJECT (btn), "is_legal_move", GINT_TO_POINTER (1));
+
+  EXPECT_NO_THROW (fireArrow (btn, ctx));
+
+  EXPECT_EQ (ctx->currentPhase, PHASE_MOVE_QUEEN);
+  EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK); // Turn ended!
 }
 
 /* ==========================================================================
