@@ -36,6 +36,7 @@ target_include_directories(unit_tests PRIVATE
 )
 target_compile_definitions(amazons_core PUBLIC UNIT_TESTING)
 target_compile_definitions(unit_tests PRIVATE UNIT_TESTING)
+target_compile_definitions(unit_tests PRIVATE GRESOURCE_FILE="${CMAKE_BINARY_DIR}/resources.gresource")
 
 # --- LINKING ---
 #OpenMP

@@ -378,10 +378,13 @@ bindingKeyPressed (GtkEventControllerKey *controller, guint keyval,
           = (char *)g_object_get_data (G_OBJECT (button), "target_str");
       assert (target_str != NULL);
 
-      strncpy (target_str, accel_name, SHORTCUTS_SIZE - 1);
-      target_str[SHORTCUTS_SIZE - 1] = '\0';
+      snprintf (target_str, SHORTCUTS_SIZE, "%s", accel_name);
 
       gtk_button_set_label (GTK_BUTTON (button), accel_name);
+    }
+
+  if (accel_name)
+    {
       g_free (accel_name);
     }
 
