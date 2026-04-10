@@ -19,6 +19,9 @@
 
 static CliContext *g_ctx_ref = NULL;
 
+/** @brief Clears the global CLI context.
+ * @details This function sets the global CLI context reference to NULL.
+ */
 void
 clear_global_cli_context (void)
 {
@@ -53,6 +56,9 @@ static char *commands_list[] = { "new",
                                  "scoreboard",
                                  NULL };
 
+/** @brief Generates command completions for Readline.
+ * @details This function is used by Readline to provide command completions.
+ */
 static char *
 command_generator (const char *text, int state)
 {
@@ -71,6 +77,9 @@ command_generator (const char *text, int state)
   return NULL;
 }
 
+/** @brief Generates command completions for Readline.
+ * @details This function is used by Readline to provide command completions.
+ */
 char **
 amazons_completion (const char *text, int start, int end)
 {
@@ -85,6 +94,10 @@ amazons_completion (const char *text, int start, int end)
  */
 ///@{
 
+/** @brief Updates the prompt string based on the current context.
+ * @details This function updates the prompt string displayed to the user based
+ * on the current game state and context.
+ */
 void
 update_prompt_string (CliContext *ctx)
 {
@@ -130,6 +143,9 @@ update_prompt_string (CliContext *ctx)
   rl_set_prompt (prompt_str);
 }
 
+/** @brief Refreshes the CLI prompt.
+ * @details This function updates the CLI prompt based on the current context.
+ */
 void
 refresh_prompt (CliContext *ctx)
 {
@@ -139,6 +155,10 @@ refresh_prompt (CliContext *ctx)
   rl_redisplay ();
 }
 
+/** @brief Executes the hint command.
+ * @details This function provides advice to the player based on the current
+ * game state.
+ */
 void
 execute_hint (CliContext *ctx)
 {
@@ -180,7 +200,10 @@ execute_hint (CliContext *ctx)
 }
 
 ///@}
-
+/** @brief Updates the game configuration based on the provided key-value pair.
+ * @details This function updates the game configuration with the specified
+ * parameter and value.
+ */
 static void
 update_config (game_config_t *config, const char *key, const char *val)
 {
@@ -270,6 +293,10 @@ check_blitz_timeout (void)
   return 0;
 }
 
+/** @brief Executes the quit command.
+ * @details This function handles the quit command and performs necessary
+ * cleanup.
+ */
 static void
 execute_quit (CliContext *ctx)
 {
@@ -348,6 +375,12 @@ print_load_result (SaveReturn status, const char *filename)
     }
 }
 
+/** @brief Handles a command entered by the user.
+ * @details This function processes the command string and executes the
+ * corresponding action.
+ * @param input_buffer The buffer containing the user's input.
+ * @param ctx The CLI context structure.
+ */
 void
 handle_command (char *input_buffer, CliContext *ctx)
 {

@@ -73,16 +73,57 @@
 #define EXTRACT_MSG_OVERFLOW -1
 
 // Socket & Connection Settings
+/** @brief Invalid socket value.
+ * @details Used to indicate an invalid socket descriptor.
+ */
 #define INVALID_SOCKET -1
+/** @brief Maximum number of pending connections.
+ * @details Used to control the maximum number of connections that can be
+ * pending at any given time.
+ */
 #define MAX_PENDING_CONNECTIONS 10
+/** @brief Flag to enable socket options.
+ * @details Used to control whether socket options are enabled.
+ */
 #define ENABLE_SOCKET_OPTION 1
+/** @brief Poll timeout for immediate returns.
+ * @details Used to control the poll timeout for immediate returns.
+ */
 #define POLL_TIMEOUT_IMMEDIATE 0
+/** @brief Count of single file descriptors.
+ * @details Used to control the number of single file descriptors.
+ */
 #define SINGLE_FD_COUNT 1
 
+/** @brief default port of the udp discovery service.
+ * @details Used for UDP discovery of game servers on the local network.
+ * This port is used by the server to broadcast its presence and by clients to
+ * listen for available servers.
+ */
 #define UDP_DISCOVERY_PORT 12346
+
+/** @brief Interval for broadcasting UDP discovery messages.
+ * @details Used to control how frequently the server broadcasts its presence
+ * on the local network.
+ */
 #define BROADCAST_INTERVAL_SEC 10
+
+/** @brief Timeout for server responses.
+ * @details Used to control how long the server will wait for a response from
+ * a client before considering the connection stale.
+ */
 #define SERVER_TIMEOUT_SEC 30
+
+/** @brief Timeout for invite messages.
+ * @details Used to control how long an invite message is valid before it is
+ * considered expired.
+ */
 #define TIMEOUT_INVITE 300.0 // 5 minutes in seconds
+
+/** @brief Timeout for client connections.
+ * @details Used to control how long a client connection is allowed to remain
+ * inactive before it is closed.
+ */
 #define CLIENT_TIMEOUT_SEC 60
 
 // Buffer Sizes & Limits
@@ -172,24 +213,72 @@
 #define MAX_DISCOVERED_SERVERS 10
 
 // Client & Target Indexing
+
+/** @brief Maximum number of clients supported by the server.
+ * @details Determines the upper limit of simultaneous client connections the
+ * server can handle.
+ */
 #define MAX_CLIENTS 64
+
+/** @brief Index of the first client in the client list.
+ * @details Used as the starting index for iterating through connected clients.
+ */
 #define FIRST_CLIENT_INDEX 1
+
+/** @brief Index of the listening socket in the file descriptor list.
+ * @details Used to identify the server's listening socket among other file
+ * descriptors.
+ */
 #define LISTEN_SOCKET_INDEX 0
+
+/** @brief Target index for the server in communication scenarios.
+ * @details Represents the server as the target in client-server communication.
+ */
 #define TARGET_SERVER 0
+
+/** @brief Target index for the first client in communication scenarios.
+ * @details Represents the first client as the target in server-client
+ * communication.
+ */
 #define TARGET_CLIENT_1 1
 
 // Game Logic & State
 //  Opponent status
+
+/** @brief Indicates that a player has an opponent.
+ * @details Used in game logic to signify that a player is currently matched
+ * with an opponent.
+ */
 #define HAS_OPPONENT 1
+/** @brief Indicates that a player does not have an opponent.
+ * @details Used in game logic to signify that a player is not currently
+ * matched with an opponent.
+ */
 #define NO_OPPONENT 0
 
 // Roles and initialization
+
+/** @brief Value representing the white role.
+ * @details Used in game logic to identify the white player.
+ */
 #define ROLE_WHITE_VAL 0
+/** @brief Value representing the black role.
+ * @details Used in game logic to identify the black player.
+ */
 #define ROLE_BLACK_VAL 1
+/** @brief String representation of the white role.
+ * @details Used in game logic to identify the white player.
+ */
 #define ROLE_WHITE_STR "0"
+/** @brief String representation of the black role.
+ * @details Used in game logic to identify the black player.
+ */
 #define ROLE_BLACK_STR "1"
 
 // no game assigned
+/** @brief Represents no game ID assigned.
+ * @details Used to indicate that a player is not currently in a game.
+ */
 #define NO_GAME_ID -1
 
 /** @brief Represents an invalid socket descriptor.
@@ -473,8 +562,18 @@ struct ClientContext
       buffer; // Personal buffer used by the client to receive server messages
 };
 
+/** @brief Saves the scoreboard data to a file.
+ * @param manager Pointer to the network manager.
+ */
 void SaveScoreboard (NetworkManager *manager);
+/** @brief Loads the scoreboard data for a specific client.
+ * @param client Pointer to the connected client.
+ */
 void LoadScoreboardForClient (ConnectedClient *client);
+/** @brief Updates the statistics for a player.
+ * @param username The username of the player.
+ * @param won Indicates whether the player won the game.
+ */
 void NetworkManager_UpdatePlayerStats (const char *username, bool won);
 
 #endif // NETWORK_INTERNAL_H

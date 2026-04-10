@@ -22,6 +22,9 @@ static bool is_it_ai_turn (game_config_t *config, PlayerColor current_p);
 static gpointer guiAIWorkerThread (gpointer user_data);
 ///@}
 
+/** @brief Checks if it's the AI's turn and triggers the AI to play
+ * @param ctx The GUI context structure
+ */
 void
 guiCheckAndTriggerAI (GuiContext *ctx)
 {
@@ -47,6 +50,10 @@ guiCheckAndTriggerAI (GuiContext *ctx)
     }
 }
 
+/** @brief Handles a player's move
+ * @param ctx The GUI context structure
+ * @param move The move to handle
+ */
 void
 guiHandlePlayerMove (GuiContext *ctx, Move move)
 {
@@ -107,6 +114,9 @@ guiHandlePlayerMove (GuiContext *ctx, Move move)
     }
 }
 
+/** @brief Starts a new game
+ * @param ctx The GUI context structure
+ */
 void
 guiStartNewGame (GuiContext *ctx)
 {
@@ -161,6 +171,9 @@ guiStartNewGame (GuiContext *ctx)
   guiCheckAndTriggerAI (ctx);
 }
 
+/** @brief Disconnects from the network and restarts the network manager
+ * @param ctx The GUI context structure
+ */
 void
 guiDisconnectAndRestartNetwork (GuiContext *ctx)
 {
@@ -173,6 +186,9 @@ guiDisconnectAndRestartNetwork (GuiContext *ctx)
   ctx->isNetworkMatch = false;
 }
 
+/** @brief Runs the GUI mode
+ * @param config The game configuration
+ */
 void
 run_gui_mode (game_config_t *config)
 {
@@ -213,6 +229,10 @@ run_gui_mode (game_config_t *config)
   free (ctx->networkManager);
 }
 
+/** @brief Applies the AI's move to the game state
+ * @param user_data The user data containing the AI worker data
+ * @return G_SOURCE_REMOVE
+ */
 static gboolean
 guiAIApplyMove (gpointer user_data)
 {
@@ -231,6 +251,11 @@ guiAIApplyMove (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+/** @brief Checks if it's the AI's turn
+ * @param config The game configuration
+ * @param current_p The current player
+ * @return true if it's the AI's turn, false otherwise
+ */
 static bool
 is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 {
@@ -243,6 +268,10 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
   return false;
 }
 
+/** @brief The main network tick loop for the GUI
+ * @param user_data The user data containing the GUI context
+ * @return G_SOURCE_CONTINUE
+ */
 static gboolean
 gui_network_tick_loop (gpointer user_data)
 {
@@ -255,6 +284,10 @@ gui_network_tick_loop (gpointer user_data)
   return G_SOURCE_CONTINUE;
 }
 
+/** @brief Plays the AI's turn
+ * @param user_data The user data containing the GUI context
+ * @return G_SOURCE_REMOVE
+ */
 static gboolean
 guiAIPlayTurn (gpointer user_data)
 {
@@ -292,6 +325,10 @@ guiAIPlayTurn (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+/** @brief The AI worker thread function
+ * @param user_data The user data containing the AI worker data
+ * @return NULL
+ */
 static gpointer
 guiAIWorkerThread (gpointer user_data)
 {

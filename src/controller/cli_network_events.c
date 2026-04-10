@@ -23,8 +23,9 @@ static CliContext *g_net_ctx = NULL;
  */
 ///@{
 
-/**
- * @brief Called when the game starts
+/** @brief Called when the game starts
+ * @param color The color of the player
+ * @param board_size The size of the board
  */
 static void
 on_game_started (PlayerColor color, int board_size)
@@ -44,6 +45,9 @@ on_game_started (PlayerColor color, int board_size)
   refresh_prompt (g_net_ctx);
 }
 
+/** @brief Called when a network move is received
+ * @param m The move received
+ */
 static void
 on_network_move_received (Move m)
 {
@@ -64,8 +68,9 @@ on_network_move_received (Move m)
     }
 }
 
-/**
- * @brief Called when the network informs us that the opponent has timed out
+/** @brief Called when the network informs us that the opponent has timed out
+ * @details This function is called when the network detects that the opponent
+ * has exceeded their time limit.
  */
 static void
 on_network_timeout_received ()
@@ -91,6 +96,9 @@ on_network_timeout_received ()
   refresh_prompt (g_net_ctx);
 }
 
+/** @brief Called when a player joins the game
+ * @param name The name of the player
+ */
 static void
 on_player_joined (const char *name)
 {
@@ -128,6 +136,9 @@ on_player_disconnected (const char *reason)
   refresh_prompt (g_net_ctx);
 }
 
+/** @brief Called when a game error occurs
+ * @param err The error message
+ */
 static void
 on_game_error (const char *err)
 {
@@ -138,6 +149,9 @@ on_game_error (const char *err)
   refresh_prompt (g_net_ctx);
 }
 
+/** @brief Called when an invitation is received
+ * @param challenger_id The ID of the player who sent the invitation
+ */
 static void
 on_invitation_received (int challenger_id)
 {
@@ -147,6 +161,9 @@ on_invitation_received (int challenger_id)
   printf (_ ("Type 'accept' to play, or 'decline' to refuse.\n"));
   refresh_prompt (g_net_ctx);
 }
+/** @brief Called when an invitation is declined
+ * @param message The decline message
+ */
 static void
 on_invitation_declined (const char *message)
 {
@@ -158,6 +175,9 @@ on_invitation_declined (const char *message)
   refresh_prompt (g_net_ctx);
 }
 
+/** @brief Called when a list of players is received
+ * @param list_text The text containing the list of players
+ */
 static void
 on_list_received (const char *list_text)
 {
@@ -169,24 +189,35 @@ on_list_received (const char *list_text)
 
 ///@}
 
-/**
- * @brief Creates and returns a NetworkEvents structure configured for CLI
+/** @brief Creates and returns a NetworkEvents structure configured for CLI
  * callbacks
+ * @param ctx The CLI context structure
+ * @return A NetworkEvents structure with all callbacks initialized
  */
 NetworkEvents
 create_cli_network_events (CliContext *ctx)
 {
-  g_net_ctx = ctx; ///< Link the context for callback access
-
+  /** @brief Links the CLI context for callback access */
+  g_net_ctx = ctx;
+  /** @brief Initializes the network events structure */
   NetworkEvents events = { 0 };
+  /** @brief Assigns the callback functions */
   events.OnMoveReceived = on_network_move_received;
+  /** @brief Called when the game starts */
   events.OnGameStarted = on_game_started;
+  /** @brief Called when a player joins the game */
   events.OnPlayerJoined = on_player_joined;
+  /** @brief Called when a game error occurs */
   events.OnGameError = on_game_error;
+  /** @brief Called when an invitation is received */
   events.OnInvitationReceived = on_invitation_received;
+  /** @brief Called when an invitation is declined */
   events.OnInvitationDeclined = on_invitation_declined;
+  /** @brief Called when a player disconnects */
   events.OnPlayerDisconnected = on_player_disconnected;
+  /** @brief Called when a timeout is received */
   events.OnTimeoutReceived = on_network_timeout_received;
+  /** @brief Called when a list of players is received */
   events.OnListReceived = on_list_received;
   return events;
 }

@@ -50,6 +50,9 @@ is_it_ai_turn (game_config_t *config, PlayerColor current_p)
 /** @name LINEHANDLER Readline Callback
  */
 ///@{
+/** @brief The readline callback function for handling user input
+ * @param line The user input line
+ */
 TEST_STATIC void
 linehandler (char *line)
 {
@@ -97,6 +100,10 @@ linehandler (char *line)
 /** @name RUN_INTERACTIVE_MODE Main Interactive Game Loop
  */
 ///@{
+
+/** @brief Runs the interactive mode for the CLI
+ * @param config The game configuration
+ */
 void
 run_interactive_mode (game_config_t *config)
 {
