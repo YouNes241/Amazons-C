@@ -244,7 +244,7 @@ eval_rth (const BitboardState *state)
         score += (float)((db == INF_DIST ? potential_bonus : db) - dw);
       else if (db < dw)
         score -= (float)((dw == INF_DIST ? potential_bonus : dw) - db);
-        }
+    }
   return score;
 }
 
