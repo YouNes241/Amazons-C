@@ -295,7 +295,7 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_SetsThinkingLock)
   config.ai_white_cfg.enabled = true;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   ctx->ai_white = create_ai ("random", cm);
   ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
 
@@ -309,7 +309,7 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_BlackTurn)
   config.ai_black_cfg.enabled = true;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   ctx->ai_black = create_ai ("random", cm);
   ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
 
@@ -324,7 +324,7 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_AIDisabledForCurrentPlayer)
   config.ai_black_cfg.enabled = true;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   ctx->ai_black = create_ai ("random", cm);
   ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
 
@@ -405,7 +405,7 @@ TEST_F (GuiControllerTest, AsyncAI_InterruptByNetwork)
   config.ai_white_cfg.enabled = true;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   ctx->ai_white = create_ai ("random", cm);
   ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
 
@@ -437,7 +437,7 @@ TEST_F (GuiControllerTest, AsyncAI_Execution_BlackTurn)
   config.ai_black_cfg.enabled = true;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   ctx->ai_black = create_ai ("random", cm);
   ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
 

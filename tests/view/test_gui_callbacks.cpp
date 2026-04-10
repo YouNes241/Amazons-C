@@ -1185,7 +1185,7 @@ TEST_F (GuiCallbacksTest, GuiHintApplyMove_Basic)
   ASSERT_NE (data->ai, nullptr);
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   *(data->ai) = create_ai ("random", cm);
 
   data->ctx = ctx;
@@ -1209,7 +1209,7 @@ TEST_F (GuiCallbacksTest, GuiHintApplyMove_PlayerChanged)
   ASSERT_NE (data->ai, nullptr);
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   *(data->ai) = create_ai ("random", cm);
 
   data->ctx = ctx;
@@ -1241,7 +1241,7 @@ TEST_F (GuiCallbacksTest, GuiHintWorkerThread_GeneratesMove)
   ASSERT_NE (data->ai, nullptr);
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
   *(data->ai) = create_ai ("random", cm);
 
   data->ctx = ctx;

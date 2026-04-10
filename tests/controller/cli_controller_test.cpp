@@ -1010,7 +1010,7 @@ TEST_F (ControllerTestFixture, AITurnLogic)
   cfg.board_size = 10;
 
   Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
+  ConfigMap cm = { 0, params };
 
   AI_Interface my_ai = create_ai ("random", cm);
   ASSERT_NE (my_ai.vtable, nullptr);
