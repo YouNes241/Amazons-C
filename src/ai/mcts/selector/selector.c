@@ -1,9 +1,23 @@
+/** @brief Gets the appropriate selector based on the ID.
+ * @param id The selector ID.
+ * @param c_uct The UCT constant.
+ * @param c_puct The PUCT constant.
+ * @param model_path The path to the ML model.
+ * @return The selected selector.
+ */
 #include "selector.h"
 #ifdef TF_IS_USABLE
 #include "ml.h"
 #endif
 #include "uct.h"
 
+/** @brief Gets the appropriate selector based on the ID.
+ * @param id The selector ID.
+ * @param c_uct The UCT constant.
+ * @param c_puct The PUCT constant.
+ * @param model_path The path to the ML model.
+ * @return The selected selector.
+ */
 ISelector
 get_selector (SelectorID id, double c_uct, double c_puct,
               const char *model_path)

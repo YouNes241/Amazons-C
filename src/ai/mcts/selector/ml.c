@@ -1,9 +1,16 @@
+/** @brief Implementation for the ML-based selector for the MCTS algorithm.
+ * @file ml.c
+ */
+
 #include "ml.h"
 #include "bitboard.h" // Assuming you have a way to read the board
 #include "i_selector.h"
 #include "mcts.h"
 #include "tf_wrapper.h"
 
+/**
+ * @brief Data structure for the ML-based selector.
+ */
 typedef struct
 {
   double c_puct;
@@ -148,6 +155,12 @@ create_select_ml (ISelector *selector, double c_puct, const char *model_path)
 
 #else
 
+/** @brief Creates an ML selector (stub implementation when TensorFlow is not
+ * available).
+ * @param selector The selector to initialize.
+ * @param c_puct The PUCT constant.
+ * @param model_path The path to the ML model.
+ */
 void
 create_select_ml (ISelector *selector, double c_puct, const char *model_path)
 {

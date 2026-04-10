@@ -1,6 +1,13 @@
+/** @file game_engine.c
+ * @brief Implementation for the game engine logic for the Amazons game.
+ */
+
 #include "game_engine.h"
 #include <stddef.h>
 
+/** @brief Updates the blitz timer for the current game state.
+ * @param state The game state to update.
+ */
 void
 update_blitz_timer (GameState *state)
 {
@@ -23,6 +30,11 @@ update_blitz_timer (GameState *state)
     state->status = GAME_OVER_WHITE_WINS;
 }
 
+/** @brief Pushes a move onto the move stack.
+ * @param stack The move stack to push onto.
+ * @param m The move to push.
+ * @return true if the move was pushed successfully, false otherwise.
+ */
 static bool
 push_move (MoveStack *stack, Move m)
 {
@@ -41,6 +53,12 @@ push_move (MoveStack *stack, Move m)
   return true;
 }
 
+/** @brief Pops a move from the move stack.
+ * @param stack The move stack to pop from.
+ * @param success A pointer to a boolean indicating if the operation was
+ * successful.
+ * @return The popped move.
+ */
 static Move
 pop_move (MoveStack *stack, bool *success)
 {
@@ -67,18 +85,33 @@ pop_move (MoveStack *stack, bool *success)
   return popped_move;
 }
 
+/** @brief Clears the move stack.
+ * @param stack The move stack to clear.
+ */
 static void
 clear_stack (MoveStack *stack)
 {
   stack->top = -1;
 }
 
+/** @brief Converts coordinates to a bitboard index.
+ * @param x The x-coordinate.
+ * @param y The y-coordinate.
+ * @param board_size The size of the board.
+ * @return The bitboard index.
+ */
 uint8_t
 coords_to_index (uint8_t x, uint8_t y, uint8_t board_size)
 {
   return (y * board_size) + x;
 }
 
+/** @brief Converts a bitboard index to coordinates.
+ * @param index The bitboard index.
+ * @param board_size The size of the board.
+ * @param out_x A pointer to the output x-coordinate.
+ * @param out_y A pointer to the output y-coordinate.
+ */
 void
 index_to_coords (uint8_t index, uint8_t board_size, uint8_t *out_x,
                  uint8_t *out_y)
@@ -93,6 +126,12 @@ index_to_coords (uint8_t index, uint8_t board_size, uint8_t *out_x,
     }
 }
 
+/** @brief Checks if the given coordinates are valid for the board.
+ * @param x The x-coordinate.
+ * @param y The y-coordinate.
+ * @param board_size The size of the board.
+ * @return true if the coordinates are valid, false otherwise.
+ */
 bool
 is_valid_coord (int8_t x, int8_t y, uint8_t board_size)
 {
@@ -100,6 +139,9 @@ is_valid_coord (int8_t x, int8_t y, uint8_t board_size)
   return (x >= 0 && x < board_size && y >= 0 && y < board_size);
 }
 
+/** @brief Places the initial queens on the board.
+ * @param state The game state.
+ */
 static void
 place_initial_queens (GameState *state)
 {
@@ -138,6 +180,9 @@ place_initial_queens (GameState *state)
     }
 }
 
+/** @brief Initializes the game state.
+ * @param state The game state to initialize.
+ */
 void
 game_init (GameState *state)
 {
@@ -216,6 +261,9 @@ game_init (GameState *state)
   place_initial_queens (state);
 }
 
+/** @brief Cleans up the game state.
+ * @param state The game state to clean up.
+ */
 void
 game_cleanup (GameState *state)
 {
@@ -250,6 +298,10 @@ game_cleanup (GameState *state)
     }
 }
 
+/** @brief Applies a move to the game state.
+ * @param state The game state to update.
+ * @param move The move to apply.
+ */
 void
 apply_move (GameState *state, Move move)
 {
@@ -332,6 +384,11 @@ is_path_clear (Bitboard obstacles, Position src, Position dst,
   return true;
 }
 
+/** @brief Checks if a move is legal.
+ * @param state The game state.
+ * @param move The move to check.
+ * @return true if the move is legal, false otherwise.
+ */
 bool
 is_move_legal (const GameState *state, Move move)
 {
@@ -391,6 +448,12 @@ is_move_legal (const GameState *state, Move move)
   return true;
 }
 
+/** @brief Checks if a player has any legal moves remaining.
+ * @param obstacles The bitboard representing obstacles.
+ * @param start_index The index of the starting square.
+ * @param board_size The size of the board.
+ * @return true if the player has a legal move, false otherwise.
+ */
 bool
 has_legal_move (Bitboard obstacles, uint8_t start_index, uint8_t board_size)
 {
@@ -423,6 +486,11 @@ has_legal_move (Bitboard obstacles, uint8_t start_index, uint8_t board_size)
   return false;
 }
 
+/** @brief Checks if the game is over.
+ * @param state The game state.
+ * @param current_player The current player.
+ * @return true if the game is over, false otherwise.
+ */
 bool
 is_game_over (const GameState *state, PlayerColor current_player)
 {
@@ -458,6 +526,12 @@ is_game_over (const GameState *state, PlayerColor current_player)
   return true;
 }
 
+/** @brief Gets all squares reachable from a starting position.
+ * @param obstacles The bitboard representing obstacles.
+ * @param start_index The index of the starting square.
+ * @param board_size The size of the board.
+ * @return A Bitboard representing all reachable squares.
+ */
 Bitboard
 get_reachable_squares (Bitboard obstacles, uint8_t start_index,
                        uint8_t board_size)
@@ -494,6 +568,15 @@ get_reachable_squares (Bitboard obstacles, uint8_t start_index,
   return reachable;
 }
 
+/** @brief Generates all possible moves for the current player.
+ * @param bb_white The bitboard representing white queens.
+ * @param bb_black The bitboard representing black queens.
+ * @param bb_arrows The bitboard representing arrows.
+ * @param board_size The size of the board.
+ * @param current_player The current player.
+ * @param out_moves An array to store the generated moves.
+ * @return The number of generated moves.
+ */
 int
 generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
                     uint8_t board_size, PlayerColor current_player,
@@ -553,6 +636,11 @@ generate_all_moves (Bitboard bb_white, Bitboard bb_black, Bitboard bb_arrows,
   return count;
 }
 
+/** @brief Gets the winner of the game.
+ * @param state The game state.
+ * @return The color of the winning player, or NO_PLAYER if the game is not
+ * over.
+ */
 PlayerColor
 get_winner (const GameState *state)
 {
@@ -574,6 +662,10 @@ get_winner (const GameState *state)
     }
 }
 
+/** @brief Undoes the last move.
+ * @param state The game state.
+ * @return true if the move was successfully undone, false otherwise.
+ */
 bool
 undo_move (GameState *state)
 {
@@ -605,6 +697,10 @@ undo_move (GameState *state)
   return true;
 }
 
+/** @brief Applies a redo move to the game state.
+ * @param state The game state to update.
+ * @param move The move to apply.
+ */
 void
 apply_redo (GameState *state, Move move)
 {
@@ -624,6 +720,10 @@ apply_redo (GameState *state, Move move)
       = (state->current_player == PLAYER_WHITE) ? PLAYER_BLACK : PLAYER_WHITE;
 }
 
+/** @brief Redoes the last undone move.
+ * @param state The game state.
+ * @return true if the move was successfully redone, false otherwise.
+ */
 bool
 redo_move (GameState *state)
 {

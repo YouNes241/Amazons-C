@@ -1,9 +1,18 @@
+/** @file bitboard_state.c
+ * @brief Implementation for the bitboard state management for the Amazons
+ * game.
+ */
+
 #include "bitboard_state.h"
 #include "evaluator.h"
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 
+/** @brief Creates an empty bitboard state.
+ * @param size The size of the board.
+ * @return BitboardState The created empty state.
+ */
 BitboardState
 create_empty_state (uint8_t size)
 {
@@ -16,6 +25,9 @@ create_empty_state (uint8_t size)
   return state;
 }
 
+/** @brief Prints the bitboard state.
+ * @param state The bitboard state to print.
+ */
 void
 bitboard_state_print (const BitboardState *state)
 {
@@ -67,6 +79,10 @@ bitboard_state_print (const BitboardState *state)
   printf ("--------------------------\n\n");
 }
 
+/** @brief Synchronizes the bitboard state with the logic state.
+ * @param gs The game state to synchronize from.
+ * @return BitboardState The synchronized bitboard state.
+ */
 BitboardState
 sync_from_logic (const GameState *gs)
 {
@@ -238,6 +254,10 @@ get_legal_moves (const BitboardState *state, Move *moves_array)
   return count;
 }
 
+/** @brief Gets a random move directly from the current bitboard state.
+ * @param state The current bitboard state.
+ * @return Move A randomly selected legal move.
+ */
 Move
 get_direct_random_move (const BitboardState *state)
 {
