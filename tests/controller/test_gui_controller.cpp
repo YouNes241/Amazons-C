@@ -1,9 +1,11 @@
 /**
  * @file test_gui_controller.cpp
- * @brief Unit tests for gui_controller.c functions
+ * @brief Unit tests for the GUI controller functions.
  *
- * Tests cover GUI controller logic including AI turn management,
- * player move handling, and network operations.
+ * @details This test suite covers the logic of the GUI controller defined
+ * in `gui_controller.c`. It tests AI turn management, player move handling,
+ * game-over states, and network interruptions. A headless GTK environment
+ * is used to mock UI components safely.
  */
 
 #include <cstdlib>
@@ -22,15 +24,27 @@ extern "C"
 #include "network_common.h"
 }
 
+/**
+ * @class GuiControllerTest
+ * @brief Test fixture for GUI controller unit tests.
+ *
+ * @details Sets up a mock GUI context, dynamic game state, and network manager
+ * to test the controller logic without requiring a physical display.
+ */
 class GuiControllerTest : public ::testing::Test
 {
 protected:
-  GuiContext *ctx;
-  GameState game;
-  game_config_t config;
-  NetworkManager net_mgr;
-  static bool gtk_initialized;
+  GuiContext *ctx;        /**< Pointer to the main GUI context. */
+  GameState game;         /**< Local game state structure. */
+  game_config_t config;   /**< Game configuration structure. */
+  NetworkManager net_mgr; /**< Network manager instance. */
+  static bool
+      gtk_initialized; /**< Flag to ensure GTK initializes only once. */
 
+  /**
+   * @brief Sets up the test suite before any tests run.
+   * Initializes GTK in headless mode to prevent CI environment crashes.
+   */
   static void
   SetUpTestSuite ()
   {
@@ -42,6 +56,11 @@ protected:
       }
   }
 
+  /**
+   * @brief Prepares the environment before each test.
+   * Allocates memory, initializes default game settings, and sets up mock GTK
+   * widgets.
+   */
   void
   SetUp () override
   {
@@ -84,6 +103,10 @@ protected:
       }
   }
 
+  /**
+   * @brief Cleans up the environment after each test.
+   * Frees allocated memory and destroys AI instances.
+   */
   void
   TearDown () override
   {
@@ -110,6 +133,10 @@ protected:
       }
   }
 
+  /**
+   * @brief Creates a standard legal move for the White player.
+   * @return A valid Move structure.
+   */
   Move
   createLegalWhiteMove ()
   {
@@ -123,6 +150,10 @@ protected:
     return m;
   }
 
+  /**
+   * @brief Creates an illegal move for testing engine rejection.
+   * @return An invalid Move structure.
+   */
   Move
   createIllegalMove ()
   {
@@ -137,8 +168,11 @@ protected:
   }
 
   /**
-   * Helper pour construire un plateau "Game Over" parfait et 100% légal.
-   * Tout est bloqué, sauf un unique mouvement pour le joueur gagnant.
+   * @brief Helper to construct a perfect and 100% legal "Game Over" board.
+   * @details Everything is blocked except for a single winning move path for
+   * the specified player.
+   *
+   * @param winner The player color that is set up to win.
    */
   void
   setupGameOverBoard (PlayerColor winner)
@@ -167,12 +201,16 @@ protected:
         ctx->gameState->current_player = PLAYER_BLACK;
       }
 
-    // On libère un petit chemin diagonal pour le coup fatal
+    // Free a small diagonal path for the fatal move
     ctx->gameState->board[4][4] = CONTENT_EMPTY;
     ctx->gameState->board[3][3] = CONTENT_EMPTY;
   }
 
-  // Le coup fatal universel associé à la fonction ci-dessus
+  /**
+   * @brief Returns the universal fatal move associated with the
+   * `setupGameOverBoard` layout.
+   * @return The winning Move structure.
+   */
   Move
   getFatalMove ()
   {
@@ -251,21 +289,21 @@ TEST_F (GuiControllerTest, HandlePlayerMove_GameOver_WhiteWins)
 TEST_F (GuiControllerTest, HandlePlayerMove_GameOverNetwork_IWon)
 {
   ctx->isNetworkMatch = true;
-  ctx->selfPlayerColor = PLAYER_WHITE; // Je suis Blanc
-  setupGameOverBoard (PLAYER_WHITE);   // Blanc Gagne
+  ctx->selfPlayerColor = PLAYER_WHITE; // I am White
+  setupGameOverBoard (PLAYER_WHITE);   // White wins
 
   EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
-  EXPECT_FALSE (ctx->isNetworkMatch); // Le match est clôturé
+  EXPECT_FALSE (ctx->isNetworkMatch); // The match is closed
 }
 
 TEST_F (GuiControllerTest, HandlePlayerMove_GameOverNetwork_ILost)
 {
   ctx->isNetworkMatch = true;
-  ctx->selfPlayerColor = PLAYER_WHITE; // Je suis Blanc
-  setupGameOverBoard (PLAYER_BLACK);   // Noir Gagne
+  ctx->selfPlayerColor = PLAYER_WHITE; // I am White
+  setupGameOverBoard (PLAYER_BLACK);   // Black wins
 
   EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
-  EXPECT_FALSE (ctx->isNetworkMatch);
+  EXPECT_FALSE (ctx->isNetworkMatch); // The match is closed
 }
 
 /* ==========================================================================
@@ -339,7 +377,7 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_AIDisabledForCurrentPlayer)
 
 TEST_F (GuiControllerTest, StartNewGame_WithAIParams_Both)
 {
-  // Test d'injection de paramètres poussés
+  // Test advanced parameter injection
   config.ai_white_cfg.enabled = true;
   strncpy (config.ai_white_cfg.name, "random", MAX_AI_STR_LEN);
   config.ai_white_cfg.param_count = 1;
@@ -412,7 +450,7 @@ TEST_F (GuiControllerTest, AsyncAI_InterruptByNetwork)
   guiCheckAndTriggerAI (ctx);
   EXPECT_TRUE (ctx->is_ai_thinking);
 
-  // Un paquet réseau arrive pendant que l'IA s'apprête à jouer !
+  // A network packet arrives while the AI is preparing to play!
   ctx->isNetworkMatch = true;
 
   int max_retries = 100;
@@ -424,11 +462,11 @@ TEST_F (GuiControllerTest, AsyncAI_InterruptByNetwork)
       max_retries--;
     }
 
-  // Le timer a été interrompu et supprimé (G_SOURCE_REMOVE) sans appliquer le
-  // coup
+  // The timer was interrupted and removed (G_SOURCE_REMOVE) without applying
+  // the move
   EXPECT_FALSE (ctx->is_ai_thinking);
   EXPECT_EQ (ctx->gameState->current_player,
-             PLAYER_WHITE); // Le tour n'a pas changé
+             PLAYER_WHITE); // The turn did not change
 }
 
 TEST_F (GuiControllerTest, AsyncAI_Execution_BlackTurn)
@@ -453,7 +491,7 @@ TEST_F (GuiControllerTest, AsyncAI_Execution_BlackTurn)
       max_retries--;
     }
 
-  // L'IA Noire a joué, le tour passe aux Blancs
+  // Black AI played, turn passes to White
   EXPECT_FALSE (ctx->is_ai_thinking);
   EXPECT_EQ (ctx->gameState->current_player, PLAYER_WHITE);
 }

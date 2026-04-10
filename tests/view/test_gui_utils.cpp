@@ -1,9 +1,11 @@
 /**
  * @file test_gui_utils.cpp
- * @brief Unit tests for gui_utils.c functions
+ * @brief Unit tests for GUI utility functions.
  *
- * Tests cover GUI utility functions, GTK object manipulations,
- * CSS class toggling, and dynamic board generation.
+ * @details This test suite covers the utility functions defined in
+ * `gui_utils.c`. It tests GTK object manipulations, CSS class toggling for
+ * drawing pieces and highlights, dynamic board generation, and UI state
+ * updates in a safely mocked headless GTK environment.
  */
 
 #include <cstdlib>
@@ -19,25 +21,43 @@ extern "C"
 #include "network_common.h"
 }
 
+/**
+ * @class GuiUtilsTest
+ * @brief Test fixture for GUI utilities.
+ *
+ * @details Initializes a headless GTK environment and sets up a mock
+ * application state with essential widgets (Stack, TextView, Grid, etc.)
+ * to safely test rendering logic and UI updates without a physical display.
+ */
 class GuiUtilsTest : public ::testing::Test
 {
 protected:
-  GuiContext *ctx;
-  game_config_t config;
-  NetworkManager net_mgr;
-  static bool gtk_initialized;
+  GuiContext *ctx;        /**< Pointer to the main GUI context. */
+  game_config_t config;   /**< Game configuration structure. */
+  NetworkManager net_mgr; /**< Network manager instance. */
+  static bool
+      gtk_initialized; /**< Flag to ensure GTK initializes only once. */
 
+  /**
+   * @brief Sets up the test suite before any tests run.
+   * Initializes GTK in headless mode to prevent CI environment crashes.
+   */
   static void
   SetUpTestSuite ()
   {
     if (!gtk_initialized)
       {
-        g_setenv ("GTK_A11Y", "none", TRUE);
+        g_setenv ("GTK_A11Y", "none", TRUE); // Anti-crash for headless mode
         gtk_init ();
         gtk_initialized = true;
       }
   }
 
+  /**
+   * @brief Prepares the environment before each test.
+   * Allocates memory, initializes default game settings, and sets up mock GTK
+   * widgets.
+   */
   void
   SetUp () override
   {
@@ -53,6 +73,7 @@ protected:
     ctx->gameState->size = 10;
     game_init (ctx->gameState);
 
+    // Minimal GTK simulation setup
     ctx->mainWindow = GTK_WINDOW (gtk_window_new ());
     ctx->mainStack = GTK_STACK (gtk_stack_new ());
 
@@ -66,6 +87,7 @@ protected:
     GtkWidget *gameBox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     g_object_set_data (G_OBJECT (ctx->mainStack), "game_box", gameBox);
 
+    // Manually allocate a mock board for simple unit tests
     int boardSize = config.board_size * config.board_size;
     ctx->gameBoard = (GtkWidget **)calloc (boardSize, sizeof (GtkWidget *));
     for (int i = 0; i < boardSize; i++)
@@ -80,6 +102,10 @@ protected:
       }
   }
 
+  /**
+   * @brief Cleans up the environment after each test.
+   * Frees the allocated GUI context and associated resources.
+   */
   void
   TearDown () override
   {
@@ -98,6 +124,9 @@ bool GuiUtilsTest::gtk_initialized = false;
  * ==========================================================================
  */
 
+/**
+ * @brief Tests the default initialization of the GUI Context.
+ */
 TEST_F (GuiUtilsTest, InitGuiContext_SetsDefaults)
 {
   EXPECT_EQ (ctx->gameConfig, &config);
@@ -114,6 +143,9 @@ TEST_F (GuiUtilsTest, InitGuiContext_SetsDefaults)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies rendering of a White Queen piece.
+ */
 TEST_F (GuiUtilsTest, DrawPiece_WhiteQueen)
 {
   GtkWidget *cell = ctx->gameBoard[0];
@@ -127,6 +159,9 @@ TEST_F (GuiUtilsTest, DrawPiece_WhiteQueen)
   EXPECT_STREQ (gtk_label_get_text (lbl), "♛");
 }
 
+/**
+ * @brief Verifies rendering of a Black Queen piece.
+ */
 TEST_F (GuiUtilsTest, DrawPiece_BlackQueen)
 {
   GtkWidget *cell = ctx->gameBoard[1];
@@ -140,6 +175,9 @@ TEST_F (GuiUtilsTest, DrawPiece_BlackQueen)
   EXPECT_STREQ (gtk_label_get_text (lbl), "♛");
 }
 
+/**
+ * @brief Verifies rendering of an Arrow piece.
+ */
 TEST_F (GuiUtilsTest, DrawPiece_Arrow)
 {
   GtkWidget *cell = ctx->gameBoard[2];
@@ -152,10 +190,15 @@ TEST_F (GuiUtilsTest, DrawPiece_Arrow)
   EXPECT_STREQ (gtk_label_get_text (lbl), "🔥");
 }
 
+/**
+ * @brief Verifies that rendering an empty cell correctly clears previous
+ * contents.
+ */
 TEST_F (GuiUtilsTest, DrawPiece_Empty)
 {
   GtkWidget *cell = ctx->gameBoard[3];
 
+  // First place a queen to ensure drawPiece clears it properly
   drawPiece (ctx, 3, 0, CONTENT_WHITE_QUEEN);
   drawPiece (ctx, 3, 0, CONTENT_EMPTY);
 
@@ -168,8 +211,12 @@ TEST_F (GuiUtilsTest, DrawPiece_Empty)
   EXPECT_STREQ (gtk_label_get_text (lbl), "");
 }
 
+/**
+ * @brief Verifies that the entire board is synchronized with the GameState.
+ */
 TEST_F (GuiUtilsTest, DrawBoard_UpdatesAllCells)
 {
+  // Manually place elements in the GameState
   ctx->gameState->board[0][0] = CONTENT_WHITE_QUEEN;
   ctx->gameState->board[9][9] = CONTENT_BLACK_QUEEN;
   ctx->gameState->board[5][5] = CONTENT_ARROW;
@@ -186,6 +233,10 @@ TEST_F (GuiUtilsTest, DrawBoard_UpdatesAllCells)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies that highlight clearing removes CSS classes and internal
+ * markers.
+ */
 TEST_F (GuiUtilsTest, ClearHighlights_RemovesCSSAndData)
 {
   gtk_widget_add_css_class (ctx->gameBoard[0], "highlight-valid");
@@ -201,8 +252,13 @@ TEST_F (GuiUtilsTest, ClearHighlights_RemovesCSSAndData)
              0);
 }
 
+/**
+ * @brief Verifies that valid reachable squares are properly highlighted using
+ * the engine logic.
+ */
 TEST_F (GuiUtilsTest, HighlightReachableSquares_AppliesClasses)
 {
+  // Setup: Clear the board and place a single White Queen at (3,3)
   for (int i = 0; i < 100; i++)
     ctx->gameState->board[i / 10][i % 10] = CONTENT_EMPTY;
 
@@ -213,9 +269,11 @@ TEST_F (GuiUtilsTest, HighlightReachableSquares_AppliesClasses)
   int start_idx = 3 * 10 + 3;
   int adjacent_idx = 3 * 10 + 4;
 
+  // The source cell must be marked as active
   EXPECT_TRUE (
       gtk_widget_has_css_class (ctx->gameBoard[start_idx], "active-queen"));
 
+  // An adjacent empty cell must be valid and highlighted
   EXPECT_TRUE (gtk_widget_has_css_class (ctx->gameBoard[adjacent_idx],
                                          "highlight-valid"));
   EXPECT_EQ (GPOINTER_TO_INT (g_object_get_data (
@@ -223,6 +281,10 @@ TEST_F (GuiUtilsTest, HighlightReachableSquares_AppliesClasses)
              1);
 }
 
+/**
+ * @brief Verifies that AI hints correctly apply target highlighting CSS
+ * classes.
+ */
 TEST_F (GuiUtilsTest, ShowHintOnBoard_AppliesHintClasses)
 {
   Position src;
@@ -251,6 +313,10 @@ TEST_F (GuiUtilsTest, ShowHintOnBoard_AppliesHintClasses)
       gtk_widget_has_css_class (ctx->gameBoard[arr_idx], "hint-arrow"));
 }
 
+/**
+ * @brief Verifies that clearing hint highlights removes the appropriate CSS
+ * classes.
+ */
 TEST_F (GuiUtilsTest, ClearHintHighlights_RemovesHintClasses)
 {
   gtk_widget_add_css_class (ctx->gameBoard[0], "hint-queen");
@@ -267,6 +333,9 @@ TEST_F (GuiUtilsTest, ClearHintHighlights_RemovesHintClasses)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies the turn display update for a local White turn.
+ */
 TEST_F (GuiUtilsTest, UpdateTurnDisplay_LocalWhite)
 {
   ctx->isNetworkMatch = false;
@@ -279,6 +348,9 @@ TEST_F (GuiUtilsTest, UpdateTurnDisplay_LocalWhite)
   EXPECT_STREQ (gtk_label_get_text (turnLabel), "Turn : White");
 }
 
+/**
+ * @brief Verifies the turn display update for a local Black turn.
+ */
 TEST_F (GuiUtilsTest, UpdateTurnDisplay_LocalBlack)
 {
   ctx->isNetworkMatch = false;
@@ -291,6 +363,10 @@ TEST_F (GuiUtilsTest, UpdateTurnDisplay_LocalBlack)
   EXPECT_STREQ (gtk_label_get_text (turnLabel), "Turn : Black");
 }
 
+/**
+ * @brief Verifies the turn display update during a network match when it's the
+ * player's turn.
+ */
 TEST_F (GuiUtilsTest, UpdateTurnDisplay_NetworkMyTurn)
 {
   ctx->isNetworkMatch = true;
@@ -304,6 +380,10 @@ TEST_F (GuiUtilsTest, UpdateTurnDisplay_NetworkMyTurn)
   EXPECT_STREQ (gtk_label_get_text (turnLabel), "It is your turn !");
 }
 
+/**
+ * @brief Verifies the turn display update during a network match when it's the
+ * opponent's turn.
+ */
 TEST_F (GuiUtilsTest, UpdateTurnDisplay_NetworkOpponentTurn)
 {
   ctx->isNetworkMatch = true;
@@ -322,6 +402,9 @@ TEST_F (GuiUtilsTest, UpdateTurnDisplay_NetworkOpponentTurn)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies that logging to the server console appends text properly.
+ */
 TEST_F (GuiUtilsTest, GuiLogToServerConsole_AppendsText)
 {
   gui_log_to_server_console (ctx, "Test Message %d", 42);
@@ -334,15 +417,19 @@ TEST_F (GuiUtilsTest, GuiLogToServerConsole_AppendsText)
   gtk_text_buffer_get_bounds (buffer, &start, &end);
   char *text = gtk_text_buffer_get_text (buffer, &start, &end, FALSE);
 
-  // Le texte doit contenir "Test Message 42\n"
+  // The text must contain "Test Message 42\n"
   EXPECT_NE (strstr (text, "Test Message 42\n"), nullptr);
   g_free (text);
 }
 
+/**
+ * @brief Verifies that calling the popup display function does not crash the
+ * headless environment.
+ */
 TEST_F (GuiUtilsTest, GuiShowPopup_DoesNotCrash)
 {
-  // En mode headless, afficher un popup ne fait qu'allouer la fenêtre (pas de
-  // crash attendu)
+  // In headless mode, showing a popup only allocates the window (no crash
+  // expected)
   EXPECT_NO_THROW (guiShowPopup (ctx, "Test Popup"));
 }
 
@@ -351,17 +438,20 @@ TEST_F (GuiUtilsTest, GuiShowPopup_DoesNotCrash)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies that key binding buttons toggle correctly.
+ */
 TEST_F (GuiUtilsTest, SetupBindingButton_InitializesCorrectly)
 {
   GtkWidget *btn = gtk_toggle_button_new ();
 
-  // Utilise le buffer existant dans ctx pour simuler target_str
+  // Use the existing buffer in ctx to simulate target_str
   setupBindingButton (btn, ctx->keyBindings.key_pause, ctx);
 
   EXPECT_STREQ (gtk_button_get_label (GTK_BUTTON (btn)),
                 ctx->keyBindings.key_pause);
 
-  // Simulation de l'appui sur le bouton (Toggled -> "Press...")
+  // Simulate button press (Toggled -> 'Press...')
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (btn), TRUE);
   EXPECT_STREQ (gtk_button_get_label (GTK_BUTTON (btn)), "Press...");
 }
@@ -371,6 +461,10 @@ TEST_F (GuiUtilsTest, SetupBindingButton_InitializesCorrectly)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies that game shortcuts attach the GtkShortcutController to the
+ * game view.
+ */
 TEST_F (GuiUtilsTest, UpdateGameShortcuts_AttachesController)
 {
   GtkWidget *gameBox
@@ -389,12 +483,16 @@ TEST_F (GuiUtilsTest, UpdateGameShortcuts_AttachesController)
  * ==========================================================================
  */
 
+/**
+ * @brief Verifies that the dynamic board generation creates all cells
+ * properly.
+ */
 TEST_F (GuiUtilsTest, SetupBoard_CreatesGridAndGameState)
 {
-  // On crée une grille GTK vide
+  // Create an empty GTK grid
   GtkWidget *grid = gtk_grid_new ();
 
-  // On demande à setupBoard de peupler la grille (10x10 = 100 cases)
+  // Ask setupBoard to populate the grid (10x10 = 100 cells)
   EXPECT_NO_THROW (setupBoard (ctx, grid));
 
   EXPECT_NE (ctx->gameState, nullptr);
@@ -402,15 +500,16 @@ TEST_F (GuiUtilsTest, SetupBoard_CreatesGridAndGameState)
   EXPECT_EQ (ctx->gameState->size, 10);
   EXPECT_EQ (ctx->currentPhase, PHASE_MOVE_QUEEN);
 
-  // Vérifie que le plateau est bien initialisé et rempli de GtkBox (cases)
+  // Verify that the board is properly initialized and filled with GtkBox
+  // (cells)
   EXPECT_TRUE (GTK_IS_BOX (ctx->gameBoard[0]));
 
-  // Vérifie qu'un label est bien injecté
+  // Verify that a label is properly injected
   GtkLabel *lbl = GTK_LABEL (
       g_object_get_data (G_OBJECT (ctx->gameBoard[0]), "cell_label"));
   EXPECT_NE (lbl, nullptr);
 
-  // Vérifie l'assignation de couleurs (damier css)
+  // Verify color assignment (CSS checkerboard pattern)
   EXPECT_TRUE (gtk_widget_has_css_class (ctx->gameBoard[0], "cell-light")
                || gtk_widget_has_css_class (ctx->gameBoard[0], "cell-dark"));
 }

@@ -1,9 +1,12 @@
 /**
  * @file test_gui_callbacks.cpp
- * @brief Unit tests for gui_callbacks.c functions
+ * @brief Unit tests for the GUI callbacks.
  *
- * Tests cover GUI callback logic including button clicks, drag/drop,
- * config updates, shortcuts, and hint system.
+ * @details This test suite covers the GUI callback logic defined in
+ * `gui_callbacks.c`. It includes automated tests for button clicks,
+ * drag-and-drop interactions, configuration updates, keyboard shortcuts, and
+ * the AI hint system. A headless GTK environment is used to simulate UI
+ * interactions safely.
  */
 
 #include <cstdlib>
@@ -27,14 +30,27 @@ extern "C"
 #include "network_common.h"
 }
 
+/**
+ * @class GuiCallbacksTest
+ * @brief Test fixture for testing GUI callbacks.
+ *
+ * @details Sets up a minimal GTK mock environment alongside the core game
+ * state, network manager, and configurations required to trigger UI callbacks
+ * without crashing or requiring a physical display.
+ */
 class GuiCallbacksTest : public ::testing::Test
 {
 protected:
-  GuiContext *ctx;
-  game_config_t config;
-  NetworkManager net_mgr;
-  static bool gtk_initialized;
+  GuiContext *ctx;        /**< Pointer to the main GUI context. */
+  game_config_t config;   /**< Game configuration instance. */
+  NetworkManager net_mgr; /**< Network manager instance. */
+  static bool
+      gtk_initialized; /**< Flag ensuring GTK is initialized only once. */
 
+  /**
+   * @brief Sets up the test suite before any tests run.
+   * Initializes GTK in headless mode and loads the compiled resources.
+   */
   static void
   SetUpTestSuite ()
   {
@@ -51,8 +67,7 @@ protected:
           {
             g_resources_register (res);
             g_resource_unref (res);
-            g_print ("[Test Setup] %s successfully loaded !\n",
-                     GRESOURCE_FILE);
+            g_print ("[Test Setup] %s successfully loaded!\n", GRESOURCE_FILE);
           }
         else
           {
@@ -65,6 +80,11 @@ protected:
       }
   }
 
+  /**
+   * @brief Prepares the environment before each test.
+   * Allocates memory, initializes default game settings, and sets up mock GTK
+   * widgets.
+   */
   void
   SetUp () override
   {
@@ -93,7 +113,7 @@ protected:
     ctx->is_ai_white_initialized = false;
     ctx->is_ai_black_initialized = false;
 
-    // Simulation GTK minimale
+    // Minimal GTK simulation setup
     ctx->mainWindow = GTK_WINDOW (gtk_window_new ());
     ctx->mainStack = GTK_STACK (gtk_stack_new ());
 
@@ -139,6 +159,7 @@ protected:
                            GINT_TO_POINTER (0));
       }
 
+    // Set mock keybindings
     strncpy (ctx->keyBindings.key_new_game, "<Control>n", SHORTCUTS_SIZE);
     strncpy (ctx->keyBindings.key_load_game, "<Control>o", SHORTCUTS_SIZE);
     strncpy (ctx->keyBindings.key_save_game, "<Control>s", SHORTCUTS_SIZE);
@@ -151,12 +172,17 @@ protected:
     strncpy (ctx->keyBindings.key_quit, "<Control>q", SHORTCUTS_SIZE);
   }
 
+  /**
+   * @brief Cleans up the environment after each test.
+   * Frees allocated memory and destroys AI instances.
+   */
   void
   TearDown () override
   {
     if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
         && ctx->ai_white.vtable->clean)
       ctx->ai_white.vtable->clean (&ctx->ai_white);
+
     if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
         && ctx->ai_black.vtable->clean)
       ctx->ai_black.vtable->clean (&ctx->ai_black);
@@ -167,11 +193,13 @@ protected:
         free (ctx->gameState);
         ctx->gameState = nullptr;
       }
+
     if (ctx->gameBoard)
       {
         free (ctx->gameBoard);
         ctx->gameBoard = nullptr;
       }
+
     if (ctx)
       {
         free (ctx);
@@ -179,6 +207,11 @@ protected:
       }
   }
 
+  /**
+   * @brief Helper function to generate a standard legal move for the White
+   * player.
+   * @return A valid Move structure.
+   */
   Move
   createLegalWhiteMove ()
   {
@@ -266,7 +299,7 @@ TEST_F (GuiCallbacksTest, UndoButtonClick_EmptyStack)
   ctx->isNetworkMatch = false;
   ctx->currentPhase = PHASE_MOVE_QUEEN;
 
-  // Exécute sans crash (la pile est vide, undo_move renvoie false)
+  // Executes without crashing (stack is empty, undo_move returns false)
   EXPECT_NO_THROW (undoButtonClick (nullptr, ctx));
 }
 
@@ -276,7 +309,7 @@ TEST_F (GuiCallbacksTest, RedoButtonClick_EmptyStack)
   ctx->isNetworkMatch = false;
   ctx->currentPhase = PHASE_MOVE_QUEEN;
 
-  // Exécute sans crash (la pile redo est vide, redo_move renvoie false)
+  // Executes without crashing (redo stack is empty, redo_move returns false)
   EXPECT_NO_THROW (redoButtonClick (nullptr, ctx));
 }
 
@@ -287,14 +320,14 @@ TEST_F (GuiCallbacksTest, SendInviteButtonClick_NullNetworkManager)
   GtkWidget *spin = gtk_spin_button_new_with_range (4, 11, 1);
   GtkWidget *popup = gtk_window_new ();
 
-  gtk_editable_set_text (GTK_EDITABLE (entry), "5"); // Valid ID
+  gtk_editable_set_text (GTK_EDITABLE (entry), "5"); // Valid target ID
   gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), 10);
 
   g_object_set_data (G_OBJECT (btn), "target_id_entry", entry);
   g_object_set_data (G_OBJECT (btn), "board_size_spin", spin);
   g_object_set_data (G_OBJECT (btn), "popup_window", popup);
 
-  // Simule l'absence de network manager (ex: match local)
+  // Simulates the absence of a network manager (e.g., local match)
   GuiContext ctx2 = *ctx;
   ctx2.networkManager = nullptr;
 
@@ -303,8 +336,7 @@ TEST_F (GuiCallbacksTest, SendInviteButtonClick_NullNetworkManager)
 
 TEST_F (GuiCallbacksTest, JoinServerButtonClick_ConnectionSuccess)
 {
-  // On crée un serveur réel sur un port libre pour garantir le succès du
-  // ClientJoin
+  // Create an actual server on a free port to guarantee ClientJoin success
   int port = 18888;
   NetworkManager_ServerStart (ctx->networkManager, port);
 
@@ -346,12 +378,13 @@ TEST_F (GuiCallbacksTest, RefreshServerListButtonClick_ServersFound)
 #if !GTK_CHECK_VERSION(4, 10, 0)
 TEST_F (GuiCallbacksTest, OnSaveResponse_Cancel)
 {
-  // Test de la branche Cancel des boîtes de dialogue natives
+  // Tests the Cancel branch of native dialog boxes
   EXPECT_NO_THROW (on_save_response (nullptr, GTK_RESPONSE_CANCEL, ctx));
 }
 
 TEST_F (GuiCallbacksTest, OnLoadResponse_Cancel)
 {
+  // Tests the Cancel branch of native dialog boxes
   EXPECT_NO_THROW (on_load_response (nullptr, GTK_RESPONSE_CANCEL, ctx));
 }
 #endif
@@ -373,7 +406,8 @@ TEST_F (GuiCallbacksTest, OnDrag_Success_ReturnsProvider)
                      GINT_TO_POINTER (1));
 
   GdkContentProvider *provider = onDrag (source, 0, 0, ctx);
-  EXPECT_NE (provider, nullptr); // Le drag est autorisé !
+  EXPECT_NE (provider, nullptr); // Drag is successfully authorized!
+
   if (provider)
     g_object_unref (provider);
 }
@@ -393,7 +427,7 @@ TEST_F (GuiCallbacksTest, FireArrow_NetworkMatch_OwnTurn)
   ctx->gameState->board[0][3] = CONTENT_EMPTY;
   ctx->gameState->board[1][3] = CONTENT_WHITE_QUEEN;
 
-  GtkWidget *btn = ctx->gameBoard[23]; // (3, 2)
+  GtkWidget *btn = ctx->gameBoard[23]; // Cell (3, 2)
   g_object_set_data (G_OBJECT (btn), "is_legal_move", GINT_TO_POINTER (1));
 
   EXPECT_NO_THROW (fireArrow (btn, ctx));
@@ -405,8 +439,8 @@ TEST_F (GuiCallbacksTest, StartServerButtonClick_Failure)
   GtkWidget *btn = gtk_button_new_with_label ("Start");
   GtkWidget *spin = gtk_spin_button_new_with_range (1, 65535, 1);
 
-  // On utilise le port 80 (Privilégié) qui refusera de s'ouvrir sans sudo,
-  // provoquant un échec.
+  // Uses privileged port 80 which refuses to open without sudo, causing a
+  // failure.
   gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin), 80);
   g_object_set_data (G_OBJECT (btn), "port_spin", spin);
 
@@ -429,7 +463,7 @@ TEST_F (GuiCallbacksTest, JoinServerButtonClick_ConnectionFailure)
   GtkWidget *btn = gtk_button_new_with_label ("Join");
   GtkWidget *entry = gtk_entry_new ();
 
-  // IP totalement invalide
+  // Provide a completely invalid IP address to force connection failure
   g_object_set_data (G_OBJECT (btn), "server_ip",
                      (gpointer) "256.256.256.256");
   g_object_set_data (G_OBJECT (btn), "server_port", GINT_TO_POINTER (99999));
