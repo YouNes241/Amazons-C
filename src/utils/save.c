@@ -406,6 +406,13 @@ parse_history_line (const char *trimmed, GameState *state)
   return 0;
 }
 
+/**
+ * @brief Loads a saved game file into the provided configuration and state.
+ * @param filepath Path to the save file.
+ * @param config   Configuration object to populate from the file.
+ * @param state    Game state object to populate from the file.
+ * @return SAVE_OK on success, or one of the SaveReturn error codes.
+ */
 SaveReturn
 load_game (const char *filepath, game_config_t *config, GameState *state)
 {
