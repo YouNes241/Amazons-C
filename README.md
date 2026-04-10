@@ -24,6 +24,7 @@ Une implémentation en C du jeu de plateau "Game of the Amazons" avec support CL
    - [Commandes réseau (Serveur)](#commandes-réseau-serveur)
    - [Commandes réseau (Client et Lobby)](#commandes-réseau-client-et-lobby)
    - [Format des coups](#format-des-coups)
+   - [Contrôles de l'interface graphique (GUI)](#contrôles-de-linterface-graphique-gui)
 7. [Mode Multijoueur Réseau](#-mode-multijoueur-réseau)
    - [Scénario 1 : Lancement, Découverte et Connexion](#scénario-1--lancement-découverte-et-connexion)
    - [Scénario 2 : Gestion du Lobby et Statuts](#scénario-2--gestion-du-lobby-et-statuts)
@@ -342,6 +343,16 @@ pkill amazons
 
 - `d10-d9(d8)` : Déplace la reine de d10 à d9, tire une flèche en d8
 - `a1-a3(a4)` : Déplace la reine de a1 à a3, tire une flèche en a4
+
+### Contrôles de l'interface graphique (GUI)
+
+Une fois en partie via l'interface graphique (GTK4), les actions de jeu se font à la souris de manière intuitive :
+
+* Glisser-Déposer (Drag & Drop) : Cliquez sur une de vos Amazones, maintenez le clic, et déposez-la sur une case valide (en surbrillance) pour la déplacer.
+
+* Clic Gauche : Après avoir déplacé l'Amazone, cliquez sur la case ciblée pour y tirer votre flèche (si le coup est valide = en surbrillance également) et terminer le tour.
+
+* Clic Droit : Si vous avez déplacé votre Amazone mais n'avez pas encore tiré la flèche, faites un clic droit n'importe où sur le plateau pour annuler le déplacement et en choisir une autre.
 
 ---
 
