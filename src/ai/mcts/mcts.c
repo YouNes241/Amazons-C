@@ -550,7 +550,7 @@ mcts_init (AI_Interface *self, const ConfigMap *params)
 
   double c_uct = DEFAULT_UCT_COEF;
   double c_puct = DEFAULT_PUCT_COEF;
-  const char *model_path = "../amazons_model_v3_hidden";
+  const char *model_path = "../amazons_model_v5_bke_hidden";
 
   data->strategy_select = (ISelector *)malloc (sizeof (ISelector));
   if (data->strategy_select == NULL)
