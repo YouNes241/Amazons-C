@@ -1,3 +1,8 @@
+/** @brief Header file for the network protocol used to communicate moves
+ * between the client and server.
+ * @file network_protocol.h
+ */
+
 /* ==========================================================================
  * network_protocol.h
  * Header file for the network protocol used to communicate moves between the

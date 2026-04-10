@@ -1,3 +1,7 @@
+/** @brief Common network management interface and types.
+ * @file network_common.h
+ */
+
 /* ==========================================================================
  * network_common.h
  * Header file for the common network manager interface and types.
