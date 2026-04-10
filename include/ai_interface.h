@@ -14,13 +14,45 @@
 
 typedef struct AI_Interface AI_Interface;
 
+/**
+ * @struct AI_VTable
+ * @brief Virtual function table for AI implementations.
+ * * This structure defines the interface that every AI type (MCTS, Minimax,
+ * etc.) must implement. It allows the game engine to interact with different
+ * AI algorithms polymorphically.
+ * @var AI_VTable::init
+ * Initializes the AI. Expects an AI interface (cf. AI_Factory) to be ran.
+ * Otherwise, there will be undefined behavior.
+ * @var AI_VTable::clean
+ * Cleans the data (deallocate used structs, ...) for this AI.
+ * @var AI_VTable::get_best_move
+ * Gets the best move for a given (and sound) GameState. If that game state is
+ * not valid (no boards, ..), you will run into undefined behavior.
+ */
 typedef struct
 {
+  /** @brief Initializes the AI internal state and parameters. */
   void (*init) (AI_Interface *self, const ConfigMap *params);
+
+  /** @brief Performs cleanup and frees all memory associated with the AI
+   * context. */
   void (*clean) (AI_Interface *self);
-  Move (*get_best_move) (const AI_Interface *self, GameState state);
+
+  /** @brief Calculates the best move for a given game state. */
+  Move (*get_best_move) (const AI_Interface *self, const GameState state);
 } AI_VTable;
 
+/**
+ * @struct AI_Interface
+ * @brief High-level wrapper for an AI instance.
+ * * Uses a VTable for polymorphism and a void pointer to store the
+ * implementation-specific data (the "context"), such as MCTS trees
+ * or Minimax search depths.
+ * @var AI_Interface::vtable
+ * Pointer to the table of functions defining the AI's behavior
+ * @var AI_Interface::context
+ * Private data specific to the AI implementation (e.g., MCTS_Data)
+ */
 struct AI_Interface
 {
   const AI_VTable *vtable;

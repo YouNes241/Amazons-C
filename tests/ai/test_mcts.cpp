@@ -642,10 +642,20 @@ TEST_F (MCTSAI, InitAndCleanLifecycle)
   EXPECT_EQ (ai.context, nullptr);
 }
 
+// Cleaning twice should not crash
 TEST_F (MCTSAI, DoubleCleanIsSafe)
 {
   ai.vtable->clean (&ai);
   EXPECT_EQ (ai.context, nullptr);
+  ai.vtable->clean (&ai);
+  EXPECT_EQ (ai.context, nullptr);
+}
+
+// Null clean should not crash.
+TEST_F (MCTSAI, NullCleanDoesNotCrash)
+{
+  ai.vtable->clean (nullptr);
+  EXPECT_NE (ai.context, nullptr);
   ai.vtable->clean (&ai);
   EXPECT_EQ (ai.context, nullptr);
 }

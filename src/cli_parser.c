@@ -235,7 +235,8 @@ parse_options (int argc, char *argv[], game_config_t *config)
           printf ("\n  --- Other ---\n");
           printf ("  -d, --debug     Display debug messages\n");
           printf ("  -s, --server [P] Launch as server (optional Port)\n");
-          printf ("  --daemon        Launch server in background "
+          printf ("  -d, --daemon     Launch server in background only "
+                  "available if -s is set "
                   "(Headless)\n");
           printf ("  -v, --verbose   Enable verbose mode\n");
           printf ("  -h, --help      Display this help\n");

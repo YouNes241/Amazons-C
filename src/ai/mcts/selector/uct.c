@@ -86,6 +86,13 @@ uct_clean (ISelector *self)
 static const ISelector_VTable uct_vtable
     = { .select_child = uct_select_child, .clean = uct_clean };
 
+/**
+ * @brief Create an uct selector
+ * @note Expects a selector interface ; otherwise, this will result in a crash.
+ *
+ * @param selector The selector (cf get_selector in selector)
+ * @param c The exploration constant (default : sqrt(2))
+ */
 void
 create_select_uct (ISelector *selector, double c)
 {

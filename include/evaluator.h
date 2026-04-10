@@ -27,7 +27,7 @@ typedef struct
 } EvaluatorMap;
 
 static const EvaluatorMap EVALUATOR_DICT[]
-    = { { EVAL_ME, "me" }, { EVAL_RTH, "rth" }, { EVAL_QD_KD, "qd&kd" } };
+    = { { EVAL_ME, "me" }, { EVAL_RTH, "rth" }, { EVAL_QD_KD, "qdkd" } };
 
 /**
  * @brief Checks if the given evaluator name exists.
@@ -59,8 +59,6 @@ get_evaluator_param (EvaluatorType type)
 }
 
 typedef float (*Evaluator) (const BitboardState *state);
-
-float eval_me (const BitboardState *state);
 
 /**
  * @brief Retrieves an Evaluator function pointer based on the provided name.

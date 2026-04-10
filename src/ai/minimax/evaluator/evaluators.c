@@ -37,6 +37,7 @@ typedef enum
 
 /**
  * @brief Puts all occupied squares (queens and arrows) into a single bitboard.
+ * @note Expects a correct state, otherwise crashing.
  * @param state A game state with pos of queens and arrows.
  * @return Bitboard with all occupied squares.
  */
@@ -54,7 +55,7 @@ get_obstacles (const BitboardState *state)
  * @param width The width of the board.
  * @param mode 0 for Queen Distance (RTH), 1 for King Distance (Chebyshev).
  * @param dist_map Output array, of size at least width*width. Unreachable
- * squares are set to INF_DIST (255).
+ * squares are set to INF_DIST (255). If not of size, will crash.
  * @return void
  */
 static void
@@ -124,7 +125,7 @@ bfs_bitboard (Bitboard starts, Bitboard obstacles, uint8_t width, int mode,
  * @param queens Bitboard with the positions of the player's queens.
  * @param empty Bitboard with all empty squares (not occupied).
  * @param size The width of the board.
- * @return The total count of legal moves available to these player's queens.
+ * @return The mobility score for the given queens.
  */
 static int
 calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
@@ -144,7 +145,7 @@ calculate_mobility_sum (Bitboard queens, Bitboard empty, uint8_t size)
  * @return A float score representing the mobility advantage. Positive means
  * the current player has more mobility, negative means less.
  */
-float
+static float
 eval_me (const BitboardState *state)
 {
   if (state == NULL)
@@ -177,6 +178,8 @@ eval_me (const BitboardState *state)
 static inline int
 check_init_win (const BitboardState *state)
 {
+  if (!state)
+    return 0;
   Bitboard obstacles = get_obstacles (state);
   Bitboard empty = bitboard_masked_not (obstacles, state->size);
 
