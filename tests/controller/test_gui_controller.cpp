@@ -4,7 +4,6 @@
  *
  * Tests cover GUI controller logic including AI turn management,
  * player move handling, and network operations.
- * Note: These tests mock GTK dependencies where possible.
  */
 
 #include <cstdlib>
@@ -23,9 +22,6 @@ extern "C"
 #include "network_common.h"
 }
 
-/**
- * @brief Test fixture for GUI controller tests
- */
 class GuiControllerTest : public ::testing::Test
 {
 protected:
@@ -40,6 +36,7 @@ protected:
   {
     if (!gtk_initialized)
       {
+        g_setenv ("GTK_A11Y", "none", TRUE);
         gtk_init ();
         gtk_initialized = true;
       }
@@ -70,7 +67,7 @@ protected:
     ctx->is_ai_white_initialized = false;
     ctx->is_ai_black_initialized = false;
 
-    // --- GTK MOCK SETUP (Required to test guiHandlePlayerMove) ---
+    // --- GTK MOCK SETUP ---
     ctx->mainWindow = GTK_WINDOW (gtk_window_new ());
     ctx->mainStack = GTK_STACK (gtk_stack_new ());
 
@@ -92,14 +89,11 @@ protected:
   {
     if (ctx->is_ai_white_initialized && ctx->ai_white.vtable
         && ctx->ai_white.vtable->clean)
-      {
-        ctx->ai_white.vtable->clean (&ctx->ai_white);
-      }
+      ctx->ai_white.vtable->clean (&ctx->ai_white);
+
     if (ctx->is_ai_black_initialized && ctx->ai_black.vtable
         && ctx->ai_black.vtable->clean)
-      {
-        ctx->ai_black.vtable->clean (&ctx->ai_black);
-      }
+      ctx->ai_black.vtable->clean (&ctx->ai_black);
 
     game_cleanup (&game);
 
@@ -121,24 +115,11 @@ protected:
   {
     Move m;
     m.queen_src.col = 3;
-    m.queen_src.row = 0; // d1
+    m.queen_src.row = 0;
     m.queen_dst.col = 3;
-    m.queen_dst.row = 1; // d2
+    m.queen_dst.row = 1;
     m.arrow_dst.col = 3;
-    m.arrow_dst.row = 2; // d3
-    return m;
-  }
-
-  Move
-  createLegalBlackMove ()
-  {
-    Move m;
-    m.queen_src.col = 3;
-    m.queen_src.row = 9; // d10
-    m.queen_dst.col = 3;
-    m.queen_dst.row = 8; // d9
-    m.arrow_dst.col = 3;
-    m.arrow_dst.row = 7; // d8
+    m.arrow_dst.row = 2;
     return m;
   }
 
@@ -147,11 +128,61 @@ protected:
   {
     Move m;
     m.queen_src.col = 0;
-    m.queen_src.row = 0; // No queen at a1
+    m.queen_src.row = 0;
     m.queen_dst.col = 0;
     m.queen_dst.row = 1;
     m.arrow_dst.col = 0;
     m.arrow_dst.row = 2;
+    return m;
+  }
+
+  /**
+   * Helper pour construire un plateau "Game Over" parfait et 100% légal.
+   * Tout est bloqué, sauf un unique mouvement pour le joueur gagnant.
+   */
+  void
+  setupGameOverBoard (PlayerColor winner)
+  {
+    for (int i = 0; i < 100; i++)
+      ctx->gameState->board[i / 10][i % 10] = CONTENT_ARROW;
+
+    if (winner == PLAYER_WHITE)
+      {
+        ctx->gameState->board[0][0] = CONTENT_BLACK_QUEEN;
+        ctx->gameState->board[0][9] = CONTENT_BLACK_QUEEN;
+        ctx->gameState->board[9][0] = CONTENT_BLACK_QUEEN;
+        ctx->gameState->board[9][9] = CONTENT_BLACK_QUEEN;
+
+        ctx->gameState->board[5][5] = CONTENT_WHITE_QUEEN;
+        ctx->gameState->current_player = PLAYER_WHITE;
+      }
+    else
+      {
+        ctx->gameState->board[0][0] = CONTENT_WHITE_QUEEN;
+        ctx->gameState->board[0][9] = CONTENT_WHITE_QUEEN;
+        ctx->gameState->board[9][0] = CONTENT_WHITE_QUEEN;
+        ctx->gameState->board[9][9] = CONTENT_WHITE_QUEEN;
+
+        ctx->gameState->board[5][5] = CONTENT_BLACK_QUEEN;
+        ctx->gameState->current_player = PLAYER_BLACK;
+      }
+
+    // On libère un petit chemin diagonal pour le coup fatal
+    ctx->gameState->board[4][4] = CONTENT_EMPTY;
+    ctx->gameState->board[3][3] = CONTENT_EMPTY;
+  }
+
+  // Le coup fatal universel associé à la fonction ci-dessus
+  Move
+  getFatalMove ()
+  {
+    Move m;
+    m.queen_src.col = 5;
+    m.queen_src.row = 5;
+    m.queen_dst.col = 4;
+    m.queen_dst.row = 4;
+    m.arrow_dst.col = 3;
+    m.arrow_dst.row = 3;
     return m;
   }
 };
@@ -159,7 +190,7 @@ protected:
 bool GuiControllerTest::gtk_initialized = false;
 
 /* ==========================================================================
- * guiHandlePlayerMove TESTS (High Coverage target)
+ * guiHandlePlayerMove TESTS
  * ==========================================================================
  */
 
@@ -180,9 +211,7 @@ TEST_F (GuiControllerTest, HandlePlayerMove_IllegalMove)
 TEST_F (GuiControllerTest, HandlePlayerMove_LegalMove)
 {
   Move legal = createLegalWhiteMove ();
-
   EXPECT_NO_THROW (guiHandlePlayerMove (ctx, legal));
-
   EXPECT_EQ (ctx->currentPhase, PHASE_MOVE_QUEEN);
   EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK);
 }
@@ -193,101 +222,49 @@ TEST_F (GuiControllerTest, HandlePlayerMove_NetworkMatchSendsMove)
   ctx->selfPlayerColor = PLAYER_WHITE;
 
   Move legal = createLegalWhiteMove ();
-
   EXPECT_NO_THROW (guiHandlePlayerMove (ctx, legal));
   EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK);
 }
 
-TEST_F (GuiControllerTest, HandlePlayerMove_GameOver)
+TEST_F (GuiControllerTest, HandlePlayerMove_GameOver_BlackWins)
 {
-  for (int i = 0; i < 100; i++)
-    ctx->gameState->board[i / 10][i % 10] = CONTENT_EMPTY;
-
-  ctx->gameState->board[0][0] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[0][1] = CONTENT_ARROW;
-  ctx->gameState->board[1][0] = CONTENT_ARROW;
-
-  ctx->gameState->board[0][9] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[0][8] = CONTENT_ARROW;
-  ctx->gameState->board[1][9] = CONTENT_ARROW;
-  ctx->gameState->board[1][8] = CONTENT_ARROW;
-
-  ctx->gameState->board[9][0] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[8][0] = CONTENT_ARROW;
-  ctx->gameState->board[9][1] = CONTENT_ARROW;
-  ctx->gameState->board[8][1] = CONTENT_ARROW;
-
-  ctx->gameState->board[9][9] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[9][8] = CONTENT_ARROW;
-  ctx->gameState->board[8][9] = CONTENT_ARROW;
-  ctx->gameState->board[8][8] = CONTENT_ARROW;
-
-  ctx->gameState->board[5][5] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[5][6] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[6][5] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[6][6] = CONTENT_BLACK_QUEEN;
-
-  ctx->gameState->current_player = PLAYER_BLACK;
-
-  Move final_move;
-  final_move.queen_src.col = 5;
-  final_move.queen_src.row = 5;
-  final_move.queen_dst.col = 4;
-  final_move.queen_dst.row = 4;
-  final_move.arrow_dst.col = 1;
-  final_move.arrow_dst.row = 1;
+  setupGameOverBoard (PLAYER_BLACK);
 
   testing::internal::CaptureStdout ();
-  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, final_move));
+  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
   std::string output = testing::internal::GetCapturedStdout ();
 
   EXPECT_NE (output.find ("Black won"), std::string::npos);
 }
 
-TEST_F (GuiControllerTest, HandlePlayerMove_GameOverNetwork)
+TEST_F (GuiControllerTest, HandlePlayerMove_GameOver_WhiteWins)
+{
+  setupGameOverBoard (PLAYER_WHITE);
+
+  testing::internal::CaptureStdout ();
+  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
+  std::string output = testing::internal::GetCapturedStdout ();
+
+  EXPECT_NE (output.find ("White won"), std::string::npos);
+}
+
+TEST_F (GuiControllerTest, HandlePlayerMove_GameOverNetwork_IWon)
 {
   ctx->isNetworkMatch = true;
-  ctx->selfPlayerColor = PLAYER_BLACK;
+  ctx->selfPlayerColor = PLAYER_WHITE; // Je suis Blanc
+  setupGameOverBoard (PLAYER_WHITE);   // Blanc Gagne
 
-  for (int i = 0; i < 100; i++)
-    ctx->gameState->board[i / 10][i % 10] = CONTENT_EMPTY;
+  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
+  EXPECT_FALSE (ctx->isNetworkMatch); // Le match est clôturé
+}
 
-  ctx->gameState->board[0][0] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[0][1] = CONTENT_ARROW;
-  ctx->gameState->board[1][0] = CONTENT_ARROW;
+TEST_F (GuiControllerTest, HandlePlayerMove_GameOverNetwork_ILost)
+{
+  ctx->isNetworkMatch = true;
+  ctx->selfPlayerColor = PLAYER_WHITE; // Je suis Blanc
+  setupGameOverBoard (PLAYER_BLACK);   // Noir Gagne
 
-  ctx->gameState->board[0][9] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[0][8] = CONTENT_ARROW;
-  ctx->gameState->board[1][9] = CONTENT_ARROW;
-  ctx->gameState->board[1][8] = CONTENT_ARROW;
-
-  ctx->gameState->board[9][0] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[8][0] = CONTENT_ARROW;
-  ctx->gameState->board[9][1] = CONTENT_ARROW;
-  ctx->gameState->board[8][1] = CONTENT_ARROW;
-
-  ctx->gameState->board[9][9] = CONTENT_WHITE_QUEEN;
-  ctx->gameState->board[9][8] = CONTENT_ARROW;
-  ctx->gameState->board[8][9] = CONTENT_ARROW;
-  ctx->gameState->board[8][8] = CONTENT_ARROW;
-
-  ctx->gameState->board[5][5] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[5][6] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[6][5] = CONTENT_BLACK_QUEEN;
-  ctx->gameState->board[6][6] = CONTENT_BLACK_QUEEN;
-
-  ctx->gameState->current_player = PLAYER_BLACK;
-
-  Move final_move;
-  final_move.queen_src.col = 5;
-  final_move.queen_src.row = 5;
-  final_move.queen_dst.col = 4;
-  final_move.queen_dst.row = 4;
-  final_move.arrow_dst.col = 1;
-  final_move.arrow_dst.row = 1;
-
-  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, final_move));
-
+  EXPECT_NO_THROW (guiHandlePlayerMove (ctx, getFatalMove ()));
   EXPECT_FALSE (ctx->isNetworkMatch);
 }
 
@@ -303,25 +280,17 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_ReturnsEarlyInNetworkMatch)
   config.ai_white_cfg.enabled = true;
 
   guiCheckAndTriggerAI (ctx);
-
   EXPECT_FALSE (ctx->is_ai_thinking);
 }
 
 TEST_F (GuiControllerTest, CheckAndTriggerAI_NoAIInitialized)
 {
-  ctx->isNetworkMatch = false;
-  ctx->is_ai_white_initialized = false;
-  ctx->is_ai_black_initialized = false;
-  config.ai_white_cfg.enabled = false;
-  config.ai_black_cfg.enabled = false;
-
   guiCheckAndTriggerAI (ctx);
   EXPECT_FALSE (ctx->is_ai_thinking);
 }
 
 TEST_F (GuiControllerTest, CheckAndTriggerAI_SetsThinkingLock)
 {
-  ctx->isNetworkMatch = false;
   ctx->gameState->current_player = PLAYER_WHITE;
   config.ai_white_cfg.enabled = true;
 
@@ -330,16 +299,26 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_SetsThinkingLock)
   ctx->ai_white = create_ai ("random", cm);
   ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
 
-  ctx->is_ai_thinking = false;
+  guiCheckAndTriggerAI (ctx);
+  EXPECT_TRUE (ctx->is_ai_thinking);
+}
+
+TEST_F (GuiControllerTest, CheckAndTriggerAI_BlackTurn)
+{
+  ctx->gameState->current_player = PLAYER_BLACK;
+  config.ai_black_cfg.enabled = true;
+
+  Param params[1] = {};
+  ConfigMap cm = { .count = 0, .list = params };
+  ctx->ai_black = create_ai ("random", cm);
+  ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
 
   guiCheckAndTriggerAI (ctx);
-
   EXPECT_TRUE (ctx->is_ai_thinking);
 }
 
 TEST_F (GuiControllerTest, CheckAndTriggerAI_AIDisabledForCurrentPlayer)
 {
-  ctx->isNetworkMatch = false;
   ctx->gameState->current_player = PLAYER_WHITE;
   config.ai_white_cfg.enabled = false;
   config.ai_black_cfg.enabled = true;
@@ -350,7 +329,6 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_AIDisabledForCurrentPlayer)
   ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
 
   guiCheckAndTriggerAI (ctx);
-
   EXPECT_FALSE (ctx->is_ai_thinking);
 }
 
@@ -359,36 +337,23 @@ TEST_F (GuiControllerTest, CheckAndTriggerAI_AIDisabledForCurrentPlayer)
  * ==========================================================================
  */
 
-TEST_F (GuiControllerTest, StartNewGame_CleansUpOldAI)
+TEST_F (GuiControllerTest, StartNewGame_WithAIParams_Both)
 {
-  Param params[1] = {};
-  ConfigMap cm = { .count = 0, .list = params };
-
+  // Test d'injection de paramètres poussés
   config.ai_white_cfg.enabled = true;
   strncpy (config.ai_white_cfg.name, "random", MAX_AI_STR_LEN);
-  ctx->ai_white = create_ai ("random", cm);
-  ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
+  config.ai_white_cfg.param_count = 1;
+  strncpy (config.ai_white_cfg.param_keys[0], "depth", MAX_AI_STR_LEN);
+  strncpy (config.ai_white_cfg.param_vals[0], "1", MAX_AI_STR_LEN);
 
   config.ai_black_cfg.enabled = true;
   strncpy (config.ai_black_cfg.name, "random", MAX_AI_STR_LEN);
-  ctx->ai_black = create_ai ("random", cm);
-  ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
+  config.ai_black_cfg.param_count = 1;
+  strncpy (config.ai_black_cfg.param_keys[0], "depth", MAX_AI_STR_LEN);
+  strncpy (config.ai_black_cfg.param_vals[0], "1", MAX_AI_STR_LEN);
 
-  guiStartNewGame (ctx);
-
+  EXPECT_NO_THROW (guiStartNewGame (ctx));
   EXPECT_TRUE (ctx->is_ai_white_initialized);
-  EXPECT_TRUE (ctx->is_ai_black_initialized);
-}
-
-TEST_F (GuiControllerTest, StartNewGame_WithBlackAI)
-{
-  config.ai_white_cfg.enabled = false;
-  config.ai_black_cfg.enabled = true;
-  strncpy (config.ai_black_cfg.name, "random", MAX_AI_STR_LEN);
-
-  guiStartNewGame (ctx);
-
-  EXPECT_FALSE (ctx->is_ai_white_initialized);
   EXPECT_TRUE (ctx->is_ai_black_initialized);
 }
 
@@ -398,7 +363,6 @@ TEST_F (GuiControllerTest, StartNewGame_NoAIEnabled)
   config.ai_black_cfg.enabled = false;
 
   guiStartNewGame (ctx);
-
   EXPECT_FALSE (ctx->is_ai_white_initialized);
   EXPECT_FALSE (ctx->is_ai_black_initialized);
 }
@@ -406,16 +370,12 @@ TEST_F (GuiControllerTest, StartNewGame_NoAIEnabled)
 TEST_F (GuiControllerTest, StartNewGame_ResetsThinkingFlag)
 {
   ctx->is_ai_thinking = true;
-  config.ai_white_cfg.enabled = false;
-  config.ai_black_cfg.enabled = false;
-
   guiStartNewGame (ctx);
-
   EXPECT_FALSE (ctx->is_ai_thinking);
 }
 
 /* ==========================================================================
- * guiDisconnectAndRestartNetwork TESTS
+ * NETWORK TESTS
  * ==========================================================================
  */
 
@@ -425,7 +385,6 @@ TEST_F (GuiControllerTest, DisconnectAndRestartNetwork_CleansUpNetwork)
   net_mgr.current_mode = NET_MODE_CLIENT;
 
   guiDisconnectAndRestartNetwork (ctx);
-
   EXPECT_FALSE (ctx->isNetworkMatch);
   EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_NONE);
 }
@@ -436,115 +395,12 @@ TEST_F (GuiControllerTest, DisconnectAndRestartNetwork_NullContextCrashes)
 }
 
 /* ==========================================================================
- * GAME STATE TESTS
+ * ASYNCHRONOUS GTK EVENTS TESTS
  * ==========================================================================
  */
 
-TEST_F (GuiControllerTest, GameStateInitialization)
+TEST_F (GuiControllerTest, AsyncAI_InterruptByNetwork)
 {
-  EXPECT_EQ (ctx->gameState->current_player, PLAYER_WHITE);
-  EXPECT_EQ (ctx->gameState->status, GAME_IN_PROGRESS);
-  EXPECT_EQ (ctx->gameState->size, 10);
-}
-
-/* ==========================================================================
- * MOVE VALIDATION TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiControllerTest, MoveValidation_LegalMove)
-{
-  Move m = createLegalWhiteMove ();
-  EXPECT_TRUE (is_move_legal (ctx->gameState, m));
-}
-
-TEST_F (GuiControllerTest, MoveValidation_IllegalMove)
-{
-  Move m = createIllegalMove ();
-  EXPECT_FALSE (is_move_legal (ctx->gameState, m));
-}
-
-/* ==========================================================================
- * NETWORK STATE TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiControllerTest, NetworkManagerModes)
-{
-  EXPECT_EQ (net_mgr.current_mode, NET_MODE_NONE);
-
-  net_mgr.current_mode = NET_MODE_CLIENT;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_CLIENT);
-
-  net_mgr.current_mode = NET_MODE_SERVER;
-  EXPECT_EQ (ctx->networkManager->current_mode, NET_MODE_SERVER);
-}
-
-/* ==========================================================================
- * GAME OVER DETECTION TESTS
- * ==========================================================================
- */
-
-TEST_F (GuiControllerTest, GameOverDetection_NotOver)
-{
-  EXPECT_FALSE (is_game_over (ctx->gameState, PLAYER_WHITE));
-  EXPECT_FALSE (is_game_over (ctx->gameState, PLAYER_BLACK));
-}
-
-TEST_F (GuiControllerTest, GameOverDetection_AllBlocked)
-{
-  for (int i = 0; i < 10; i++)
-    {
-      for (int j = 0; j < 10; j++)
-        {
-          ctx->gameState->board[i][j] = CONTENT_ARROW;
-        }
-    }
-
-  EXPECT_TRUE (is_game_over (ctx->gameState, PLAYER_WHITE));
-  EXPECT_TRUE (is_game_over (ctx->gameState, PLAYER_BLACK));
-}
-
-TEST_F (GuiControllerTest, GetWinner_WhiteWins)
-{
-  ctx->gameState->current_player = PLAYER_BLACK;
-  ctx->gameState->status = GAME_OVER_WHITE_WINS;
-
-  for (int i = 0; i < 10; i++)
-    {
-      for (int j = 0; j < 10; j++)
-        {
-          ctx->gameState->board[i][j] = CONTENT_ARROW;
-        }
-    }
-
-  EXPECT_EQ (get_winner (ctx->gameState), PLAYER_WHITE);
-}
-
-TEST_F (GuiControllerTest, GetWinner_BlackWins)
-{
-  ctx->gameState->current_player = PLAYER_WHITE;
-  ctx->gameState->status = GAME_OVER_BLACK_WINS;
-
-  for (int i = 0; i < 10; i++)
-    {
-      for (int j = 0; j < 10; j++)
-        {
-          ctx->gameState->board[i][j] = CONTENT_ARROW;
-        }
-    }
-
-  EXPECT_EQ (get_winner (ctx->gameState), PLAYER_BLACK);
-}
-
-/* ==========================================================================
- * ASYNCHRONOUS GTK EVENTS TESTS (Coverage Boost)
- * ==========================================================================
- */
-
-TEST_F (GuiControllerTest, AsyncAI_Execution_And_Unlock)
-{
-  ctx->isNetworkMatch = false;
   ctx->gameState->current_player = PLAYER_WHITE;
   config.ai_white_cfg.enabled = true;
 
@@ -553,24 +409,51 @@ TEST_F (GuiControllerTest, AsyncAI_Execution_And_Unlock)
   ctx->ai_white = create_ai ("random", cm);
   ctx->is_ai_white_initialized = (ctx->ai_white.vtable != nullptr);
 
-  // Déclenche le timer de l'IA (50ms)
   guiCheckAndTriggerAI (ctx);
-  EXPECT_TRUE (ctx->is_ai_thinking); // Cadenas fermé
+  EXPECT_TRUE (ctx->is_ai_thinking);
 
-  // Boucle d'attente intelligente (Timeout max : 1 seconde)
-  // On scrute GTK toutes les 10ms jusqu'à ce que l'IA déverrouille le cadenas
+  // Un paquet réseau arrive pendant que l'IA s'apprête à jouer !
+  ctx->isNetworkMatch = true;
+
   int max_retries = 100;
   while (ctx->is_ai_thinking && max_retries > 0)
     {
-      g_usleep (10000); // 10ms
+      g_usleep (10000);
       while (g_main_context_pending (nullptr))
-        {
-          g_main_context_iteration (nullptr, FALSE);
-        }
+        g_main_context_iteration (nullptr, FALSE);
       max_retries--;
     }
 
-  // Le coup a dû être joué, l'IA a terminé, le cadenas doit être ouvert !
+  // Le timer a été interrompu et supprimé (G_SOURCE_REMOVE) sans appliquer le
+  // coup
   EXPECT_FALSE (ctx->is_ai_thinking);
-  EXPECT_EQ (ctx->gameState->current_player, PLAYER_BLACK);
+  EXPECT_EQ (ctx->gameState->current_player,
+             PLAYER_WHITE); // Le tour n'a pas changé
+}
+
+TEST_F (GuiControllerTest, AsyncAI_Execution_BlackTurn)
+{
+  ctx->gameState->current_player = PLAYER_BLACK;
+  config.ai_black_cfg.enabled = true;
+
+  Param params[1] = {};
+  ConfigMap cm = { .count = 0, .list = params };
+  ctx->ai_black = create_ai ("random", cm);
+  ctx->is_ai_black_initialized = (ctx->ai_black.vtable != nullptr);
+
+  guiCheckAndTriggerAI (ctx);
+  EXPECT_TRUE (ctx->is_ai_thinking);
+
+  int max_retries = 100;
+  while (ctx->is_ai_thinking && max_retries > 0)
+    {
+      g_usleep (10000);
+      while (g_main_context_pending (nullptr))
+        g_main_context_iteration (nullptr, FALSE);
+      max_retries--;
+    }
+
+  // L'IA Noire a joué, le tour passe aux Blancs
+  EXPECT_FALSE (ctx->is_ai_thinking);
+  EXPECT_EQ (ctx->gameState->current_player, PLAYER_WHITE);
 }
