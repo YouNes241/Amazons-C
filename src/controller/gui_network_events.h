@@ -1,3 +1,7 @@
+/** @file gui_network_events.h
+ * @brief GUI network event handling for the Amazons game.
+ */
+
 #ifndef GUI_NETWORK_EVENTS_H
 #define GUI_NETWORK_EVENTS_H
 

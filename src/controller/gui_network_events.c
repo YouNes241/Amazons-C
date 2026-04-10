@@ -1,3 +1,7 @@
+/** @file gui_network_events.c
+ * @brief GUI network event handling for the Amazons game.
+ */
+
 #include "gui_network_events.h"
 #include "gui_controller.h"
 #include "gui_utils.h"

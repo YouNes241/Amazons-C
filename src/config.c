@@ -1,3 +1,7 @@
+/** @file config.c
+ * @brief Configuration handling functions for the Amazons game.
+ */
+
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +12,9 @@
 #define KEY_SIZE 64
 #define VAL_SIZE 64
 
+/** @brief Initializes the game configuration with default values.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 init_default_config (game_config_t *config)
 {
@@ -27,6 +34,9 @@ init_default_config (game_config_t *config)
   strncpy (config->ai_black_cfg.name, "minimax", MAX_AI_STR_LEN - 1);
 }
 
+/** @brief Displays the current game configuration.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 display_config (game_config_t *config)
 {
@@ -73,6 +83,10 @@ display_config (game_config_t *config)
   printf ("------------------------------\n");
 }
 
+/** @brief Gets the path to the configuration file.
+ * @param path A pointer to the buffer where the path will be stored.
+ * @param size The size of the buffer.
+ */
 void
 get_config_path (char *path, size_t size)
 {
@@ -89,6 +103,9 @@ get_config_path (char *path, size_t size)
     }
 }
 
+/** @brief Loads the game configuration from a file.
+ * @param config A pointer to the game configuration structure.
+ */
 void
 load_config_file (game_config_t *config)
 {

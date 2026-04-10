@@ -1,3 +1,8 @@
+/** @file cli_parser.h
+ * @brief Header file for the command-line interface parser for the Amazons
+ * game.
+ */
+
 #ifndef CLI_PARSER_H
 #define CLI_PARSER_H
 

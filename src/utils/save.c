@@ -1,3 +1,7 @@
+/** @file save.c
+ * @brief Save game functionality for the Amazons game.
+ */
+
 #include "save.h"
 #include <ctype.h>
 #include <stdbool.h>

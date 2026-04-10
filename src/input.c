@@ -1,3 +1,7 @@
+/** @file input.c
+ * @brief Input handling functions for the Amazons game.
+ */
+
 #include "input.h"
 #include <stdio.h>
 #include <string.h>

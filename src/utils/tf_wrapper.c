@@ -1,3 +1,6 @@
+/** @file tf_wrapper.c
+ * @brief TensorFlow wrapper functions for the Amazons game.
+ */
 
 #include "tf_wrapper.h"
 #include <stdio.h>

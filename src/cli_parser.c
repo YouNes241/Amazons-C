@@ -1,3 +1,7 @@
+/** @file cli_parser.c
+ * @brief Command-line interface parser for the Amazons game.
+ */
+
 #include "cli_parser.h"
 #include "config.h"
 #include "i18n.h"
@@ -8,21 +12,37 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** @brief Enum for command-line options. */
 typedef enum
 {
+  /** @brief Option for running as a daemon. */
   OPT_DAEMON = 1000,
-  OPT_AI_WHITE,             // 1001
-  OPT_AI_BLACK,             // 1002
-  OPT_AI_MODE,              // 1003
-  OPT_AI_MINIMAX_DEPTH,     // 1004
-  OPT_AI_MINIMAX_SCORING,   // 1005
-  OPT_AI_MCTS_SELECTION,    // 1006
-  OPT_AI_TIME,              // 1007
+  /** @brief Option for specifying the white AI. */
+  OPT_AI_WHITE, // 1001
+  /** @brief Option for specifying the black AI. */
+  OPT_AI_BLACK, // 1002
+  /** @brief Option for specifying the AI mode. */
+  OPT_AI_MODE, // 1003
+  /** @brief Option for specifying the minimax depth. */
+  OPT_AI_MINIMAX_DEPTH, // 1004
+  /** @brief Option for specifying the minimax scoring function. */
+  OPT_AI_MINIMAX_SCORING, // 1005
+  /** @brief Option for specifying the MCTS selection policy. */
+  OPT_AI_MCTS_SELECTION, // 1006
+  /** @brief Option for specifying the AI time limit. */
+  OPT_AI_TIME, // 1007
+  /** @brief Option for specifying whether to use forward pruning in minimax.
+   */
   OPT_AI_MINIMAX_FWPRUNING, // 1008
-  OPT_AI_MCTS_WORKERS       // 1009
+  /** @brief Option for specifying the number of workers for MCTS. */
+  OPT_AI_MCTS_WORKERS // 1009
 } CliOption;
 
-// Utility function to easily add a dynamic parameter to the current AI
+/** @brief Adds a parameter to the specified AI configuration.
+ * @param ai A pointer to the AI configuration structure.
+ * @param key The parameter key.
+ * @param val The parameter value.
+ */
 static void
 add_ai_param (ai_config_t *ai, const char *key, const char *val)
 {
@@ -38,6 +58,12 @@ add_ai_param (ai_config_t *ai, const char *key, const char *val)
     }
 }
 
+/** @brief Parses command line options and populates the game configuration.
+ * @param argc Number of arguments.
+ * @param argv Array of argument strings.
+ * @param config Pointer to the game configuration struct to populate.
+ * @return int EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
 int
 parse_options (int argc, char *argv[], game_config_t *config)
 {

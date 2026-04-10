@@ -1,3 +1,7 @@
+/** @file main.c
+ * @brief Main entry point for the Amazons game.
+ */
+
 #include "cli_parser.h"
 #include "config.h"
 #include "controller.h"
@@ -16,6 +20,9 @@
 
 static NetworkManager *g_daemon_net_manager = NULL;
 
+/** @brief Handles the shutdown signal for the daemon.
+ * @param sig The signal number.
+ */
 void
 handle_shutdown_signal (int sig)
 {
@@ -27,6 +34,11 @@ handle_shutdown_signal (int sig)
   exit (EXIT_SUCCESS);
 }
 
+/** @brief Main entry point for the Amazons game.
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line arguments.
+ * @return The exit status of the program.
+ */
 int
 main (int argc, char *argv[])
 {
