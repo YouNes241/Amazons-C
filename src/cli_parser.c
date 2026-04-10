@@ -2,6 +2,7 @@
 #include "config.h"
 #include "i18n.h"
 #include <getopt.h>
+#include <omp.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,14 +11,15 @@
 typedef enum
 {
   OPT_DAEMON = 1000,
-  OPT_AI_WHITE,            // 1001
-  OPT_AI_BLACK,            // 1002
-  OPT_AI_MODE,             // 1003
-  OPT_AI_MINIMAX_DEPTH,    // 1004
-  OPT_AI_MINIMAX_SCORING,  // 1005
-  OPT_AI_MCTS_SELECTION,   // 1006
-  OPT_AI_TIME,             // 1007
-  OPT_AI_MINIMAX_FWPRUNING // 1008
+  OPT_AI_WHITE,             // 1001
+  OPT_AI_BLACK,             // 1002
+  OPT_AI_MODE,              // 1003
+  OPT_AI_MINIMAX_DEPTH,     // 1004
+  OPT_AI_MINIMAX_SCORING,   // 1005
+  OPT_AI_MCTS_SELECTION,    // 1006
+  OPT_AI_TIME,              // 1007
+  OPT_AI_MINIMAX_FWPRUNING, // 1008
+  OPT_AI_MCTS_WORKERS       // 1009
 } CliOption;
 
 // Utility function to easily add a dynamic parameter to the current AI
@@ -60,6 +62,7 @@ parse_options (int argc, char *argv[], game_config_t *config)
     { "ai-minimax-scoring", required_argument, 0, OPT_AI_MINIMAX_SCORING },
     { "ai-minimax-fwpruning", required_argument, 0, OPT_AI_MINIMAX_FWPRUNING },
     { "ai-mcts-selection", required_argument, 0, OPT_AI_MCTS_SELECTION },
+    { "ai-mcts-workers", required_argument, 0, OPT_AI_MCTS_WORKERS },
     { "ai-time", required_argument, 0, OPT_AI_TIME },
     { "debug", no_argument, 0, 'd' },
     { "server", optional_argument, 0, 's' },
@@ -164,6 +167,28 @@ parse_options (int argc, char *argv[], game_config_t *config)
         case OPT_AI_MCTS_SELECTION:
           current_ai->enabled = true;
           add_ai_param (current_ai, "selection", optarg);
+          break;
+
+        case OPT_AI_MCTS_WORKERS:
+          current_ai->enabled = true;
+          {
+            int workers = atoi (optarg);
+            int sys_limit = omp_get_num_procs ();
+
+            if (workers < 1)
+              workers = 1;
+            if (workers > sys_limit)
+              {
+                fprintf (stderr,
+                         "[Warning] Requested %d workers, but system only has "
+                         "%d. Capping to limit.\n",
+                         workers, sys_limit);
+                workers = sys_limit;
+              }
+            char workers_str[16];
+            snprintf (workers_str, sizeof (workers_str), "%d", workers);
+            add_ai_param (current_ai, "max_workers", workers_str);
+          }
           break;
 
         case OPT_AI_TIME:
